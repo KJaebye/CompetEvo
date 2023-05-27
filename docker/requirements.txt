@@ -1,0 +1,11 @@
+setproctitle
+lxml
+gymnasium==0.28.1
+box2d-py
+networkx
+mujoco==2.3.5
+tensorboard
+tensorboardx
+imageio[ffmpeg]
+pyyaml
+pyglet==1.5.27
