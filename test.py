@@ -1,5 +1,5 @@
 import gymnasium as gym
-from gym_compete import CUSTOM_ENVS
+import competevo
 from config.config import cfg
 import argparse
 import numpy as np
@@ -19,7 +19,7 @@ import time
 
 # print(cfg.TEMPLATE)
 
-env = gym.make("sumo-ants-v0", render_mode="human")
+env = gym.make("sumo-evoants-v0", render_mode="human")
 observation, info = env.reset()
 sp = env.action_space.shape
 
