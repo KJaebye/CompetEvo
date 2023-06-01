@@ -1,0 +1,10 @@
+ENV_NAME: "SumoEvoAnts-v0"
+
+RNG_SEED: 42
+
+USE_GPU: True
+DEVICE: "cuda:0"
+
+ENV:
+  EPISODE_LENGTH: 500
+  AGENT_NAMES: ['ant_fighter', 'ant_fighter']

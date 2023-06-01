@@ -7,6 +7,8 @@ from .utils import create_multiagent_xml
 import os
 import six
 
+from config.config import cfg
+
 class MultiAgentEnv(MujocoEnv):
     '''
     A multi-agent environment consists of some number of Agent and
@@ -50,9 +52,10 @@ class MultiAgentEnv(MujocoEnv):
     GOAL_REWARD = 1000
 
     def __init__(
-        self, agent_names,
-        world_xml_path=WORLD_XML, 
-        agent_map=AGENT_MAP,
+        self, 
+        agent_names, 
+        rundir=os.path.join(os.path.dirname(__file__), "assets"),
+        world_xml_path=WORLD_XML, agent_map=AGENT_MAP, 
         move_reward_weight=1.0,
         init_pos=None, rgb=None, agent_args=None,
         **kwargs,
@@ -72,19 +75,17 @@ class MultiAgentEnv(MujocoEnv):
             self.agents[i] = agent_class(i, agent_xml_path, **agent_args[i])
             all_agent_xml_paths.append(agent_xml_path)
         agent_scopes = ['agent' + str(i) for i in range(self.n_agents)]
-        # print(scene_xml_path)
-
-        print("Creating Scene XML")
-        print(init_pos)
-        self._env_xml_string = create_multiagent_xml(
-            world_xml_path, all_agent_xml_paths, agent_scopes,
+        
+        # the initial xml path is None
+        self._env_xml_path = None
+        print("Creating Scene XML...")
+        # create multiagent env xml
+        # the xml file will be saved at "scene_xml_path"
+        _, self._env_xml_path = create_multiagent_xml(
+            world_xml_path, all_agent_xml_paths, agent_scopes, rundir=rundir,
             ini_pos=init_pos, rgb=rgb
         )
-        print("Scene XML string:", self._env_xml_string)
-
-
-
-        
+        print("Scene XML path:", self._env_xml_path)
         self.env_scene = MultiAgentScene(self._env_xml_path, self.n_agents, **kwargs,)
         print("Created Scene with agents")
         for i, agent in self.agents.items():

@@ -3,7 +3,6 @@ from gymnasium import utils
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium import spaces
 import gymnasium as gym
-import os
 
 class MultiAgentScene(MujocoEnv, utils.EzPickle):
 
@@ -26,7 +25,6 @@ class MultiAgentScene(MujocoEnv, utils.EzPickle):
                            observation_space=None, 
                            **kwargs,
                            )
-        
         self._mujoco_init = True
         utils.EzPickle.__init__(self, **kwargs,)
 

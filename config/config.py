@@ -32,37 +32,39 @@ _C.XML.SHADOWCLIP = 0.5
 # ----------------------------------------------------------------------------#
 _C.ENV = CN()
 
-_C.ENV.EPISODE_LENGTH = 1600
+_C.ENV.EPISODE_LENGTH = 500
 
-# environment dimension. For instance, ant of dimension is 3, hopper/cheetah is 2
-_C.ENV.DIMENSION = 3
+_C.ENV.AGENT_NAMES = ['ant_fighter', 'ant_fighter']
 
-# Hopper param
-_C.ENV.FORWARD_REWARD_WEIGHT = 1.0
+_C.ENV.WORLD_XML_PATH = "./competevo/new_envs/assets/world_body_arena.xml"
 
-_C.ENV.HEALTHY_REWARD = 1.0
+_C.ENV.INIT_POS = [(-1, 0, 2.5), (1, 0, 2.5)]
 
-_C.ENV.TERMINATE_WHEN_UNHEALTHY = True
+# arena minimum redius
+_C.ENV.MIN_RADIUS = 4
 
-_C.ENV.HEALTHY_Z_RANGE = (0.2, 1.0)
+# arena maximum redius
+_C.ENV.MAX_RADIUS = 4
 
-# Hopper param
-_C.ENV.HEALTHY_STATE_RANGE = (-100.0, 100.0)
+# ----------------------------------------------------------------------------#
+# Competevo Settings
+# ----------------------------------------------------------------------------#
+_C.COMPETEVO = CN()
 
-_C.ENV.HEALTHY_ANGLE_RANGE = (-0.2, 0.2)
+# Number of torch threads for training
+_C.COMPETEVO.N_TRAINING_THREADS = 1
 
-_C.ENV.CTRL_COST_WEIGHT = 0.5
+# Number of parallel envs for training rollouts
+_C.COMPETEVO.N_ROLLOUT_THREADS = 1
 
-_C.ENV.RESET_NOISE_SCALE = 0.1
+# Number of parallel envs for evaluating rollouts
+_C.COMPETEVO.N_EVAL_ROLLOUT_THREADS = 1
 
-_C.ENV.USE_CONTACT_FORCES = False
+# Number of parallel envs for rendering rollouts
+_C.COMPETEVO.N_RENDER_ROLLOUT_THREADS = 1
 
-_C.ENV.CONTACT_FORCE_RANGE = (-1.0, 1.0)
-
-_C.ENV.CONTACT_COST_WEIGHT = 5.e-4
-
-_C.ENV.USE_RELATIVE_OBS = True
-
+# Number of environment steps to train (default: 10e6)
+_C.COMPETEVO.NUM_ENV_STEPS = 10e6
 
 # --------------------------------------------------------------------------- #
 # ALGO Options
@@ -204,7 +206,7 @@ _C.CUDNN.DETERMINISTIC = True
 # Misc Options
 # ----------------------------------------------------------------------------#
 # Name of the environment used for experience collection
-_C.ENV_NAME = "MultiAnt-v0"
+_C.ENV_NAME = "SumoEvoAnts-v0"
 
 # Output directory
 _C.OUT_DIR = "./tmp"
@@ -248,51 +250,11 @@ _C.RENDER_EPISODES = 1
 # the play interval of each rendered image in saved video
 _C.IFI = 0.01 
 
-# Unimal template path relative to the basedir
-_C.TEMPLATE = "./envs/assets/multi_ant.xml"
-
 # to specify user's name for simply collecting training data.
-_C.USER_NAME = "emat"
+_C.USER_NAME = "competevo"
 
 
-# ----------------------------------------------------------------------------#
-# Multi Agent Env Options
-# ----------------------------------------------------------------------------#
-_C.EMAT = CN()
 
-_C.EMAT.AGENT_NUM = 3
-
-# Number of torch threads for training
-_C.EMAT.N_TRAINING_THREADS = 1
-
-# Number of parallel envs for training rollouts
-_C.EMAT.N_ROLLOUT_THREADS = 1
-
-# Number of parallel envs for evaluating rollouts
-_C.EMAT.N_EVAL_ROLLOUT_THREADS = 1
-
-# Number of parallel envs for rendering rollouts
-_C.EMAT.N_RENDER_ROLLOUT_THREADS = 1
-
-# Number of environment steps to train (default: 10e6)
-_C.EMAT.NUM_ENV_STEPS = 10e6
-
-# Initiate multi-agent positions as regular polygon. SPACE denotes radius of
-# this regular polygon.
-_C.EMAT.SPACE = 1 
-
-# Initial team formation "line", "star"
-_C.EMAT.INIT_FORMATION = "line"
-
-# ----------------------------------------------------------------------------#
-# Competition
-# ----------------------------------------------------------------------------#
-_C.COMP = CN()
-
-# use competition reward inspiration
-_C.COMP.USE_COMPETITION = True
-
-_C.COMP.COMPETITION_REWARD_COEF = 0.03
 
 # ----------------------------------------------------------------------------#
 # Functions

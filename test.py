@@ -1,23 +1,27 @@
 import gymnasium as gym
-import competevo
 from config.config import cfg
 import argparse
 import numpy as np
 import time
+import sys
 
+sys.path.append(".")
 
-# # Load config options
-# parser = argparse.ArgumentParser(description="User's arguments from terminal.")
-# parser.add_argument(
-#       "--cfg", 
-#       dest="cfg_file", 
-#       help="Config file", 
-#       required=True, 
-#       type=str)
-# args = parser.parse_args()
-# cfg.merge_from_file(args.cfg_file)
+# Load config options
+parser = argparse.ArgumentParser(description="User's arguments from terminal.")
+parser.add_argument(
+      "--cfg", 
+      dest="cfg_file", 
+      help="Config file", 
+      required=True, 
+      type=str)
+args = parser.parse_args()
+cfg.merge_from_file(args.cfg_file)
 
-# print(cfg.TEMPLATE)
+print("Acting Environment is {}.".format(cfg.ENV_NAME))
+
+# register environment. Must be imported after cfg.file is merged.
+import competevo
 
 env = gym.make("sumo-evoants-v0", render_mode="human")
 observation, info = env.reset()

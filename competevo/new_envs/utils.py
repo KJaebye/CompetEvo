@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import colorsys
 import numpy as np
+import os
 
 def list_filter(lambda_fn, iterable):
     return list(filter(lambda_fn, iterable))
@@ -45,10 +46,11 @@ def add_prefix(root, prop, prefix, force_set=False):
 def tuple_to_str(tp):
     return " ".join(map(str, tp))
 
-
 def create_multiagent_xml(
         world_xml, all_agent_xmls, agent_scopes=None,
-        outdir='/tmp/', ini_pos=None, rgb=None
+        rundir=None,
+        ini_pos=None,
+        rgb=None
     ):
     world = ET.parse(world_xml)
     world_root = world.getroot()
@@ -134,4 +136,8 @@ def create_multiagent_xml(
                 for tendon in list(agent_tendon):
                     world_tendons.append(tendon)
 
-    return ET.tostring(world_root)
+    outname = world_xml.split("/")[-1].split(".xml")[0]  + '.' + ".".join(map(lambda x: x.split("/")[-1].split(".xml")[0], all_agent_xmls)) + ".xml"
+    outpath = rundir + '/' + outname
+
+    world.write(outpath)
+    return ET.tostring(world_root), outpath
