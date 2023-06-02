@@ -36,7 +36,7 @@ _C.ENV.EPISODE_LENGTH = 500
 
 _C.ENV.AGENT_NAMES = ['ant_fighter', 'ant_fighter']
 
-_C.ENV.WORLD_XML_PATH = "./competevo/new_envs/assets/world_body_arena.xml"
+_C.ENV.WORLD_XML_PATH = "./competevo/evo_envs/assets/world_body_arena.xml"
 
 _C.ENV.INIT_POS = [(-1, 0, 2.5), (1, 0, 2.5)]
 

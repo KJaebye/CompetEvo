@@ -1,0 +1,37 @@
+<!-- This xml is to extract base body for evolution. -->
+<agentbody>
+  <default>
+    <joint armature="1" damping="1" limited="true"/>
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba=".98 .54 .56 1."/>
+    <motor ctrllimited="true" ctrlrange="-.4 .4"/>
+  </default>
+  
+  <body name="torso" pos="-1 0 0.75" euler="0 0 180">
+    <geom name="torso_geom" pos="0 0 0" size="0.25" type="sphere"/>
+    <joint armature="0" damping="0" limited="false" margin="0.01" name="root" pos="0 0 0" range="-30 30" type="free"/>
+    <body name="1" pos="0 0 0">
+        <geom fromto="0.0 0.0 0.0 0.4 0.4 0.0" name="aux_1_geom" size="0.08" type="capsule"/>
+        <joint axis="-1 1 0" name="1_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+    </body>
+    <body name="2" pos="0 0 0">
+        <geom fromto="0.0 0.0 0.0 -0.4 0.4 0.0" name="aux_2_geom" size="0.08" type="capsule"/>
+        <joint axis="-1 -1 0" name="2_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+    </body>
+    <body name="3" pos="0 0 0">
+        <geom fromto="0.0 0.0 0.0 -0.4 -0.4 0.0" name="aux_3_geom" size="0.08" type="capsule"/>
+        <joint axis="1 -1 0" name="3_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+    </body>
+    <body name="4" pos="0 0 0">
+        <geom fromto="0.0 0.0 0.0 0.4 -0.4 0.0" name="aux_4_geom" size="0.08" type="capsule"/>
+        <joint axis="1 1 0" name="4_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+    </body>
+  </body>
+
+  <actuator>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="1_joint" gear="150" name="1_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="2_joint" gear="150" name="2_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="3_joint" gear="150" name="3_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="4_joint" gear="150" name="4_joint"/>
+  </actuator>
+
+</agentbody>

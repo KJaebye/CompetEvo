@@ -7,4 +7,5 @@ DEVICE: "cuda:0"
 
 ENV:
   EPISODE_LENGTH: 500
-  AGENT_NAMES: ['ant_fighter', 'ant_fighter']
+  AGENT_NAMES: ['evo_ant_fighter', 'evo_ant_fighter']
+  WORLD_XML_PATH: "./competevo/evo_envs/assets/world_body_arena.xml"
