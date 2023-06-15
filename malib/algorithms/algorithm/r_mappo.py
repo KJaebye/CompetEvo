@@ -2,27 +2,27 @@
 # @Time    : 2021/7/1 6:52 下午
 # @Author  : hezhiqiang01
 # @Email   : hezhiqiang01@baidu.com
-# @File    : evo_mappo.py
+# @File    : r_mappo.py
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
-from malib.utils.util import get_gard_norm, huber_loss, mse_loss
-from malib.utils.valuenorm import ValueNorm
-from malib.algorithms.utils.util import check
+from utils.util import get_gard_norm, huber_loss, mse_loss
+from utils.valuenorm import ValueNorm
+from algorithms.utils.util import check
 
-from config.config import cfg
 
 class RMAPPO():
     """
     Trainer class for MAPPO to update policies.
-    :param args: (argparse.Namespace) arguments containing relevant model, policy, and envs information.
+    :param args: (argparse.Namespace) arguments containing relevant model, policy, and env information.
     :param policy: (R_MAPPO_Policy) policy to update.
     :param device: (torch.device) specifies the device to run on (cpu/gpu).
     """
 
     def __init__(self,
+                 args,
                  policy,
                  device=torch.device("cpu")):
 
@@ -30,24 +30,24 @@ class RMAPPO():
         self.tpdv = dict(dtype=torch.float32, device=device)
         self.policy = policy
 
-        self.clip_param = cfg.MAPPO.CLIP_PARAM
-        self.ppo_epoch = cfg.MAPPO.PPO_EPOCH
-        self.num_mini_batch = cfg.MAPPO.NUM_MINI_BATCH
-        self.data_chunk_length = cfg.NETWORK.DATA_CHUNK_LENGTH
-        self.value_loss_coef = cfg.MAPPO.VALUE_LOSS_COEF
-        self.entropy_coef = cfg.MAPPO.ENTROPY_COEF
-        self.max_grad_norm = cfg.MAPPO.MAX_GRAD_NORM
-        self.huber_delta = cfg.MAPPO.HUBER_DELTA
+        self.clip_param = args.clip_param
+        self.ppo_epoch = args.ppo_epoch
+        self.num_mini_batch = args.num_mini_batch
+        self.data_chunk_length = args.data_chunk_length
+        self.value_loss_coef = args.value_loss_coef
+        self.entropy_coef = args.entropy_coef
+        self.max_grad_norm = args.max_grad_norm
+        self.huber_delta = args.huber_delta
 
-        self._use_recurrent_policy = cfg.NETWORK.USE_RECURRENT_POLICY
-        self._use_naive_recurrent = cfg.NETWORK.USE_NAIVE_RECURRENT_POLICY
-        self._use_max_grad_norm = cfg.MAPPO.USE_MAX_GRAD_NORM
-        self._use_clipped_value_loss = cfg.MAPPO.USE_CLIPPED_VALUE_LOSS
-        self._use_huber_loss = cfg.MAPPO.USE_HUBER_LOSS
-        self._use_popart = cfg.MAPPO.USE_POPART
-        self._use_valuenorm = cfg.MAPPO.USE_VALUENORM
-        self._use_value_active_masks = cfg.MAPPO.USE_VALUE_ACTIVE_MASKS
-        self._use_policy_active_masks = cfg.MAPPO.USE_POLICY_ACTIVE_MASKS
+        self._use_recurrent_policy = args.use_recurrent_policy
+        self._use_naive_recurrent = args.use_naive_recurrent_policy
+        self._use_max_grad_norm = args.use_max_grad_norm
+        self._use_clipped_value_loss = args.use_clipped_value_loss
+        self._use_huber_loss = args.use_huber_loss
+        self._use_popart = args.use_popart
+        self._use_valuenorm = args.use_valuenorm
+        self._use_value_active_masks = args.use_value_active_masks
+        self._use_policy_active_masks = args.use_policy_active_masks
 
         assert (self._use_popart and self._use_valuenorm) == False, (
             "self._use_popart and self._use_valuenorm can not be set True simultaneously")

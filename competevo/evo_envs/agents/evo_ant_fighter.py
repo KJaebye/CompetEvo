@@ -5,6 +5,8 @@ import numpy as np
 import six
 
 
+# from robot.xml_robot import Robot
+
 def mass_center(mass, xpos):
     return (np.sum(mass * xpos, 0) / np.sum(mass))[0]
 
@@ -14,6 +16,8 @@ class EvoAntFighter(Ant):
     def __init__(self, agent_id, xml_path=None, team='evo_ant_fighter'):
         super(EvoAntFighter, self).__init__(agent_id, xml_path)
         self.team = team
+
+        # self.robot = Robot(cfg, xml=xml_path)
 
     def before_step(self):
         pass

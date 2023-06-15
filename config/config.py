@@ -1,279 +1,117 @@
-"""Configuration file (powered by YACS)."""
-
-import copy
+import yaml
 import os
-
-from config.yacs import CfgNode as CN
-
-# Global config object
-_C = CN()
-
-# Example usage:
-#   from config.config import cfg
-cfg = _C
-
-# ----------------------------------------------------------------------------#
-# XML template params
-# ----------------------------------------------------------------------------#
-# Refer mujoco docs for what each param does
-
-_C.XML = CN()
-
-_C.XML.GEOM_CONDIM = 3
-
-_C.XML.GEOM_FRICTION = [0.7, 0.1, 0.1]
-
-_C.XML.FILTER_PARENT = "enable"
-
-_C.XML.SHADOWCLIP = 0.5
-
-# ----------------------------------------------------------------------------#
-# Universal Env Options
-# ----------------------------------------------------------------------------#
-_C.ENV = CN()
-
-_C.ENV.EPISODE_LENGTH = 500
-
-_C.ENV.AGENT_NAMES = ['ant_fighter', 'ant_fighter']
-
-_C.ENV.WORLD_XML_PATH = "./competevo/evo_envs/assets/world_body_arena.xml"
-
-_C.ENV.INIT_POS = [(-1, 0, 2.5), (1, 0, 2.5)]
-
-# arena minimum redius
-_C.ENV.MIN_RADIUS = 4
-
-# arena maximum redius
-_C.ENV.MAX_RADIUS = 4
-
-# ----------------------------------------------------------------------------#
-# Competevo Settings
-# ----------------------------------------------------------------------------#
-_C.COMPETEVO = CN()
-
-# Number of torch threads for training
-_C.COMPETEVO.N_TRAINING_THREADS = 1
-
-# Number of parallel envs for training rollouts
-_C.COMPETEVO.N_ROLLOUT_THREADS = 1
-
-# Number of parallel envs for evaluating rollouts
-_C.COMPETEVO.N_EVAL_ROLLOUT_THREADS = 1
-
-# Number of parallel envs for rendering rollouts
-_C.COMPETEVO.N_RENDER_ROLLOUT_THREADS = 1
-
-# Number of environment steps to train (default: 10e6)
-_C.COMPETEVO.NUM_ENV_STEPS = 10e6
-
-# --------------------------------------------------------------------------- #
-# ALGO Options
-# --------------------------------------------------------------------------- #
-_C.ALGO = "mappo" # "rmappo, mappo"
-
-# Whether to use global state or concatenated obs
-_C.USE_OBS_INSTEAD_OF_STATE = False
-
-# --------------------------------------------------------------------------- #
-# Network Options
-# --------------------------------------------------------------------------- #
-_C.NETWORK = CN()
-
-# Whether agent share the same policy
-_C.NETWORK.SHARE_POLICY = False
-
-# Whether to use centralized V function
-_C.NETWORK.USE_CENTRALIZED_V = True
-
-# Whether to use stacked_frames
-_C.NETWORK.USE_STACKED_FRAMES = False
-
-_C.NETWORK.STACKED_FRAMES = 1
-
-# Dimension of hidden layers for actor/critic networks
-_C.NETWORK.HIDDEN_SIZE = 64
-
-# Number of layers for actor/critic networks
-_C.NETWORK.LAYER_N = 2
-
-# Whether to use ReLU
-_C.NETWORK.USE_RELU = False
-
-# Whether to use Orthogonal initialization for weights and 0 initialization for biases
-_C.NETWORK.USE_ORTHOGONAL = True
-
-# The gain of last action layer
-_C.NETWORK.GAIN = 0.01
-
-# Use a recurrent policy
-_C.NETWORK.USE_RECURRENT_POLICY = False
-
-# Whether to use a naive recurrent policy
-_C.NETWORK.USE_NAIVE_RECURRENT_POLICY = False
-
-# The number of recurrent layers.
-_C.NETWORK.RECURRENT_N = 1
-
-# Time length of chunks used to train a recurrent_policy
-_C.NETWORK.DATA_CHUNK_LENGTH = 10
-
-
-# --------------------------------------------------------------------------- #
-# MAPPO Options
-# --------------------------------------------------------------------------- #
-_C.MAPPO = CN()
-
-# --- Optimization params ------------------------------ #
-# learning rate (default: 5e-4)
-_C.MAPPO.LR = 5.e-4
-
-# use a linear schedule on the learning rate
-_C.MAPPO.USE_LINEAR_LR_DECAY = False
-
-# critic learning rate (default: 5e-4)
-_C.MAPPO.CRITIC_LR = 5.e-4
-
-# RMSprop optimizer epsilon (default: 1e-5)
-_C.MAPPO.OPTI_EPS = 1.e-5
-
-_C.MAPPO.WEIGHT_DECAY = 0
-
-# number of ppo epochs (default: 15)
-_C.MAPPO.PPO_EPOCH = 15
-
-# by default, clip loss value
-_C.MAPPO.USE_CLIPPED_VALUE_LOSS = True
-
-# ppo clip parameter (default: 0.2)
-_C.MAPPO.CLIP_PARAM = 0.2
-
-# number of batches for ppo (default: 1)
-_C.MAPPO.NUM_MINI_BATCH = 1
-
-# entropy term coefficient (default: 0.01)
-_C.MAPPO.ENTROPY_COEF = 0.01
-
-# value loss coefficient (default: 0.5)
-_C.MAPPO.VALUE_LOSS_COEF = 0.5
-
-# by default, use max norm of gradients
-_C.MAPPO.USE_MAX_GRAD_NORM = True
-
-# max norm of gradients (default: 0.5)
-_C.MAPPO.MAX_GRAD_NORM = 10.0
-
-# Use PopArt to normalize rewards
-_C.MAPPO.USE_POPART = False
-
-# use running mean and std to normalize rewards
-_C.MAPPO.USE_VALUENORM = True
-
-# Whether to apply layernorm to the inputs
-_C.MAPPO.USE_FEATURE_NORMALIZATION = True
-
-# use generalized advantage estimation
-_C.MAPPO.USE_GAE = True
-
-# discount factor for rewards (default: 0.99)
-_C.MAPPO.GAMMA = 0.99
-
-# gae lambda parameter (default: 0.95)
-_C.MAPPO.GAE_LAMBDA = 0.95
-
-# compute returns taking into account time limits
-_C.MAPPO.USE_PROPER_TIME_LIMITS = False
-
-# by default, use huber loss
-_C.MAPPO.USE_HUBER_LOSS = True
-
-# by default True, whether to mask useless data in value loss
-_C.MAPPO.USE_VALUE_ACTIVE_MASKS = True
-
-# by default True, whether to mask useless data in policy loss
-_C.MAPPO.USE_POLICY_ACTIVE_MASKS = True
-
-# coefficience of huber loss
-_C.MAPPO.HUBER_DELTA = 10
-
-# --------------------------------------------------------------------------- #
-# CUDNN options
-# --------------------------------------------------------------------------- #
-_C.CUDNN = CN()
-
-_C.CUDNN.DETERMINISTIC = True
-
-# ----------------------------------------------------------------------------#
-# Misc Options
-# ----------------------------------------------------------------------------#
-# Name of the environment used for experience collection
-_C.ENV_NAME = "SumoEvoAnts-v0"
-
-# Output directory
-_C.OUT_DIR = "./tmp"
-
-# Config destination (in OUT_DIR)
-_C.CFG_DEST = "config.yaml"
-
-# Note that non-determinism may still be present due to non-deterministic
-# operator implementations in GPU operator libraries. This is the only seed
-# which will effect env variations.
-_C.RNG_SEED = 42
-
-# Use GPU
-_C.USE_GPU = True
-
-# Device index
-_C.DEVICE = "cuda:0"
-
-# Log period in iters.
-_C.LOG_PERIOD = 1
-
-# Checkpoint period in iters. Refer LOG_PERIOD for meaning of iter
-_C.CHECKPOINT_PERIOD = 10
-
-# by default, do not start evaluation. If set`, start evaluation alongside with training
-_C.USE_EVAL = True
-
-# Evaluate the policy after every EVAL_PERIOD iters
-_C.EVAL_PERIOD = 10
-
-# by default, do not save render video. If set, save video
-_C.SAVE_VIDEO = True
-
-# by default, do not render the envs during training. If set, start render. Note: something, 
-# the environment has internal render process which is not controlled by this hyperparam
-_C.USE_RENDER = False
-
-# display episode when rendering
-_C.RENDER_EPISODES = 1
-
-# the play interval of each rendered image in saved video
-_C.IFI = 0.01 
-
-# to specify user's name for simply collecting training data.
-_C.USER_NAME = "competevo"
-
-
-
-
-# ----------------------------------------------------------------------------#
-# Functions
-# ----------------------------------------------------------------------------#
-
-def dump_cfg(run_dir, cfg_name=None):
-    """Dumps the config to the output directory."""
-    if not cfg_name:
-        cfg_name = _C.CFG_DEST
-    cfg_file = os.path.join(run_dir, cfg_name)
-    with open(cfg_file, "w") as f:
-        _C.dump(stream=f)
-
-
-def load_cfg(out_dir, cfg_dest="config.yaml"):
-    """Loads config from specified output directory."""
-    cfg_file = os.path.join(out_dir, cfg_dest)
-    _C.merge_from_file(cfg_file)
-
-
-def get_default_cfg():
-    return copy.deepcopy(cfg)
+import glob
+import numpy as np
+
+
+class Config:
+
+    def __init__(self, cfg_path):
+        self.cfg_path = cfg_path
+        files = glob.glob(cfg_path, recursive=True)
+        assert(len(files) == 1)
+        cfg = yaml.safe_load(open(files[0], 'r'))
+        self.cfg = cfg
+        # create dirs
+        self.out_dir = '/root/ws/competevo/tmp'
+
+        # main config
+        self.env_name = cfg.get('env_name')
+        self.use_gpu = cfg.get('use_gpu', bool)
+        self.device = cfg.get('device', str)
+        self.cuda_deterministic = cfg.get('cuda_deterministic', bool)
+
+        # load hyperparams.
+        self.algo = cfg.get('algo', str)
+
+        # prepare params
+        self.seed = cfg.get('seed', int)
+        self.n_training_threads = cfg.get('n_training_threads', int)
+        self.n_rollout_threads = cfg.get('n_rollout_threads', int)
+        self.n_eval_rollout_threads = cfg.get('n_eval_rollout_threads', int)
+        self.n_render_rollout_threads = cfg.get('n_render_rollout_threads', int)
+        self.num_env_steps = cfg.get('num_env_steps', int)
+        self.user_name = cfg.get('user_name', str)
+        self.use_wandb = cfg.get('use_wandb', bool)
+
+        # envs params
+        self.use_obs_instead_of_state = cfg.get('use_obs_instead_of_state', bool)
+
+        # simulation params
+        self.episode_length = cfg.get('episode_length', int)
+
+        # network params
+        self.share_policy = cfg.get('share_policy', bool)
+        self.use_centralized_V = cfg.get('use_centralized_V', bool)
+        self.stacked_frames = cfg.get('stacked_frames', int)
+        self.use_stacked_frames = cfg.get('use_stacked_frames', bool)
+        self.hidden_size = cfg.get('hidden_size', 64)
+        self.layer_N = cfg.get('layer_N', 2)
+        self.use_ReLU = cfg.get('use_ReLU', bool)
+        self.use_popart = cfg.get('use_popart', bool)
+        self.use_valuenorm = cfg.get('use_valuenorm', bool)
+        self.use_feature_normalization = cfg.get('use_feature_normalization', bool)
+        self.use_orthogonal = cfg.get('use_orthogonal', bool)
+        self.gain = cfg.get('gain', float)
+
+        # recurrent params
+        self.use_naive_recurrent_policy = cfg.get('use_naive_recurrent_policy', bool)
+        self.use_recurrent_policy = cfg.get('use_recurrent_policy', bool)
+        self.recurrent_N = cfg.get('recurrent_N', int)
+        self.data_chunk_length = cfg.get('data_chunk_length', int)
+
+        # optimizer params
+        self.lr = cfg.get('lr', float)
+        self.critic_lr = cfg.get('critic_lr', float)
+        self.opti_eps = cfg.get('opti_eps', float)
+        self.weight_decay = cfg.get('weight_decay', float)
+
+        # PPO params
+        self.ppo_epoch = cfg.get('ppo_epoch', int)
+        self.use_clipped_value_loss = cfg.get('use_clipped_value_loss', bool)
+        self.clip_param = cfg.get('clip_param', float)
+        self.num_mini_batch = cfg.get('num_mini_batch', int)
+        self.entropy_coef = cfg.get('entropy_coef', float)
+        self.value_loss_coef = cfg.get('value_loss_coef', float)
+        self.use_max_grad_norm = cfg.get('use_max_grad_norm', bool)
+        self.max_grad_norm = cfg.get('max_grad_norm', float)
+        self.use_gae = cfg.get('use_gae', bool)
+        self.gamma = cfg.get('gamma', float)
+        self.gae_lambda = cfg.get('gae_lambda',float)
+        self.use_proper_time_limits = cfg.get('use_proper_time_limits', bool)
+        self.use_huber_loss = cfg.get('use_huber_loss', bool)
+        self.use_value_active_masks = cfg.get('use_value_active_masks', bool)
+        self.use_policy_active_masks = cfg.get('use_policy_active_masks', bool)
+        self.huber_delta = cfg.get('huber_delta', int)
+
+        # run params
+        self.use_linear_lr_decay = cfg.get('use_linear_lr_decay', bool)
+
+        # save model inteval
+        self.save_interval = cfg.get('save_interval', int)
+
+        # log params
+        self.log_interval = cfg.get('log_interval', int)
+
+        # eval params
+        self.use_eval = cfg.get('use_eval', bool)
+        self.eval_interval = cfg.get('eval_interval', int)
+        self.eval_episodes = cfg.get('eval_episodes', int)
+
+        # render params
+        self.save_video = cfg.get('save_video', bool)
+        self.use_render = cfg.get('use_render', bool)
+        self.render_episodes = cfg.get('render_episodes', int)
+        self.ifi = cfg.get('ifi', float)
+
+        # robot config
+        self.robot_param_scale = cfg.get('robot_param_scale', 0.1)
+        self.robot_cfg = cfg.get('robot', dict())
+
+    def save_config(self, directory_path):
+        # Create the YAML file path
+        file_path = os.path.join(directory_path, 'config.yml')
+        # Write the configuration data to the YAML file
+        with open(file_path, 'w') as f:
+            yaml.dump(self.cfg, f)
+        print(f"Config saved to {file_path}")

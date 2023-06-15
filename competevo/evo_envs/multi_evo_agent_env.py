@@ -8,8 +8,6 @@ from competevo.evo_envs.agents import *
 import os
 import six
 
-from config.config import cfg
-
 class MultiEvoAgentEnv(MujocoEnv):
     '''
     A multi-agent environment supporting morph EVO that consists of some number of EVO Agent and
@@ -38,9 +36,12 @@ class MultiEvoAgentEnv(MujocoEnv):
         self, 
         agent_names, 
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
-        world_xml_path=WORLD_XML, agent_map=AGENT_MAP, 
+        world_xml_path=WORLD_XML, 
+        agent_map=AGENT_MAP, 
         move_reward_weight=1.0,
-        init_pos=None, rgb=None, agent_args=None,
+        init_pos=None, 
+        rgb=None, 
+        agent_args=None,
         **kwargs,
     ):
         '''

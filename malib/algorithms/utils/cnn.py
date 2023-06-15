@@ -1,8 +1,6 @@
 import torch.nn as nn
 from .util import init
 
-from config.config import cfg
-
 """CNN Modules and utils."""
 
 class Flatten(nn.Module):
@@ -46,12 +44,12 @@ class CNNLayer(nn.Module):
 
 
 class CNNBase(nn.Module):
-    def __init__(self, obs_shape):
+    def __init__(self, args, obs_shape):
         super(CNNBase, self).__init__()
 
-        self._use_orthogonal = cfg.NETWORK.USE_ORTHOGONAL
-        self._use_ReLU = cfg.NETWORK.USE_RELU
-        self.hidden_size = cfg.NETWORK.HIDDEN_SIZE
+        self._use_orthogonal = args.use_orthogonal
+        self._use_ReLU = args.use_ReLU
+        self.hidden_size = args.hidden_size
 
         self.cnn = CNNLayer(obs_shape, self.hidden_size, self._use_orthogonal, self._use_ReLU)
 

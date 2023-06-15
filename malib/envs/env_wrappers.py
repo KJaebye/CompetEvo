@@ -2,23 +2,21 @@
 # @Time    : 2021/7/1 8:44 上午
 # @Author  : hezhiqiang01
 # @Email   : hezhiqiang01@baidu.com
-# @File    : evo_env_wrappers.py
+# @File    : env_wrappers.py
 Modified from OpenAI Baselines code to work with multi-agent envs
 """
 
 import numpy as np
 
-from config.config import cfg
-
-# single envs
+# single env
 class DummyVecEnv():
     def __init__(self, env_fns):
         self.envs = [fn() for fn in env_fns]
-        self.env = self.envs[0]
+        env = self.envs[0]
         self.num_envs = len(env_fns)
-        self.observation_space = self.env.observation_space
-        self.share_observation_space = self.env.share_observation_space
-        self.action_space = self.env.action_space
+        self.observation_space = env.observation_space
+        self.share_observation_space = env.share_observation_space
+        self.action_space = env.action_space
         self.actions = None
 
     def step(self, actions):
@@ -34,18 +32,18 @@ class DummyVecEnv():
 
     def step_wait(self):
         results = [env.step(a) for (a, env) in zip(self.actions, self.envs)]
-        obs, rews, terminateds, truncateds, infos = map(np.array, zip(*results))
+        obs, rews, dones, infos = map(np.array, zip(*results))
 
-        for (i, terminated) in enumerate(terminateds):
-            if 'bool' in terminated.__class__.__name__:
-                if terminated:
+        for (i, done) in enumerate(dones):
+            if 'bool' in done.__class__.__name__:
+                if done:
                     obs[i] = self.envs[i].reset()
             else:
-                if np.all(terminated):
+                if np.all(done):
                     obs[i] = self.envs[i].reset()
 
         self.actions = None
-        return obs, rews, terminateds, truncateds, infos
+        return obs, rews, dones, infos
 
     def reset(self):
         obs = [env.reset() for env in self.envs]

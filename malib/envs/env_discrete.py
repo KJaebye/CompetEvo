@@ -8,13 +8,13 @@
 import gym
 from gym import spaces
 import numpy as np
-from malib.envs.env_core import EnvCore
+from envs.env_core import EnvCore
 
 
 class DiscreteActionEnv(object):
     """对于离散动作环境的封装"""
-    def __init__(self, num_agent):
-        self.env = EnvCore(num_agent)
+    def __init__(self):
+        self.env = EnvCore()
         self.num_agent = self.env.agent_num
 
         self.signal_obs_dim = self.env.obs_dim

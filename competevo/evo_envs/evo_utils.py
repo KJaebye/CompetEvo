@@ -48,9 +48,12 @@ def tuple_to_str(tp):
 
 
 def create_multiagent_xml(
-        world_xml, all_agent_xmls, agent_scopes=None,
+        world_xml, 
+        all_agent_xmls, 
+        agent_scopes=None,
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
-        ini_pos=None, rgb=None
+        ini_pos=None, 
+        rgb=None
     ):
     world = ET.parse(world_xml)
     world_root = world.getroot()

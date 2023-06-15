@@ -1,8 +1,6 @@
 import torch.nn as nn
 from .util import init, get_clones
 
-from config.config import cfg
-
 """MLP modules."""
 
 class MLPLayer(nn.Module):
@@ -31,15 +29,15 @@ class MLPLayer(nn.Module):
 
 
 class MLPBase(nn.Module):
-    def __init__(self, obs_shape, cat_self=True, attn_internal=False):
+    def __init__(self, args, obs_shape, cat_self=True, attn_internal=False):
         super(MLPBase, self).__init__()
 
-        self._use_feature_normalization = cfg.MAPPO.USE_FEATURE_NORMALIZATION
-        self._use_orthogonal = cfg.NETWORK.USE_ORTHOGONAL
-        self._use_ReLU = cfg.NETWORK.USE_RELU
-        self._stacked_frames = cfg.NETWORK.STACKED_FRAMES
-        self._layer_N = cfg.NETWORK.LAYER_N
-        self.hidden_size = cfg.NETWORK.HIDDEN_SIZE
+        self._use_feature_normalization = args.use_feature_normalization
+        self._use_orthogonal = args.use_orthogonal
+        self._use_ReLU = args.use_ReLU
+        self._stacked_frames = args.stacked_frames
+        self._layer_N = args.layer_N
+        self.hidden_size = args.hidden_size
 
         obs_dim = obs_shape[0]
 

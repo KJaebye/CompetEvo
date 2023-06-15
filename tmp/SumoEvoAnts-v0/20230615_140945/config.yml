@@ -1,0 +1,120 @@
+add_body_condition:
+  max_nchild: 2
+agent_specs:
+  batch_design: true
+clip_epsilon: 0.2
+done_condition:
+  max_ang: 60
+env_name: SumoEvoAnts-v0
+gamma: 0.995
+max_body_depth: 4
+max_epoch_num: 1000
+min_batch_size: 50000
+mini_batch_size: 2048
+num_optim_epoch: 10
+obs_specs:
+  attr:
+  - depth
+  clip_qvel: true
+  design: true
+  sim: []
+  use_body_ind: true
+  use_projected_params: true
+policy_lr: 5.0e-05
+policy_momentum: 0.0
+policy_optimizer: Adam
+policy_specs:
+  attr_gnn_specs:
+    aggr: add
+    bias: true
+    hdims:
+    - 64
+    - 64
+    - 64
+    layer_type: graph_conv
+  attr_index_mlp:
+    hdims:
+    - 128
+    - 128
+    rescale_linear: true
+  attr_log_std: -2.3
+  control_gnn_specs:
+    aggr: add
+    bias: true
+    hdims:
+    - 64
+    - 64
+    - 64
+    layer_type: graph_conv
+  control_index_mlp:
+    hdims:
+    - 128
+    - 128
+    rescale_linear: true
+  control_log_std: 0
+  fix_attr_std: false
+  fix_control_std: false
+  htype: tanh
+  name: v5
+  skel_gnn_specs:
+    aggr: add
+    bias: true
+    hdims:
+    - 64
+    - 64
+    - 64
+    layer_type: graph_conv
+  skel_index_mlp:
+    hdims:
+    - 128
+    - 128
+    rescale_linear: true
+policy_weightdecay: 0.0
+robot:
+  actuator_params:
+    gear:
+      lb: 20
+      ub: 400
+  body_params:
+    offset:
+      lb:
+      - -0.5
+      - -0.5
+      type: xy
+      ub:
+      - 0.5
+      - 0.5
+  geom_params:
+    ext_start:
+      lb: 0.0
+      ub: 0.2
+    size:
+      lb: 0.03
+      ub: 0.1
+  joint_params: {}
+  no_root_offset: true
+  param_mapping: sin
+robot_param_scale: 1
+save_model_interval: 100
+seed: 1
+skel_transform_nsteps: 5
+tau: 0.95
+value_lr: 0.0003
+value_momentum: 0.0
+value_optimizer: Adam
+value_specs:
+  design_flag_in_state: true
+  gnn_specs:
+    aggr: add
+    bias: true
+    hdims:
+    - 64
+    - 64
+    - 64
+    layer_type: graph_conv
+  htype: tanh
+  mlp:
+  - 512
+  - 256
+  onehot_design_flag: true
+value_weightdecay: 0.0

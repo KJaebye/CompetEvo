@@ -2,14 +2,13 @@
 # @Time    : 2021/7/1 6:53 下午
 # @Author  : hezhiqiang01
 # @Email   : hezhiqiang01@baidu.com
-# @File    : evo_MAPPOPolicy.py
+# @File    : rMAPPOPolicy.py
 """
 
 import torch
-from malib.algorithms.algorithm.r_actor_critic import R_Actor, R_Critic
-from malib.utils.util import update_linear_schedule
+from algorithms.algorithm.r_actor_critic import R_Actor, R_Critic
+from utils.util import update_linear_schedule
 
-from config.config import cfg
 
 class RMAPPOPolicy:
     """
@@ -22,19 +21,19 @@ class RMAPPOPolicy:
     :param device: (torch.device) specifies the device to run on (cpu/gpu).
     """
 
-    def __init__(self, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
+    def __init__(self, args, obs_space, cent_obs_space, act_space, device=torch.device("cpu")):
         self.device = device
-        self.lr = cfg.MAPPO.LR
-        self.critic_lr = cfg.MAPPO.CRITIC_LR
-        self.opti_eps = cfg.MAPPO.OPTI_EPS
-        self.weight_decay = cfg.MAPPO.WEIGHT_DECAY
+        self.lr = args.lr
+        self.critic_lr = args.critic_lr
+        self.opti_eps = args.opti_eps
+        self.weight_decay = args.weight_decay
 
         self.obs_space = obs_space
         self.share_obs_space = cent_obs_space
         self.act_space = act_space
 
-        self.actor = R_Actor(self.obs_space, self.act_space, self.device)
-        self.critic = R_Critic(self.share_obs_space, self.device)
+        self.actor = R_Actor(args, self.obs_space, self.act_space, self.device)
+        self.critic = R_Critic(args, self.share_obs_space, self.device)
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=self.lr, eps=self.opti_eps,

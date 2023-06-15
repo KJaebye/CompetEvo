@@ -17,7 +17,8 @@ class SumoEvoEnv(MultiEvoAgentEnv):
 
     def __init__(self,
                  max_episode_steps=500, 
-                 min_radius=None, max_radius=None, 
+                 min_radius=None, 
+                 max_radius=None, 
                  **kwargs):
         super(SumoEvoEnv, self).__init__(**kwargs)
         self._max_episode_steps = max_episode_steps

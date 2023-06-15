@@ -5,8 +5,8 @@ class EnvCore(object):
     """
     # 环境中的智能体
     """
-    def __init__(self, num_agent):
-        self.agent_num = num_agent  # 设置智能体(小飞机)的个数，这里设置为两个
+    def __init__(self):
+        self.agent_num = 2  # 设置智能体(小飞机)的个数，这里设置为两个
         self.obs_dim = 14  # 设置智能体的观测纬度
         self.action_dim = 5  # 设置智能体的动作纬度，这里假定为一个五个纬度的
 

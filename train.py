@@ -1,20 +1,13 @@
 # !/usr/bin/envs python
 import sys
 import os
-
 import setproctitle
 import numpy as np
 import torch
 import argparse
-
 import gymnasium as gym
-from config.config import cfg
-from config.config import dump_cfg
+from config.config import Config
 
-from custom.runner.multi_ant_runner import MultiAntSeparatedRunner, MultiAntSharedRunner
-from custom.runner.multi_hopper_runner import MultiHopperSeparatedRunner, MultiHopperSharedRunner
-from custom.runner.multi_walker2d_runner import MultiWalker2dSeparatedRunner, MultiWalker2dSharedRunner
-from custom.runner.multi_half_cheetah_runner import MultiHalfCheetahSeparatedRunner, MultiHalfCheetahSharedRunner
 from malib.runner.separated.env_runner import EnvRunner as SeparatedRunner
 from malib.runner.shared.env_runner import EnvRunner as SharedRunner
 
@@ -58,35 +51,34 @@ def main(args):
         required=True, 
         type=str)
     args = parser.parse_args()
-
     # Load config options
-    cfg.merge_from_file(args.cfg_file)
+    cfg = Config(args.cfg_file)
 
     # ----------------------------------------------------------------------------#
     # Define and create dirs
     # ----------------------------------------------------------------------------#
-    os.makedirs(cfg.OUT_DIR, exist_ok=True)
-    output_dir = cfg.OUT_DIR + '/' + cfg.ENV_NAME + '/' + str(cfg.EMAT.AGENT_NUM) + '/' + cfg.ALGO
+    os.makedirs(cfg.out_dir, exist_ok=True)
+    output_dir = cfg.out_dir + '/' + cfg.env_name
     # run dir
     from datetime import datetime
     time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = str(output_dir) + '/' + time_str + '/'
     os.makedirs(run_dir, exist_ok=False)
     # Save the config file
-    dump_cfg(run_dir)
+    cfg.save_config(run_dir)
     # model dir. If training, model directory is None.
     model_dir = None
 
     # ----------------------------------------------------------------------------#
     # Check for training
     # ----------------------------------------------------------------------------#
-    if cfg.ALGO == "rmappo":
-        assert (cfg.NETWORK.USE_RECURRENT_POLICY or cfg.NETWORK.USE_NAIVE_RECURRENT_POLICY), \
+    if cfg.algo == "rmappo":
+        assert (cfg.use_recurrent_policy or cfg.use_naive_recurrent_policy), \
         ("check recurrent policy!")
-    elif cfg.ALGO == "mappo":
+    elif cfg.algo == "mappo":
         assert \
-            (cfg.NETWORK.USE_RECURRENT_POLICY == False and 
-             cfg.NETWORK.USE_NAIVE_RECURRENT_POLICY == False), \
+            (cfg.use_recurrent_policy == False and 
+             cfg.use_naive_recurrent_policy == False), \
             ("check recurrent policy!")
     else:
         raise NotImplementedError
@@ -94,30 +86,29 @@ def main(args):
     # ----------------------------------------------------------------------------#
     # CUDA and set torch multiple threads
     # ----------------------------------------------------------------------------#
-    if cfg.USE_GPU and torch.cuda.is_available():
+    if cfg.use_gpu and torch.cuda.is_available():
         print("choose to use gpu...")
-        device = torch.device(cfg.DEVICE) if cfg.DEVICE else torch.device("cuda:0")
-        torch.set_num_threads(cfg.EMAT.N_TRAINING_THREADS)
+        device = torch.device(cfg.device) if cfg.device else torch.device("cuda:0")
+        torch.set_num_threads(cfg.n_training_threads)
 
-        if cfg.CUDNN.DETERMINISTIC:
+        if cfg.cuda_deterministic:
             torch.backends.cudnn.benchmark = False
             torch.backends.cudnn.deterministic = True
     else:
         print("choose to use cpu...")
         device = torch.device("cpu")
-        torch.set_num_threads(cfg.EMAT.N_TRAINING_THREADS)
+        torch.set_num_threads(cfg.n_training_threads)
 
-    setproctitle.setproctitle(str(cfg.ALGO) + "-" + 
-                              str(cfg.ENV_NAME) + "-" + 
-                              str(cfg.EMAT.AGENT_NUM) + "@" + 
-                              str(cfg.USER_NAME))
+    setproctitle.setproctitle(str(cfg.algo) + "-" + 
+                              str(cfg.env_name) + "@" + 
+                              str(cfg.user_name))
 
     # ----------------------------------------------------------------------------#
     # Seeding
     # ----------------------------------------------------------------------------#
-    torch.manual_seed(cfg.RNG_SEED)
-    torch.cuda.manual_seed_all(cfg.RNG_SEED)
-    np.random.seed(cfg.RNG_SEED)
+    torch.manual_seed(cfg.seed)
+    torch.cuda.manual_seed_all(cfg.seed)
+    np.random.seed(cfg.seed)
 
     # ----------------------------------------------------------------------------#
     # Making environment
@@ -125,12 +116,11 @@ def main(args):
     # envs init
     envs = make_train_env()
     eval_envs = make_eval_env()
-    num_agents = cfg.EMAT.AGENT_NUM
 
     config = {
+        "cfg": cfg,
         "envs": envs,
         "eval_envs": eval_envs,
-        "num_agents": num_agents,
         "device": device,
         "run_dir": run_dir,
         "model_dir": model_dir
@@ -140,8 +130,8 @@ def main(args):
     # Training
     # ----------------------------------------------------------------------------#
     # Load runner
-    net_option = "Shared" if cfg.NETWORK.SHARE_POLICY else "Separated"
-    runner_name = cfg.ENV_NAME.split('-')[0] + net_option + 'Runner'
+    net_option = "Shared" if cfg.share_policy else "Separated"
+    runner_name = cfg.env_name.split('-')[0] + net_option + 'Runner'
     try:
         Runner = globals()[runner_name]
         print("Use {} as env runner.".format(runner_name))
@@ -150,7 +140,7 @@ def main(args):
         print("Try to use customised Env Runner...")
         print("......")
         try:
-            runner_name = cfg.ENV_NAME.split('-')[0] + 'Runner'
+            runner_name = cfg.env_name.split('-')[0] + 'Runner'
             Runner = globals()[runner_name]
             print("Use {} as env runner.".format(runner_name))
         except:
@@ -166,7 +156,7 @@ def main(args):
 
     # post process
     envs.close()
-    if cfg.USE_EVAL and eval_envs is not envs:
+    if cfg.use_eval and eval_envs is not envs:
         eval_envs.close()
 
     runner.writter.export_scalars_to_json(str(runner.log_dir + '/summary.json'))

@@ -1,11 +1,118 @@
-ENV_NAME: "SumoEvoAnts-v0"
+env_name: SumoEvoAnts-v0
 
-RNG_SEED: 42
+############################################################################
+##### load params blow  ####################################################
+use_gpu: True
+device: cuda:0
+cuda_deterministic: True
 
-USE_GPU: True
-DEVICE: "cuda:0"
+# algorithm
+algo: mappo
 
-ENV:
-  EPISODE_LENGTH: 500
-  AGENT_NAMES: ['evo_ant_fighter', 'evo_ant_fighter']
-  WORLD_XML_PATH: "./competevo/evo_envs/assets/world_body_arena.xml"
+# prepare params
+seed: 42
+n_training_threads: 10                  # Number of torch threads for training
+n_rollout_threads: 15                   # Number of parallel envs for training rollouts
+n_eval_rollout_threads: 1               # Number of parallel envs for evaluating rollouts
+n_render_rollout_threads: 1             # Number of parallel envs for rendering rollouts
+num_env_steps: 10000000                 # Number of environment steps to train (default: 10e6)
+user_name: competevo                    # [for wandb usage], to specify user's name for simply collecting training data.
+use_wandb: False
+
+# envs params
+use_obs_instead_of_state: False         # Whether to use global state or concatenated obs
+
+# simulation params
+episode_length: 1600                    # Max length for any episode
+
+# network params
+share_policy: False                      # Whether agent share the same policy
+use_centralized_V: True                 # Whether to use centralized V function
+stacked_frames: 1 
+use_stacked_frames: False               # Whether to use stacked_frames
+hidden_size: 64                         # Dimension of hidden layers for actor/critic networks
+layer_N: 2                              # Number of layers for actor/critic networks
+use_ReLU: True                          # Whether to use ReLU
+use_popart: False                       # Use PopArt to normalize rewards
+use_valuenorm: True                     # use running mean and std to normalize rewards
+use_feature_normalization: True         # Whether to apply layernorm to the inputs
+use_orthogonal: True                    # Whether to use Orthogonal initialization for weights and 0 initialization for biases
+gain: 0.01                              # The gain of last action layer
+
+# recurrent params
+use_naive_recurrent_policy: False       # Whether to use a naive recurrent policy
+use_recurrent_policy: False             # use a recurrent policy
+recurrent_N: 1                          # The number of recurrent layers.
+data_chunk_length: 10                   # Time length of chunks used to train a recurrent_policy
+
+# optimizer params
+lr: 5.e-4                                # learning rate (default: 5e-4)
+critic_lr: 5.e-4                         # critic learning rate (default: 5e-4)
+opti_eps: 1.e-5                          # RMSprop optimizer epsilon (default: 1e-5)
+weight_decay: 0
+
+# PPO params
+ppo_epoch: 15                           # number of ppo epochs (default: 15)
+use_clipped_value_loss: True            # by default, clip loss value
+clip_param: 0.2                         # ppo clip parameter (default: 0.2)
+num_mini_batch: 1                       # number of batches for ppo (default: 1)
+entropy_coef: 0.01                      # entropy term coefficient (default: 0.01)
+value_loss_coef: 0.5                    # value loss coefficient (default: 0.5)
+use_max_grad_norm: True                 # by default, use max norm of gradients
+max_grad_norm: 10.0                     # max norm of gradients (default: 0.5)
+use_gae: True                           # use generalized advantage estimation
+gamma: 0.99                             # discount factor for rewards (default: 0.99)
+gae_lambda: 0.95                        # gae lambda parameter (default: 0.95)
+use_proper_time_limits: False           # compute returns taking into account time limits
+use_huber_loss: True                    # by default, use huber loss
+use_value_active_masks: True            # by default True, whether to mask useless data in value loss
+use_policy_active_masks: True           # by default True, whether to mask useless data in policy loss
+huber_delta: 10                         # coefficience of huber loss
+
+# run params
+use_linear_lr_decay: False              # use a linear schedule on the learning rate
+
+# save model inteval
+save_interval: 10                       # time duration between contiunous twice models saving
+
+# log params
+log_interval: 1                         # time duration between contiunous twice log printing
+
+# eval params
+use_eval: True                          # by default, do not start evaluation. If set`, start evaluation alongside with training
+eval_interval: 25                       # time duration between contiunous twice evaluation progress
+eval_episodes: 32                       # number of episodes of a single evaluation
+
+# render params
+save_video: False                       # by default, do not save render video. If set, save video
+use_render: False                       # by default, do not render the envs during training. If set, start render. Note: something, the environment has internal render process which is not controlled by this hyperparam
+render_episodes: 1                      # the number of episodes to render a given envs
+ifi: 0.01                               # the play interval of each rendered image in saved video
+
+# robot params
+robot:
+  param_mapping: sin
+  no_root_offset: true
+  
+  body_params:
+    offset:
+      type: 'xy'
+      lb: [-0.5, -0.5]
+      ub: [0.5, 0.5]
+
+  joint_params: {}
+
+  geom_params:
+    size:
+      lb: 0.03
+      ub: 0.10
+    ext_start:
+      lb: 0.0
+      ub: 0.2
+
+  actuator_params:
+    gear:
+      lb: 20
+      ub: 400
+  
+

@@ -1,8 +1,7 @@
 import torch
 import numpy as np
-from malib.utils.util import get_shape_from_obs_space, get_shape_from_act_space
+from utils.util import get_shape_from_obs_space, get_shape_from_act_space
 
-from config.config import cfg
 
 def _flatten(T, N, x):
     return x.reshape(T * N, *x.shape[2:])
@@ -15,24 +14,24 @@ def _cast(x):
 class SharedReplayBuffer(object):
     """
     Buffer to store training data.
-    :param args: (argparse.Namespace) arguments containing relevant model, policy, and envs information.
-    :param num_agents: (int) number of agents in the envs.
+    :param args: (argparse.Namespace) arguments containing relevant model, policy, and env information.
+    :param num_agents: (int) number of agents in the env.
     :param obs_space: (gym.Space) observation space of agents.
     :param cent_obs_space: (gym.Space) centralized observation space of agents.
     :param act_space: (gym.Space) action space for agents.
     """
 
-    def __init__(self, num_agents, obs_space, cent_obs_space, act_space):
-        self.episode_length = cfg.ENV.EPISODE_LENGTH
-        self.n_rollout_threads = cfg.EMAT.N_ROLLOUT_THREADS
-        self.hidden_size = cfg.NETWORK.HIDDEN_SIZE
-        self.recurrent_N = cfg.NETWORK.RECURRENT_N
-        self.gamma = cfg.MAPPO.GAMMA
-        self.gae_lambda = cfg.MAPPO.GAE_LAMBDA
-        self._use_gae = cfg.MAPPO.USE_GAE
-        self._use_popart = cfg.MAPPO.USE_POPART
-        self._use_valuenorm = cfg.MAPPO.USE_VALUENORM
-        self._use_proper_time_limits = cfg.MAPPO.USE_PROPER_TIME_LIMITS
+    def __init__(self, args, num_agents, obs_space, cent_obs_space, act_space):
+        self.episode_length = args.episode_length
+        self.n_rollout_threads = args.n_rollout_threads
+        self.hidden_size = args.hidden_size
+        self.recurrent_N = args.recurrent_N
+        self.gamma = args.gamma
+        self.gae_lambda = args.gae_lambda
+        self._use_gae = args.use_gae
+        self._use_popart = args.use_popart
+        self._use_valuenorm = args.use_valuenorm
+        self._use_proper_time_limits = args.use_proper_time_limits
 
         obs_shape = get_shape_from_obs_space(obs_space)
         share_obs_shape = get_shape_from_obs_space(cent_obs_space)
@@ -81,7 +80,7 @@ class SharedReplayBuffer(object):
                value_preds, rewards, masks, bad_masks=None, active_masks=None, available_actions=None):
         """
         Insert data into the buffer.
-        :param share_obs: (argparse.Namespace) arguments containing relevant model, policy, and envs information.
+        :param share_obs: (argparse.Namespace) arguments containing relevant model, policy, and env information.
         :param obs: (np.ndarray) local agent observations.
         :param rnn_states_actor: (np.ndarray) RNN states for actor network.
         :param rnn_states_critic: (np.ndarray) RNN states for critic network.
@@ -91,7 +90,7 @@ class SharedReplayBuffer(object):
         :param rewards: (np.ndarray) reward collected at each step.
         :param masks: (np.ndarray) denotes whether the environment has terminated or not.
         :param bad_masks: (np.ndarray) action space for agents.
-        :param active_masks: (np.ndarray) denotes whether an agent is active or dead in the envs.
+        :param active_masks: (np.ndarray) denotes whether an agent is active or dead in the env.
         :param available_actions: (np.ndarray) actions available to each agent. If None, all actions are available.
         """
         self.share_obs[self.step + 1] = share_obs.copy()
@@ -116,7 +115,7 @@ class SharedReplayBuffer(object):
                      value_preds, rewards, masks, bad_masks=None, active_masks=None, available_actions=None):
         """
         Insert data into the buffer. This insert function is used specifically for Hanabi, which is turn based.
-        :param share_obs: (argparse.Namespace) arguments containing relevant model, policy, and envs information.
+        :param share_obs: (argparse.Namespace) arguments containing relevant model, policy, and env information.
         :param obs: (np.ndarray) local agent observations.
         :param rnn_states_actor: (np.ndarray) RNN states for actor network.
         :param rnn_states_critic: (np.ndarray) RNN states for critic network.
@@ -126,7 +125,7 @@ class SharedReplayBuffer(object):
         :param rewards: (np.ndarray) reward collected at each step.
         :param masks: (np.ndarray) denotes whether the environment has terminated or not.
         :param bad_masks: (np.ndarray) denotes indicate whether whether true terminal state or due to episode limit
-        :param active_masks: (np.ndarray) denotes whether an agent is active or dead in the envs.
+        :param active_masks: (np.ndarray) denotes whether an agent is active or dead in the env.
         :param available_actions: (np.ndarray) actions available to each agent. If None, all actions are available.
         """
         self.share_obs[self.step] = share_obs.copy()

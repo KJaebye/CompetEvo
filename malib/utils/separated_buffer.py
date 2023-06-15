@@ -2,9 +2,7 @@ import torch
 import numpy as np
 from collections import defaultdict
 
-from malib.utils.util import check, get_shape_from_obs_space, get_shape_from_act_space
-
-from config.config import cfg
+from utils.util import check, get_shape_from_obs_space, get_shape_from_act_space
 
 def _flatten(T, N, x):
     return x.reshape(T * N, *x.shape[2:])
@@ -13,17 +11,17 @@ def _cast(x):
     return x.transpose(1,0,2).reshape(-1, *x.shape[2:])
 
 class SeparatedReplayBuffer(object):
-    def __init__(self, obs_space, share_obs_space, act_space):
-        self.episode_length = cfg.ENV.EPISODE_LENGTH
-        self.n_rollout_threads = cfg.EMAT.N_ROLLOUT_THREADS
-        self.rnn_hidden_size = cfg.NETWORK.HIDDEN_SIZE
-        self.recurrent_N = cfg.NETWORK.RECURRENT_N
-        self.gamma = cfg.MAPPO.GAMMA
-        self.gae_lambda = cfg.MAPPO.GAE_LAMBDA
-        self._use_gae = cfg.MAPPO.USE_GAE
-        self._use_popart = cfg.MAPPO.USE_POPART
-        self._use_valuenorm = cfg.MAPPO.USE_VALUENORM
-        self._use_proper_time_limits = cfg.MAPPO.USE_PROPER_TIME_LIMITS
+    def __init__(self, args, obs_space, share_obs_space, act_space):
+        self.episode_length = args.episode_length
+        self.n_rollout_threads = args.n_rollout_threads
+        self.rnn_hidden_size = args.hidden_size
+        self.recurrent_N = args.recurrent_N
+        self.gamma = args.gamma
+        self.gae_lambda = args.gae_lambda
+        self._use_gae = args.use_gae
+        self._use_popart = args.use_popart
+        self._use_valuenorm = args.use_valuenorm
+        self._use_proper_time_limits = args.use_proper_time_limits
 
         obs_shape = get_shape_from_obs_space(obs_space)
         share_obs_shape = get_shape_from_obs_space(share_obs_space)
