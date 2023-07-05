@@ -79,7 +79,7 @@ class MultiAgentEnv(MujocoEnv):
             print(init_pos)
             _, self._env_xml_path = create_multiagent_xml(
                 world_xml_path, all_agent_xml_paths, agent_scopes,
-                # outdir=os.path.join(os.path.dirname(__file__), "assets"),
+                # outdir=os.path.join(os.path.dirname(__file__), "assets"), 
                 outpath=scene_xml_path,
                 ini_pos=init_pos, rgb=rgb
             )

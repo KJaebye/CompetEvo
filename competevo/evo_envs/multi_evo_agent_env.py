@@ -36,13 +36,8 @@ class MultiEvoAgentEnv(MujocoEnv):
         self, 
         agent_names, 
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
-        world_xml_path=WORLD_XML, 
-        agent_map=AGENT_MAP, 
-        move_reward_weight=1.0,
-        init_pos=None, 
-        rgb=None, 
-        agent_args=None,
-        cfg=None,
+        world_xml_path=WORLD_XML, agent_map=AGENT_MAP, move_reward_weight=1.0,
+        init_pos=None, rgb=None, agent_args=None, cfg=None,
         **kwargs,
     ):
         '''

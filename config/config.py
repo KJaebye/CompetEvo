@@ -114,4 +114,4 @@ class Config:
         # Write the configuration data to the YAML file
         with open(file_path, 'w') as f:
             yaml.dump(self.cfg, f)
-        print(f"Config saved to {file_path}")
+        print(f"Config file is saved at {file_path}")

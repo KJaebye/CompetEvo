@@ -40,10 +40,11 @@ print(run_dir)
 
 # register environment. Must be imported after cfg.file is merged.
 import competevo
+import gym_compete
 
-env = gym.make("sumo-evoants-v0", render_mode="human", rundir=run_dir, cfg=cfg)
+env = gym.make(cfg.env_name, render_mode="human", rundir=run_dir, cfg=cfg)
+# env = gym.make(cfg.env_name, render_mode="human", rundir=run_dir)
 observation, info = env.reset()
-sp = env.action_space.shape
 
 for _ in range(1000000):
    action = env.action_space.sample() # this is where you would insert your policy

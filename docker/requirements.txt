@@ -9,3 +9,4 @@ tensorboardx
 imageio[ffmpeg]
 pyyaml
 pyglet==1.5.27
+termcolor

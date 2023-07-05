@@ -1,167 +1,62 @@
-# !/usr/bin/envs python
-import sys
-import os
-import setproctitle
-import numpy as np
-import torch
-import argparse
 import gymnasium as gym
 from config.config import Config
+import argparse
+import numpy as np
+import torch
 
-from malib.runner.separated.env_runner import EnvRunner as SeparatedRunner
-from malib.runner.shared.env_runner import EnvRunner as SharedRunner
+import logging
+from logger.logger import Logger
+from utils.tools import *
 
-def make_train_env():
-    from envs import CUSTOM_ENVS
-    def get_env_fn(rank):
-        def init_env():
-            assert cfg.ENV_NAME in CUSTOM_ENVS, "Alert: Undefined environment!"
-            env = gym.make(cfg.ENV_NAME, agent_num=cfg.EMAT.AGENT_NUM)
+import time
+import sys, os
+sys.path.append(".")
 
-            from malib.envs.env_continuous import ContinuousActionEnv
-            env = ContinuousActionEnv(cfg.EMAT.AGENT_NUM, env)
-            return env
-        return init_env
-    from malib.envs.env_wrappers import DummyVecEnv
-    return DummyVecEnv([get_env_fn(i) for i in range(cfg.EMAT.N_ROLLOUT_THREADS)])
-
-def make_eval_env():
-    from envs import CUSTOM_ENVS
-    def get_env_fn(rank):
-        def init_env():
-            assert cfg.ENV_NAME in CUSTOM_ENVS, "Alert: Undefined environment!"
-            env = gym.make(cfg.ENV_NAME, agent_num=cfg.EMAT.AGENT_NUM)
-
-            from malib.envs.env_continuous import ContinuousActionEnv
-            env = ContinuousActionEnv(cfg.EMAT.AGENT_NUM, env)
-            return env
-        return init_env
-    from malib.envs.env_wrappers import DummyVecEnv
-    return DummyVecEnv([get_env_fn(i) for i in range(cfg.EMAT.N_EVAL_ROLLOUT_THREADS)])
-
-def main(args):
+def main():
     # ----------------------------------------------------------------------------#
-    # Load CFG file
+    # Load config options from terminal and predefined yaml file
     # ----------------------------------------------------------------------------#
     parser = argparse.ArgumentParser(description="User's arguments from terminal.")
-    parser.add_argument(
-        "--cfg", 
-        dest="cfg_file", 
-        help="Config file", 
-        required=True, 
-        type=str)
+    parser.add_argument("--cfg", dest="cfg_file", help="Config file", required=True, type=str)
+    parser.add_argument('--use_cuda', type=str2bool, default=True)
+    parser.add_argument('--gpu_index', type=int, default=0)
+
     args = parser.parse_args()
-    # Load config options
+    # Load config file
     cfg = Config(args.cfg_file)
 
     # ----------------------------------------------------------------------------#
-    # Define and create dirs
+    # Define logger and create dirs
     # ----------------------------------------------------------------------------#
-    os.makedirs(cfg.out_dir, exist_ok=True)
-    output_dir = cfg.out_dir + '/' + cfg.env_name
-    # run dir
-    from datetime import datetime
-    time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = str(output_dir) + '/' + time_str + '/'
-    os.makedirs(run_dir, exist_ok=False)
+    logger = Logger(name='current', cfg=cfg)
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    # set output
+    logger.set_output_handler()
+    logger.print_system_info()
+    # only training generates log file
+    logger.critical("The current environment is {}.".format(cfg.env_name))
+    logger.info("Running directory: {}".format(logger.run_dir))
+    logger.info('Type of current running: Training')
+    logger.set_file_handler()
     # Save the config file
-    cfg.save_config(run_dir)
-    # model dir. If training, model directory is None.
-    model_dir = None
+    cfg.save_config(logger.run_dir)
 
     # ----------------------------------------------------------------------------#
-    # Check for training
+    # Set torch and random seed
     # ----------------------------------------------------------------------------#
-    if cfg.algo == "rmappo":
-        assert (cfg.use_recurrent_policy or cfg.use_naive_recurrent_policy), \
-        ("check recurrent policy!")
-    elif cfg.algo == "mappo":
-        assert \
-            (cfg.use_recurrent_policy == False and 
-             cfg.use_naive_recurrent_policy == False), \
-            ("check recurrent policy!")
-    else:
-        raise NotImplementedError
-
-    # ----------------------------------------------------------------------------#
-    # CUDA and set torch multiple threads
-    # ----------------------------------------------------------------------------#
-    if cfg.use_gpu and torch.cuda.is_available():
-        print("choose to use gpu...")
-        device = torch.device(cfg.device) if cfg.device else torch.device("cuda:0")
-        torch.set_num_threads(cfg.n_training_threads)
-
-        if cfg.cuda_deterministic:
-            torch.backends.cudnn.benchmark = False
-            torch.backends.cudnn.deterministic = True
-    else:
-        print("choose to use cpu...")
-        device = torch.device("cpu")
-        torch.set_num_threads(cfg.n_training_threads)
-
-    setproctitle.setproctitle(str(cfg.algo) + "-" + 
-                              str(cfg.env_name) + "@" + 
-                              str(cfg.user_name))
-
-    # ----------------------------------------------------------------------------#
-    # Seeding
-    # ----------------------------------------------------------------------------#
-    torch.manual_seed(cfg.seed)
-    torch.cuda.manual_seed_all(cfg.seed)
+    dtype = torch.float64
+    torch.set_default_dtype(dtype)
+    device = torch.device('cuda', index=args.gpu_index) \
+        if args.use_cuda and torch.cuda.is_available() else torch.device('cpu')
+    # torch.cuda.is_available() is natively False on mac m1
+    if torch.cuda.is_available():
+        torch.cuda.set_device(args.gpu_index)
     np.random.seed(cfg.seed)
-
-    # ----------------------------------------------------------------------------#
-    # Making environment
-    # ----------------------------------------------------------------------------#
-    # envs init
-    envs = make_train_env()
-    eval_envs = make_eval_env()
-
-    config = {
-        "cfg": cfg,
-        "envs": envs,
-        "eval_envs": eval_envs,
-        "device": device,
-        "run_dir": run_dir,
-        "model_dir": model_dir
-    }
-
-    # ----------------------------------------------------------------------------#
-    # Training
-    # ----------------------------------------------------------------------------#
-    # Load runner
-    net_option = "Shared" if cfg.share_policy else "Separated"
-    runner_name = cfg.env_name.split('-')[0] + net_option + 'Runner'
-    try:
-        Runner = globals()[runner_name]
-        print("Use {} as env runner.".format(runner_name))
-    except:
-        print("Failed to load the customised Seperated/Shared Env Runner.")
-        print("Try to use customised Env Runner...")
-        print("......")
-        try:
-            runner_name = cfg.env_name.split('-')[0] + 'Runner'
-            Runner = globals()[runner_name]
-            print("Use {} as env runner.".format(runner_name))
-        except:
-            print("Failed to load the customised Env Runner.")
-            print("Try to use basic Seperated/Shared Env Runner...")
-            print("......")
-            runner_name = net_option + 'Runner'
-            Runner = globals()[runner_name]
-            print("Use {} as env runner.".format(runner_name))
-
-    runner = Runner(config)
-    runner.run()
-
-    # post process
-    envs.close()
-    if cfg.use_eval and eval_envs is not envs:
-        eval_envs.close()
-
-    runner.writter.export_scalars_to_json(str(runner.log_dir + '/summary.json'))
-    runner.writter.close()
+    torch.manual_seed(cfg.seed)
+    
+    
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
