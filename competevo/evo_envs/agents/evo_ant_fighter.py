@@ -4,8 +4,7 @@ from gymnasium.spaces import Box
 import numpy as np
 import six
 
-
-# from robot.xml_robot import Robot
+from competevo.evo_envs.robot.xml_robot import Robot
 
 def mass_center(mass, xpos):
     return (np.sum(mass * xpos, 0) / np.sum(mass))[0]
@@ -13,11 +12,11 @@ def mass_center(mass, xpos):
 
 class EvoAntFighter(Ant):
 
-    def __init__(self, agent_id, xml_path=None, team='evo_ant_fighter'):
+    def __init__(self, agent_id, cfg, xml_path=None, team='evo_ant_fighter'):
         super(EvoAntFighter, self).__init__(agent_id, xml_path)
         self.team = team
 
-        # self.robot = Robot(cfg, xml=xml_path)
+        self.robot = Robot(cfg.robot_cfg, xml=xml_path)
 
     def before_step(self):
         pass

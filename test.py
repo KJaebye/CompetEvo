@@ -41,7 +41,7 @@ print(run_dir)
 # register environment. Must be imported after cfg.file is merged.
 import competevo
 
-env = gym.make("sumo-evoants-v0", render_mode="human", rundir=run_dir)
+env = gym.make("sumo-evoants-v0", render_mode="human", rundir=run_dir, cfg=cfg)
 observation, info = env.reset()
 sp = env.action_space.shape
 

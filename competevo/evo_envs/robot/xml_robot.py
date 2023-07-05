@@ -495,8 +495,14 @@ class Robot:
     def load_from_xml(self, xml, is_xml_str=False):
         parser = XMLParser(remove_blank_text=True)
         self.tree = parse(BytesIO(xml) if is_xml_str else xml, parser=parser)
-        self.local_coord = self.tree.getroot().find('.//compiler').attrib['coordinate'] == 'local'
-        root = self.tree.getroot().find('worldbody').find('body')
+        try:
+            """ Original settings in Transform2Act. """
+            self.local_coord = self.tree.getroot().find('.//compiler').attrib['coordinate'] == 'local'
+            root = self.tree.getroot().find('worldbody').find('body')
+        except:
+            """ By default, we use local coordination in all environment which is defined in world_body_arena.xml or world.xml """
+            self.local_coord = True
+            root = self.tree.getroot().find('body')
         self.add_body(root, None)
 
     def add_body(self, body_node, parent_body):

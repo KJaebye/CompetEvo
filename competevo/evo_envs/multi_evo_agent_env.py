@@ -42,11 +42,13 @@ class MultiEvoAgentEnv(MujocoEnv):
         init_pos=None, 
         rgb=None, 
         agent_args=None,
+        cfg=None,
         **kwargs,
     ):
         '''
             agent_args is a list of kwargs for each agent
         '''
+        self.cfg = cfg
         self.n_agents = len(agent_names)
         self.agents = {}
         all_agent_xml_paths = []
@@ -56,7 +58,7 @@ class MultiEvoAgentEnv(MujocoEnv):
         for i, name in enumerate(agent_names):
             print("Creating agent", name)
             agent_xml_path, agent_class = agent_map[name]
-            self.agents[i] = agent_class(i, agent_xml_path, **agent_args[i])
+            self.agents[i] = agent_class(i, cfg, agent_xml_path, **agent_args[i])
             all_agent_xml_paths.append(agent_xml_path)
         agent_scopes = ['agent' + str(i) for i in range(self.n_agents)]
         

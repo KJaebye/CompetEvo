@@ -12,8 +12,6 @@ else:
     MUJOCO_IMPORT_ERROR = None
 
 class SumoEvoEnv(MultiEvoAgentEnv):
-    '''
-    '''
 
     def __init__(self,
                  max_episode_steps=500, 
