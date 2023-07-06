@@ -21,88 +21,45 @@ class Config:
         self.device = cfg.get('device', str)
         self.cuda_deterministic = cfg.get('cuda_deterministic', bool)
 
-        # load hyperparams.
-        self.algo = cfg.get('algo', str)
+        # training config
+        self.gamma = cfg.get('gamma', 0.99)
+        self.tau = cfg.get('tau', 0.95)
+        self.agent_specs = cfg.get('agent_specs', dict())
+        self.policy_specs = cfg.get('policy_specs', dict())
+        self.policy_optimizer = cfg.get('policy_optimizer', 'Adam')
+        self.policy_lr = cfg.get('policy_lr', 5e-5)
+        self.policy_momentum = cfg.get('policy_momentum', 0.0)
+        self.policy_weightdecay = cfg.get('policy_weightdecay', 0.0)
+        self.value_specs = cfg.get('value_specs', dict())
+        self.value_optimizer = cfg.get('value_optimizer', 'Adam')
+        self.value_lr = cfg.get('value_lr', 3e-4)
+        self.value_momentum = cfg.get('value_momentum', 0.0)
+        self.value_weightdecay = cfg.get('value_weightdecay', 0.0)
+        self.adv_clip = cfg.get('adv_clip', np.inf)
+        self.clip_epsilon = cfg.get('clip_epsilon', 0.2)
+        self.num_optim_epoch = cfg.get('num_optim_epoch', 10)
+        self.min_batch_size = cfg.get('min_batch_size', 50000)
+        self.mini_batch_size = cfg.get('mini_batch_size', self.min_batch_size)
+        self.eval_batch_size = cfg.get('eval_batch_size', 10000)
+        self.max_epoch_num = cfg.get('max_epoch_num', 1000)
+        self.seed = cfg.get('seed', 1)
+        self.seed_method = cfg.get('seed_method', 'deep')
+        self.save_model_interval = cfg.get('save_model_interval', 100)
 
-        # prepare params
-        self.seed = cfg.get('seed', int)
-        self.n_training_threads = cfg.get('n_training_threads', int)
-        self.n_rollout_threads = cfg.get('n_rollout_threads', int)
-        self.n_eval_rollout_threads = cfg.get('n_eval_rollout_threads', int)
-        self.n_render_rollout_threads = cfg.get('n_render_rollout_threads', int)
-        self.num_env_steps = cfg.get('num_env_steps', int)
-        self.user_name = cfg.get('user_name', str)
-        self.use_wandb = cfg.get('use_wandb', bool)
+        # anneal parameters
+        self.scheduled_params = cfg.get('scheduled_params', dict())
 
-        # envs params
-        self.use_obs_instead_of_state = cfg.get('use_obs_instead_of_state', bool)
-
-        # simulation params
-        self.episode_length = cfg.get('episode_length', int)
-
-        # network params
-        self.share_policy = cfg.get('share_policy', bool)
-        self.use_centralized_V = cfg.get('use_centralized_V', bool)
-        self.stacked_frames = cfg.get('stacked_frames', int)
-        self.use_stacked_frames = cfg.get('use_stacked_frames', bool)
-        self.hidden_size = cfg.get('hidden_size', 64)
-        self.layer_N = cfg.get('layer_N', 2)
-        self.use_ReLU = cfg.get('use_ReLU', bool)
-        self.use_popart = cfg.get('use_popart', bool)
-        self.use_valuenorm = cfg.get('use_valuenorm', bool)
-        self.use_feature_normalization = cfg.get('use_feature_normalization', bool)
-        self.use_orthogonal = cfg.get('use_orthogonal', bool)
-        self.gain = cfg.get('gain', float)
-
-        # recurrent params
-        self.use_naive_recurrent_policy = cfg.get('use_naive_recurrent_policy', bool)
-        self.use_recurrent_policy = cfg.get('use_recurrent_policy', bool)
-        self.recurrent_N = cfg.get('recurrent_N', int)
-        self.data_chunk_length = cfg.get('data_chunk_length', int)
-
-        # optimizer params
-        self.lr = cfg.get('lr', float)
-        self.critic_lr = cfg.get('critic_lr', float)
-        self.opti_eps = cfg.get('opti_eps', float)
-        self.weight_decay = cfg.get('weight_decay', float)
-
-        # PPO params
-        self.ppo_epoch = cfg.get('ppo_epoch', int)
-        self.use_clipped_value_loss = cfg.get('use_clipped_value_loss', bool)
-        self.clip_param = cfg.get('clip_param', float)
-        self.num_mini_batch = cfg.get('num_mini_batch', int)
-        self.entropy_coef = cfg.get('entropy_coef', float)
-        self.value_loss_coef = cfg.get('value_loss_coef', float)
-        self.use_max_grad_norm = cfg.get('use_max_grad_norm', bool)
-        self.max_grad_norm = cfg.get('max_grad_norm', float)
-        self.use_gae = cfg.get('use_gae', bool)
-        self.gamma = cfg.get('gamma', float)
-        self.gae_lambda = cfg.get('gae_lambda',float)
-        self.use_proper_time_limits = cfg.get('use_proper_time_limits', bool)
-        self.use_huber_loss = cfg.get('use_huber_loss', bool)
-        self.use_value_active_masks = cfg.get('use_value_active_masks', bool)
-        self.use_policy_active_masks = cfg.get('use_policy_active_masks', bool)
-        self.huber_delta = cfg.get('huber_delta', int)
-
-        # run params
-        self.use_linear_lr_decay = cfg.get('use_linear_lr_decay', bool)
-
-        # save model inteval
-        self.save_interval = cfg.get('save_interval', int)
-
-        # log params
-        self.log_interval = cfg.get('log_interval', int)
-
-        # eval params
-        self.use_eval = cfg.get('use_eval', bool)
-        self.eval_interval = cfg.get('eval_interval', int)
-        self.eval_episodes = cfg.get('eval_episodes', int)
-
-        # render params
-        self.save_video = cfg.get('save_video', bool)
-        self.use_render = cfg.get('use_render', bool)
-        self.render_episodes = cfg.get('render_episodes', int)
-        self.ifi = cfg.get('ifi', float)
+        # env
+        self.done_condition = cfg.get('done_condition', dict())
+        self.env_specs = cfg.get('env_specs', dict())
+        self.reward_specs = cfg.get('reward_specs', dict())
+        self.obs_specs = cfg.get('obs_specs', dict())
+        self.add_body_condition = cfg.get('add_body_condition', dict())
+        self.max_body_depth = cfg.get('max_body_depth', 4)
+        self.min_body_depth = cfg.get('min_body_depth', 1)
+        self.enable_remove = cfg.get('enable_remove', True)
+        self.skel_transform_nsteps = cfg.get('skel_transform_nsteps', 5)
+        self.env_init_height = cfg.get('env_init_height', False)
 
         # robot config
         self.robot_param_scale = cfg.get('robot_param_scale', 0.1)

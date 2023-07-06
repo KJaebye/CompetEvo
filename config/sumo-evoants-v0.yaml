@@ -1,95 +1,86 @@
 env_name: sumo-evoants-v0
+agent_specs:
+  batch_design: true
 
-############################################################################
-##### load params blow  ####################################################
-use_gpu: True
-device: cuda:0
-cuda_deterministic: True
+# training parameters
+gamma: 0.995
+tau: 0.95
+policy_specs:
+  name: v5
+  htype: tanh
+  skel_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  skel_index_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  control_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  control_index_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  attr_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  attr_index_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  control_log_std: 0
+  attr_log_std: -2.3
+  fix_control_std: false
+  fix_attr_std: false
+policy_optimizer: 'Adam'
+policy_lr: 5.e-5
+policy_momentum: 0.0
+policy_weightdecay: 0.0
+value_specs:
+  htype: tanh
+  design_flag_in_state: true
+  onehot_design_flag: true
+  mlp: [512, 256]
+  gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+value_optimizer: 'Adam'
+value_lr: 3.e-4
+value_momentum: 0.0
+value_weightdecay: 0.0
+clip_epsilon: 0.2
+min_batch_size: 50000
+mini_batch_size: 2048
+num_optim_epoch: 10
+max_epoch_num: 1000
+seed: 1
+save_model_interval: 100
 
-# algorithm
-algo: mappo
 
-# prepare params
-seed: 42
-n_training_threads: 10                  # Number of torch threads for training
-n_rollout_threads: 15                   # Number of parallel envs for training rollouts
-n_eval_rollout_threads: 1               # Number of parallel envs for evaluating rollouts
-n_render_rollout_threads: 1             # Number of parallel envs for rendering rollouts
-num_env_steps: 10000000                 # Number of environment steps to train (default: 10e6)
-user_name: competevo                    # [for wandb usage], to specify user's name for simply collecting training data.
-use_wandb: False
+robot_param_scale: 1
+skel_transform_nsteps: 5
 
-# envs params
-use_obs_instead_of_state: False         # Whether to use global state or concatenated obs
+done_condition:
+  max_ang: 60
 
-# simulation params
-episode_length: 1600                    # Max length for any episode
+obs_specs:
+  attr: ['depth']
+  sim: []
+  design: true
+  clip_qvel: true
+  use_projected_params: true
+  use_body_ind: true
+max_body_depth: 4
 
-# network params
-share_policy: False                      # Whether agent share the same policy
-use_centralized_V: True                 # Whether to use centralized V function
-stacked_frames: 1 
-use_stacked_frames: False               # Whether to use stacked_frames
-hidden_size: 64                         # Dimension of hidden layers for actor/critic networks
-layer_N: 2                              # Number of layers for actor/critic networks
-use_ReLU: True                          # Whether to use ReLU
-use_popart: False                       # Use PopArt to normalize rewards
-use_valuenorm: True                     # use running mean and std to normalize rewards
-use_feature_normalization: True         # Whether to apply layernorm to the inputs
-use_orthogonal: True                    # Whether to use Orthogonal initialization for weights and 0 initialization for biases
-gain: 0.01                              # The gain of last action layer
+add_body_condition:
+  max_nchild: 2
 
-# recurrent params
-use_naive_recurrent_policy: False       # Whether to use a naive recurrent policy
-use_recurrent_policy: False             # use a recurrent policy
-recurrent_N: 1                          # The number of recurrent layers.
-data_chunk_length: 10                   # Time length of chunks used to train a recurrent_policy
-
-# optimizer params
-lr: 5.e-4                                # learning rate (default: 5e-4)
-critic_lr: 5.e-4                         # critic learning rate (default: 5e-4)
-opti_eps: 1.e-5                          # RMSprop optimizer epsilon (default: 1e-5)
-weight_decay: 0
-
-# PPO params
-ppo_epoch: 15                           # number of ppo epochs (default: 15)
-use_clipped_value_loss: True            # by default, clip loss value
-clip_param: 0.2                         # ppo clip parameter (default: 0.2)
-num_mini_batch: 1                       # number of batches for ppo (default: 1)
-entropy_coef: 0.01                      # entropy term coefficient (default: 0.01)
-value_loss_coef: 0.5                    # value loss coefficient (default: 0.5)
-use_max_grad_norm: True                 # by default, use max norm of gradients
-max_grad_norm: 10.0                     # max norm of gradients (default: 0.5)
-use_gae: True                           # use generalized advantage estimation
-gamma: 0.99                             # discount factor for rewards (default: 0.99)
-gae_lambda: 0.95                        # gae lambda parameter (default: 0.95)
-use_proper_time_limits: False           # compute returns taking into account time limits
-use_huber_loss: True                    # by default, use huber loss
-use_value_active_masks: True            # by default True, whether to mask useless data in value loss
-use_policy_active_masks: True           # by default True, whether to mask useless data in policy loss
-huber_delta: 10                         # coefficience of huber loss
-
-# run params
-use_linear_lr_decay: False              # use a linear schedule on the learning rate
-
-# save model inteval
-save_interval: 10                       # time duration between contiunous twice models saving
-
-# log params
-log_interval: 1                         # time duration between contiunous twice log printing
-
-# eval params
-use_eval: True                          # by default, do not start evaluation. If set`, start evaluation alongside with training
-eval_interval: 25                       # time duration between contiunous twice evaluation progress
-eval_episodes: 32                       # number of episodes of a single evaluation
-
-# render params
-save_video: False                       # by default, do not save render video. If set, save video
-use_render: False                       # by default, do not render the envs during training. If set, start render. Note: something, the environment has internal render process which is not controlled by this hyperparam
-render_episodes: 1                      # the number of episodes to render a given envs
-ifi: 0.01                               # the play interval of each rendered image in saved video
-
-# robot params
 robot:
   param_mapping: sin
   no_root_offset: true
@@ -114,5 +105,3 @@ robot:
     gear:
       lb: 20
       ub: 400
-  
-
