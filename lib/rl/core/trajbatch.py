@@ -14,3 +14,17 @@ class TrajBatch:
         self.next_states = np.stack(next(self.batch))
         self.rewards = np.stack(next(self.batch))
         self.exps = np.stack(next(self.batch))
+
+class MaTrajBatch:
+    def __init__(self, memories_list):
+        memories_list = list(map(list, zip(*memories_list)))
+        self.buffers = []
+        for i in range(len(memories_list)):
+            """ i means the ith agent's memory. """
+            memory_i_list = memories_list[i]
+            self.buffers.append(TrajBatch(memory_i_list))
+
+
+
+
+        

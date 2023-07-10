@@ -35,3 +35,18 @@ class LoggerRLV1(LoggerRL):
         logger.avg_exec_reward = logger.stats_loggers['exec_reward'].avg()
         logger.avg_exec_episode_reward = logger.stats_loggers['exec_episode_reward'].avg()
         return logger
+
+
+class MaLoggerRLV1:
+    def __init__(self, learner_num, **kwargs) -> None:
+        self.loggers = [LoggerRLV1(**kwargs) for _ in range(learner_num)]
+
+    @classmethod
+    def merge(cls, loggers_list, **kwargs):
+        loggers_list = list(map(list, zip(*loggers_list)))
+        loggers = []
+        for i in range(len(loggers_list)):
+            """ i means the ith agent's logger. """
+            logger_i_list = loggers_list[i]
+            loggers.append(LoggerRLV1.merge(logger_i_list, **kwargs))
+        return loggers
