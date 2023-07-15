@@ -45,6 +45,7 @@ class Config:
         self.seed = cfg.get('seed', 1)
         self.seed_method = cfg.get('seed_method', 'deep')
         self.save_model_interval = cfg.get('save_model_interval', 100)
+        self.use_reward_scaling = cfg.get('use_reward_scaling', False)
 
         # anneal parameters
         self.scheduled_params = cfg.get('scheduled_params', dict())
@@ -60,6 +61,13 @@ class Config:
         self.enable_remove = cfg.get('enable_remove', True)
         self.skel_transform_nsteps = cfg.get('skel_transform_nsteps', 5)
         self.env_init_height = cfg.get('env_init_height', False)
+
+        # competition config
+        self.use_opponent_sample = cfg.get('use_opponent_sample', True)
+        self.use_shadow_sample = cfg.get('use_shadow_sample', False)
+        self.delta = cfg.get('delta', 0.)
+        self.use_exploration_curriculum = cfg.get('use_exploration_curriculum', True)
+        self.termination_epoch = cfg.get('termination_epoch', 200)
 
         # robot config
         self.robot_param_scale = cfg.get('robot_param_scale', 0.1)

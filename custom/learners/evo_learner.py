@@ -4,7 +4,6 @@ from lib.utils.torch import *
 from lib.utils.tools import *
 from lib.rl.core import estimate_advantages
 import math
-import time
 
 def tensorfy(np_list, device=torch.device('cpu')):
     if isinstance(np_list[0], list):
@@ -38,6 +37,10 @@ class EvoLearner:
 
         self.value_opt_niter = 1
         self.policy_grad_clip = [(self.policy_net.parameters(), 40)]
+
+        # initialize reward and save flag
+        self.best_rewards = -1000.0
+        self.save_best_flag = False
 
     def setup_policy(self):
         self.policy_net = Transform2ActPolicy(self.cfg.policy_specs, self.agent)

@@ -1,2 +1,2 @@
-from khrylib.models.mlp import MLP
-from khrylib.models.rnn import RNN
+from lib.models.mlp import MLP
+from lib.models.rnn import RNN

@@ -3,6 +3,7 @@ from config.config import Config
 import argparse
 import numpy as np
 import torch
+import gc
 
 import logging
 from logger.logger import Logger
@@ -13,18 +14,22 @@ import sys, os
 sys.path.append(".")
 
 from runner.multi_evo_agent_runner import MultiEvoAgentRunner
+from runner.multi_agent_runner import MultiAgentRunner
 
 def main():
     # ----------------------------------------------------------------------------#
     # Load config options from terminal and predefined yaml file
     # ----------------------------------------------------------------------------#
     parser = argparse.ArgumentParser(description="User's arguments from terminal.")
-    parser.add_argument("--cfg", dest="cfg_file", help="Config file", 
-                        required=True, type=str)
+    parser.add_argument("--cfg", 
+                        dest="cfg_file", 
+                        help="Config file", 
+                        required=True, 
+                        type=str)
     parser.add_argument('--use_cuda', type=str2bool, default=True)
     parser.add_argument('--gpu_index', type=int, default=0)
     parser.add_argument('--num_threads', type=int, default=1)
-    parser.add_argument('--epoch', type=int, default=0)
+    parser.add_argument('--epoch', type=str, default='0')
     args = parser.parse_args()
     # Load config file
     cfg = Config(args.cfg_file)
@@ -63,16 +68,20 @@ def main():
     # Training
     # ----------------------------------------------------------------------------#
     # runner definition
-    runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
-                                 num_threads=args.num_threads, training=True)
+    # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
+    #                              num_threads=args.num_threads, training=True)
     
-    start_epoch = int(args.epoch) if not args.epoch.isnumeric() else args.epoch
+    start_epoch = int(args.epoch) if args.epoch.isnumeric() else args.epoch
+    runner = MultiAgentRunner(cfg, logger, dtype, device, 
+                                 num_threads=args.num_threads, training=True, ckpt=start_epoch)
+    
     # main loop
     for epoch in range(start_epoch, cfg.max_epoch_num):          
         runner.optimize(epoch)
         runner.save_checkpoint(epoch)
 
         """clean up gpu memory"""
+        gc.collect()
         torch.cuda.empty_cache()
 
     runner.logger.info('training done!')

@@ -12,6 +12,7 @@ import os
 import platform
 import pickle
 import multiprocessing
+import gymnasium as gym
 if platform.system() != "Linux":
     from multiprocessing import set_start_method
     set_start_method("fork")
@@ -35,6 +36,9 @@ class MultiEvoAgentRunner(BaseRunner):
         self.end_reward = False
         self.custom_reward = None
 
+    def setup_env(self, env_name):
+        self.env = gym.make(env_name, render_mode="human", rundir=self.run_dir, cfg=self.cfg)
+
     def setup_learner(self):
         """ Learners are corresponding to agents. """
         self.learners = {}
@@ -48,6 +52,7 @@ class MultiEvoAgentRunner(BaseRunner):
         """generate multiple trajectories that reach the minimum batch_size"""
         t0 = time.time()
         batches, logs, total_scores = self.sample(self.cfg.min_batch_size)
+        self.logger.info("Sample {} steps from environment, spending {} s.".format(self.cfg.min_batch_size, t1-t0))
 
         """update networks"""
         t1 = time.time()
@@ -71,12 +76,12 @@ class MultiEvoAgentRunner(BaseRunner):
         logs, log_evals = info['logs'], info['log_evals']
         logger, writer = self.logger, self.writer
         for i in self.learners:
-            logger.info("Agent{} gets reward: {}.".format(i, log_evals[i].avg_exec_episode_reward))
-            if log_evals[i].avg_exec_episode_reward > self.best_rewards[i]:
-                self.best_rewards[i] = log_evals[i].avg_exec_episode_reward
-                self.save_best_flag[i] = True
+            logger.info("Agent_{} gets eval reward: {}.".format(i, log_evals[i].avg_exec_episode_reward))
+            if log_evals[i].avg_exec_episode_reward > self.learners[i].best_rewards:
+                self.learners[i].best_rewards = log_evals[i].avg_exec_episode_reward
+                self.learners[i].save_best_flag = True
             else:
-                self.save_best_flag[i] = False
+                self.learners[i].save_best_flag = False
 
             writer.add_scalar('train_R_avg_{}'.format(i), logs[i].avg_reward, epoch)
             writer.add_scalar('train_R_eps_avg_{}'.format(i), logs[i].avg_episode_reward, epoch)
@@ -85,8 +90,8 @@ class MultiEvoAgentRunner(BaseRunner):
             writer.add_scalar('exec_R_eps_avg_{}'.format(i), log_evals[i].avg_exec_episode_reward, epoch)
     
     def optimize(self, epoch):
-        for learner in self.learners:
-            learner.pre_epoch_update(epoch)
+        for i in self.learners:
+            self.learners[i].pre_epoch_update(epoch)
         info = self.optimize_policy(epoch)
         self.log_optimize_policy(epoch, info)
 
@@ -112,12 +117,12 @@ class MultiEvoAgentRunner(BaseRunner):
                 ma_logger[i].start_episode(self.env)
 
             for t in range(10000):
-                state_var = tensorfy([states])
+                state_var = tensorfy(states)
                 use_mean_action = mean_action or torch.bernoulli(torch.tensor([1 - self.noise_rate])).item()
                 # select actions
                 actions = []
                 for i in self.learners:
-                    actions.append(self.learners[i].policy_net.select_action(state_var, use_mean_action).numpy().astype(np.float64))
+                    actions.append(self.learners[i].policy_net.select_action(state_var[i], use_mean_action).numpy().astype(np.float64))
                 actions = np.hstack(actions)
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
 
@@ -205,44 +210,51 @@ class MultiEvoAgentRunner(BaseRunner):
         for logger in ma_logger: logger.sample_time = time.time() - t_start
         return ma_buffer, ma_logger, total_scores
     
-
     def load_checkpoint(self, checkpoint):
         cfg = self.cfg
         if isinstance(checkpoint, int):
-            cp_path = '%s/epoch_%04d.p' % (cfg.model_dir, checkpoint)
+            cp_path = '%s/epoch_%04d.p' % (self.model_dir, checkpoint)
             epoch = checkpoint
         else:
             assert isinstance(checkpoint, str)
-            cp_path = '%s/%s.p' % (cfg.model_dir, checkpoint)
+            cp_path = '%s/%s.p' % (self.model_dir, checkpoint)
         self.logger.info('loading model from checkpoint: %s' % cp_path)
         model_cp = pickle.load(open(cp_path, "rb"))
-        self.policy_net.load_state_dict(model_cp['policy_dict'])
-        self.value_net.load_state_dict(model_cp['value_dict'])
-        self.running_state = model_cp['running_state']
-        self.loss_iter = model_cp['loss_iter']
-        self.best_rewards = model_cp.get('best_rewards', self.best_rewards)
+
+        # load epoch
         if 'epoch' in model_cp:
             epoch = model_cp['epoch']
-        self.pre_epoch_update(epoch)
+        else:
+            epoch = model_cp['0']['epoch']
+        # load model
+        for i in self.learners:
+            self.learners[i].policy_net.load_state_dict(model_cp[str(i)]['policy_dict'])
+            self.learners[i].value_net.load_state_dict(model_cp[str(i)]['value_dict'])
+            self.learners[i].running_state = model_cp[str(i)]['running_state']
+            self.learners[i].best_rewards = model_cp[str(i)].get('best_rewards', self.learners[i].best_rewards)
+            self.learners[i].pre_epoch_update(epoch)
 
     def save_checkpoint(self, epoch):
         def save(cp_path):
-            with to_cpu(self.policy_net, self.value_net):
-                model_cp = {'policy_dict': self.policy_net.state_dict(),
-                            'value_dict': self.value_net.state_dict(),
-                            'running_state': self.running_state,
-                            'loss_iter': self.loss_iter,
-                            'best_rewards': self.best_rewards,
+            model_cp = {}
+            for i in self.learners:
+                with to_cpu(self.learners[i].policy_net, self.learners[i].value_net):
+                    model = {'policy_dict': self.learners[i].policy_net.state_dict(),
+                            'value_dict': self.learners[i].value_net.state_dict(),
+                            'running_state': self.learners[i].running_state,
+                            'best_rewards': self.learners[i].best_rewards,
                             'epoch': epoch}
-                pickle.dump(model_cp, open(cp_path, 'wb'))
+                    model_cp[str(i)] = model
+            pickle.dump(model_cp, open(cp_path, 'wb'))
 
         cfg = self.cfg
-        additional_saves = self.cfg.agent_specs.get('additional_saves', None)
+        additional_saves = cfg.agent_specs.get('additional_saves', None)
         if (cfg.save_model_interval > 0 and (epoch+1) % cfg.save_model_interval == 0) or \
            (additional_saves is not None and (epoch+1) % additional_saves[0] == 0 and epoch+1 <= additional_saves[1]):
-            self.tb_logger.flush()
-            save('%s/epoch_%04d.p' % (cfg.model_dir, epoch + 1))
-        if self.save_best_flag:
-            self.tb_logger.flush()
-            self.logger.info(f'save best checkpoint with rewards {self.best_rewards:.2f}!')
-            save('%s/best.p' % cfg.model_dir)
+            self.writer.flush()
+            save('%s/epoch_%04d.p' % (self.model_dir, epoch + 1))
+        for i in self.learners:
+            if self.learners[i].save_best_flag:
+                self.writer.flush()
+                self.logger.info(f"save best checkpoint with agent_{i}'s rewards {self.learners[i].best_rewards:.2f}!")
+                save('%s/best.p' % self.model_dir)

@@ -20,7 +20,7 @@ class HumanoidFighter(Humanoid):
 
     def set_env(self, env):
         super(HumanoidFighter, self).set_env(env)
-        self.arena_id = self.env.model.geom_names.index(six.b('arena'))
+        self.arena_id = self.env.geom_names.index('arena')
         self.arena_height = self.env.model.geom_size[self.arena_id][1] * 2
 
     def after_step(self, action):

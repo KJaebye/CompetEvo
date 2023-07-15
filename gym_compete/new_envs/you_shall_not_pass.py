@@ -83,11 +83,21 @@ class HumansBlockingEnv(MultiAgentEnv):
     def _reset(self):
         self._elapsed_steps = 0
         ob = super(HumansBlockingEnv, self)._reset()
-        return ob
+        # reset agents' position
+        for i in range(self.n_agents):
+            self.agents[i].set_xyz((None,None,None))
+        return ob, {}
 
     def reset(self, margins=None):
-        ob = self._reset()
+        ob, info = self._reset()
         if margins:
             for i in range(self.n_agents):
                 self.agents[i].set_margin(margins[i])
-        return ob
+        return ob, info
+    
+    def step(self, actions):
+        obses, rews, terminateds, truncated, infos = self._step(actions)
+        if self._past_limit():
+            return obses, rews, terminateds, True, infos
+        
+        return obses, rews, terminateds, truncated, infos

@@ -48,7 +48,7 @@ def tuple_to_str(tp):
 
 def create_multiagent_xml(
         world_xml, all_agent_xmls, agent_scopes=None,
-        outdir='/tmp/', outpath=None, ini_pos=None, rgb=None
+        outdir='/tmp/', outpath=None, ini_pos=None, ini_euler=None, rgb=None
     ):
     world = ET.parse(world_xml)
     world_root = world.getroot()
@@ -97,6 +97,14 @@ def create_multiagent_xml(
             # pos[2] = oripos[2]
             # print(tuple_to_str(pos))
             agent_body.set('pos', tuple_to_str(pos))
+        if agent_body.get('euler'):
+            orieuler = list(map(float, agent_body.get('euler').strip().split(" ")))
+            # keep original y and z coordinates
+            euler = list(ini_euler[i])
+            # euler[1] = orieuler[1]
+            # euler[2] = orieuler[2]
+            # print(tuple_to_str(euler))
+            agent_body.set('euler', tuple_to_str(euler))
         # add class to all geoms
         set_geom_class(agent_body, agent_scopes[i])
         # add prefix to all names, important to map joints

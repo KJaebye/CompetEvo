@@ -53,12 +53,16 @@ class MultiAgentEnv(MujocoEnv):
         self, agent_names,
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP,
         scene_xml_path=None, move_reward_weight=1.0,
-        init_pos=None, rgb=None, agent_args=None,
+        init_pos=None, ini_euler=None, rgb=None, agent_args=None,
+        max_episode_steps=500,
         **kwargs,
     ):
         '''
             agent_args is a list of kwargs for each agent
         '''
+        self._max_episode_steps = max_episode_steps
+        self._elapsed_steps = 0
+
         self.n_agents = len(agent_names)
         self.agents = {}
         all_agent_xml_paths = []
@@ -81,7 +85,7 @@ class MultiAgentEnv(MujocoEnv):
                 world_xml_path, all_agent_xml_paths, agent_scopes,
                 # outdir=os.path.join(os.path.dirname(__file__), "assets"), 
                 outpath=scene_xml_path,
-                ini_pos=init_pos, rgb=rgb
+                ini_pos=init_pos, ini_euler=ini_euler, rgb=rgb
             )
         print("Scene XML path:", self._env_xml_path)
         self.env_scene = MultiAgentScene(self._env_xml_path, self.n_agents, **kwargs,)
@@ -102,6 +106,11 @@ class MultiAgentEnv(MujocoEnv):
             else:
                 self.agents[i].set_goal(self.RIGHT_GOAL)
 
+    def _past_limit(self):
+        if self._max_episode_steps <= self._elapsed_steps:
+            return True
+        return False
+
     def _set_observation_space(self):
         self.observation_space = spaces.Tuple(
             [self.agents[i].observation_space for i in range(self.n_agents)]
@@ -113,6 +122,7 @@ class MultiAgentEnv(MujocoEnv):
         )
 
     def goal_rewards(self, infos=None, agent_dones=None):
+        self._elapsed_steps += 1
         touchdowns = [self.agents[i].reached_goal()
                       for i in range(self.n_agents)]
         num_reached_goal = sum(touchdowns)
@@ -139,7 +149,7 @@ class MultiAgentEnv(MujocoEnv):
     def _step(self, actions):
         for i in range(self.n_agents):
             self.agents[i].before_step()
-
+        
         self.env_scene.simulate(actions)
         move_rews = []
         infos = []
@@ -172,9 +182,17 @@ class MultiAgentEnv(MujocoEnv):
         return self.env_scene._seed(seed)
 
     def _reset(self):
-        # _ = self.env_scene._reset()
-        ob = self.reset_model()
-        return ob
+        self._elapsed_steps = 0
+        self.env_scene.reset()
+        self.reset_model()
+        # reset agent position
+        for i in range(self.n_agents):
+            self.agents[i].set_xyz((None,None,None))
+        ob = self._get_obs()
+        return ob, {}
+    
+    def reset(self):
+        return self._reset()
 
     def set_state(self, qpos, qvel):
         self.env_scene.set_state(qpos, qvel)
@@ -187,8 +205,14 @@ class MultiAgentEnv(MujocoEnv):
         return self.env_scene.state_vector()
 
     def reset_model(self):
-        # self.env_scene.reset_model()
         _ = self.env_scene.reset()
         for i in range(self.n_agents):
             self.agents[i].reset_agent()
-        return self._get_obs()
+        return self._get_obs(), {}
+    
+    def step(self, actions):
+        obses, rews, terminateds, truncated, infos = self._step(actions)
+        if self._past_limit():
+            return obses, rews, terminateds, True, infos
+        
+        return obses, rews, terminateds, truncated, infos

@@ -1,7 +1,7 @@
 import torch.nn as nn
-from khrylib.rl.core.distributions import DiagGaussian
-from khrylib.rl.core.policy import Policy
-from khrylib.utils.math import *
+from lib.rl.core.distributions import DiagGaussian
+from lib.rl.core.policy import Policy
+from lib.utils.math import *
 
 
 class PolicyGaussian(Policy):

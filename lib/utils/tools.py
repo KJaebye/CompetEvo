@@ -6,7 +6,7 @@ import subprocess
 from os import path
 from PIL import Image
 from lib.utils.math import *
-import cv2
+# import cv2
 
 
 def assets_dir():

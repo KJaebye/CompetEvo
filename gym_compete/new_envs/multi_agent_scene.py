@@ -13,7 +13,7 @@ class MultiAgentScene(MujocoEnv, utils.EzPickle):
             "rgb_array",
             "depth_array",
         ],
-        "render_fps": 20,
+        "render_fps": 67, #20 #67
     }
 
     def __init__(self, xml_path, n_agents, **kwargs,):

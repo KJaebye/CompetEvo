@@ -1,5 +1,5 @@
 import torch.nn as nn
-from khrylib.utils.torch import *
+from lib.utils.torch import *
 
 
 class RNN(nn.Module):

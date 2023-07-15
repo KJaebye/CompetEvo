@@ -1,7 +1,7 @@
 import torch.nn as nn
-from khrylib.utils.math import *
-from khrylib.rl.core.distributions import Categorical
-from khrylib.rl.core.policy import Policy
+from lib.utils.math import *
+from lib.rl.core.distributions import Categorical
+from lib.rl.core.policy import Policy
 
 
 class PolicyDiscrete(Policy):

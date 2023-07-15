@@ -1,166 +1,76 @@
-# !/usr/bin/envs python
-import sys
-import os
-
-import setproctitle
+import gymnasium as gym
+from config.config import Config
+import argparse
 import numpy as np
 import torch
-import argparse
 
-import gymnasium as gym
-from config.config import cfg
+import logging
+from logger.logger import Logger
+from utils.tools import *
 
-from custom.runner.multi_ant_runner import MultiAntSeparatedRunner, MultiAntSharedRunner
-from malib.runner.separated.env_runner import EnvRunner as SeparatedRunner
-from malib.runner.shared.env_runner import EnvRunner as SharedRunner
+import time
+import sys, os
+sys.path.append(".")
 
-def make_train_env():
-    from envs import CUSTOM_ENVS
-    def get_env_fn(rank):
-        def init_env():
-            assert cfg.ENV_NAME in CUSTOM_ENVS, "Alert: Undefined environment!"
-            env = gym.make(cfg.ENV_NAME, agent_num=cfg.EMAT.AGENT_NUM, render_mode='human')
+from runner.multi_evo_agent_runner import MultiEvoAgentRunner
+from runner.multi_agent_runner import MultiAgentRunner
 
-            from malib.envs.env_continuous import ContinuousActionEnv
-            env = ContinuousActionEnv(cfg.EMAT.AGENT_NUM, env)
-            return env
-        return init_env
-    from malib.envs.env_wrappers import DummyVecEnv
-    return DummyVecEnv([get_env_fn(i) for i in range(cfg.EMAT.N_ROLLOUT_THREADS)])
-
-def make_eval_env():
-    from envs import CUSTOM_ENVS
-    def get_env_fn(rank):
-        def init_env():
-            assert cfg.ENV_NAME in CUSTOM_ENVS, "Alert: Undefined environment!"
-            env = gym.make(cfg.ENV_NAME, agent_num=cfg.EMAT.AGENT_NUM, render_mode='human')
-
-            from malib.envs.env_continuous import ContinuousActionEnv
-            env = ContinuousActionEnv(cfg.EMAT.AGENT_NUM, env)
-            return env
-        return init_env
-    from malib.envs.env_wrappers import DummyVecEnv
-    return DummyVecEnv([get_env_fn(i) for i in range(cfg.EMAT.N_EVAL_ROLLOUT_THREADS)])
-
-
-def main(args):
+def main():
     # ----------------------------------------------------------------------------#
-    # Load CFG file
+    # Load config options from terminal and predefined yaml file
     # ----------------------------------------------------------------------------#
     parser = argparse.ArgumentParser(description="User's arguments from terminal.")
-    parser.add_argument(
-        '--run_dir', 
-        type=str, 
-        help='run directory name',
-        required=True)
+    parser.add_argument("--run_dir", 
+                        dest="run_dir", 
+                        help="run directory", 
+                        required=True, 
+                        type=str)
+    parser.add_argument('--epoch', type=str, default='best')
     args = parser.parse_args()
-
-    # Load config options
-    run_dir = args.run_dir
-    cfg_file= run_dir + "config.yaml"
-    cfg.merge_from_file(cfg_file)
-
-    # set threads to 1 when using display
-    cfg.EMAT.N_ROLLOUT_THREADS = 1
-    cfg.EMAT.NUM_ENV_STEPS = cfg.ENV.EPISODE_LENGTH * cfg.EMAT.AGENT_NUM
-    cfg.USE_RENDER = True
+    # Load config file
+    cfg_file = args.run_dir + "config.yml"
+    cfg = Config(cfg_file)
 
     # ----------------------------------------------------------------------------#
-    # Check model_dir
+    # Define logger and create dirs
     # ----------------------------------------------------------------------------#
-    # model dir. If training, model directory is None.
-    model_dir = run_dir + "models/"
+    # set logger
+    logger = Logger(name='current', args=args, cfg=cfg)
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    # set output
+    logger.set_output_handler()
+    logger.print_system_info()
+    # only training generates log file
+    logger.critical('Type of current running: Evaluation. No log file will be created')
+    # redefine dir
+    logger.run_dir = args.run_dir
+    logger.model_dir = '%smodels' % logger.run_dir
+    logger.log_dir = '%slog' % logger.run_dir
+    logger.tb_dir = '%stb' % logger.run_dir
+
+    epoch = int(args.epoch) if args.epoch.isdigit() else args.epoch
 
     # ----------------------------------------------------------------------------#
-    # Check for training
+    # Set torch and random seed
     # ----------------------------------------------------------------------------#
-    if cfg.ALGO == "rmappo":
-        assert (cfg.NETWORK.USE_RECURRENT_POLICY or cfg.USE_NAIVE_RECURRENT_POLICY), \
-        ("check recurrent policy!")
-    elif cfg.ALGO == "mappo":
-        assert \
-            (cfg.NETWORK.USE_RECURRENT_POLICY == False and 
-             cfg.NETWORK.USE_NAIVE_RECURRENT_POLICY == False), \
-            ("check recurrent policy!")
-    else:
-        raise NotImplementedError
-
+    dtype = torch.float64
+    torch.set_default_dtype(dtype)
+    device = torch.device('cpu')
+    np.random.seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
+    
     # ----------------------------------------------------------------------------#
-    # CUDA and set torch multiple threads
+    # Evaluation
     # ----------------------------------------------------------------------------#
-    if cfg.USE_GPU and torch.cuda.is_available():
-        print("choose to use gpu...")
-        device = torch.device(cfg.DEVICE) if cfg.DEVICE else torch.device("cuda:0")
-        torch.set_num_threads(cfg.EMAT.N_TRAINING_THREADS)
-
-        if cfg.CUDNN.DETERMINISTIC:
-            torch.backends.cudnn.benchmark = False
-            torch.backends.cudnn.deterministic = True
-    else:
-        print("choose to use cpu...")
-        device = torch.device("cpu")
-        torch.set_num_threads(cfg.EMAT.N_TRAINING_THREADS)
-
-    setproctitle.setproctitle(str(cfg.ALGO) + "-" + \
-                              str(cfg.ENV_NAME) + "-" + "@" +
-                              str(cfg.USER_NAME))
-
-    # ----------------------------------------------------------------------------#
-    # Seeding
-    # ----------------------------------------------------------------------------#
-    torch.manual_seed(cfg.RNG_SEED)
-    torch.cuda.manual_seed_all(cfg.RNG_SEED)
-    np.random.seed(cfg.RNG_SEED)
-
-    # ----------------------------------------------------------------------------#
-    # Making environment
-    # ----------------------------------------------------------------------------#
-    # envs init
-    envs = make_train_env()
-    eval_envs = make_eval_env()
-    num_agents = cfg.EMAT.AGENT_NUM
-
-    config = {
-        "envs": envs,
-        "eval_envs": eval_envs,
-        "num_agents": num_agents,
-        "device": device,
-        "run_dir": run_dir,
-        "model_dir": model_dir
-    }
-
-    # ----------------------------------------------------------------------------#
-    # display
-    # ----------------------------------------------------------------------------#
-    # Load runner
-    net_option = "Shared" if cfg.NETWORK.SHARE_POLICY else "Separated"
-    runner_name = cfg.ENV_NAME.split('-')[0] + net_option + 'Runner'
-    try:
-        Runner = globals()[runner_name]
-        print("Use {} as env runner.".format(runner_name))
-    except:
-        print("Failed to load the customised Seperated/Shared Env Runner.")
-        print("Try to use customised Env Runner...")
-        print("......")
-        try:
-            runner_name = cfg.ENV_NAME.split('-')[0] + 'Runner'
-            Runner = globals()[runner_name]
-            print("Use {} as env runner.".format(runner_name))
-        except:
-            print("Failed to load the customised Env Runner.")
-            print("Try to use basic Seperated/Shared Env Runner...")
-            print("......")
-            runner_name = net_option + 'Runner'
-            Runner = globals()[runner_name]
-            print("Use {} as env runner.".format(runner_name))
-
-    runner = Runner(config)
-    runner.run()
-    runner.render()
-
-    # post process
-    envs.close()
-
+    # runner definition
+    # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
+    #                              num_threads=args.num_threads, training=False)
+    
+    runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=epoch)
+    runner.display(num_episode=1, mean_action=True)
+    # runner.sample(min_batch_size=10000, mean_action=True, render=True, nthreads=1)
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
+

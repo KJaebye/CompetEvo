@@ -1,9 +1,14 @@
 from .agent import Agent
 from gymnasium.spaces import Box
 import numpy as np
+import os
 
 
 def mass_center(mass, xpos):
+    # This is a bug of openai multiagent-competition release.
+    # It should keep the same dimension when array broadcast.
+    # Modified by git @KJaebye.
+    mass = mass[:, np.newaxis]
     return (np.sum(mass * xpos, 0) / np.sum(mass))[0]
 
 
@@ -37,7 +42,7 @@ class Humanoid(Agent):
         agent_standing = qpos[2] >= 1.0
         survive = 5.0 if agent_standing else -5.
         reward = forward_reward - ctrl_cost - contact_cost + survive
-        reward_goal = - np.abs(np.asscalar(qpos[0]) - self.GOAL)
+        reward_goal = - np.abs(qpos[0].item() - self.GOAL)
         reward += reward_goal
 
         reward_info = dict()

@@ -164,7 +164,7 @@ class Agent(object):
 
     def get_body_com(self, body_name):
         assert self._env_init, "Env reference is not set"
-        idx = self.body_ids[self.body_names.index(six.b(self.scope + '/' + body_name))]
+        idx = self.body_ids[self.body_names.index(self.scope + '/' + body_name)]
         return self.env.data.subtree_com[idx]
 
     def get_cfrc_ext(self):
@@ -216,7 +216,7 @@ class Agent(object):
         return self.env.data.cvel[self.body_ids]
 
     def get_body_mass(self):
-        return self.env.body_mass[self.body_ids]
+        return self.env.model.body_mass[self.body_ids]
 
     def get_xipos(self):
         '''
@@ -246,7 +246,7 @@ class Agent(object):
         '''
         Set (x, y, z) position of the agent any element can be None
         '''
-        assert any(xyz)
+        # assert any(xyz) # openai multiagent-competition release
         start = self.qpos_start_idx
         qpos = self.env.data.qpos.flatten().copy()
         if xyz[0]:
@@ -255,7 +255,18 @@ class Agent(object):
             qpos[start+1] = xyz[1]
         if xyz[2]:
             qpos[start+2] = xyz[2]
-        qvel = self.env.data.qvel.flatten()
+
+        ##########################################################
+        # This might be a bug of openai multiagent-competition release.
+        # qvel = self.env.data.qvel.flatten()
+        
+        # Here we enforce to set the initial qvel to all zero array at reset,
+        # otherwise the agent might be throw out by an unkown external
+        # force that causes failures and unstable simulation.
+        qvel = np.zeros(self.env.model.nv)
+        # Mentained by git @KJaebye
+        ##########################################################
+        
         self.env.set_state(qpos, qvel)
 
     def set_margin(self, margin):

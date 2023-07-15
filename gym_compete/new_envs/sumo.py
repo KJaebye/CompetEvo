@@ -11,8 +11,6 @@ else:
     MUJOCO_IMPORT_ERROR = None
 
 class SumoEnv(MultiAgentEnv):
-    '''
-    '''
 
     def __init__(self, max_episode_steps=500, min_radius=None, max_radius=None, **kwargs):
         super(SumoEnv, self).__init__(**kwargs)
@@ -89,7 +87,7 @@ class SumoEnv(MultiAgentEnv):
             done = True
             for j in range(self.n_agents):
                 if fallen[j]:
-                    print('Agent', j, 'fallen')
+                    # print('Agent', j, 'fallen')
                     goal_rews[j] -= self.GOAL_REWARD
                 elif self.agent_contacts:
                     goal_rews[j] += self.GOAL_REWARD
@@ -99,7 +97,7 @@ class SumoEnv(MultiAgentEnv):
             done = True
             for j in range(self.n_agents):
                 if past_arena[j]:
-                    print('Agent', j, 'past arena')
+                    # print('Agent', j, 'past arena')
                     goal_rews[j] -= self.GOAL_REWARD
                 elif self.agent_contacts:
                     goal_rews[j] += self.GOAL_REWARD
@@ -164,8 +162,28 @@ class SumoEnv(MultiAgentEnv):
         self.env_scene.model.__setattr__('geom_size', gs)
         mujoco.mj_forward(self.env_scene.model, self.env_scene.data)
 
+    # def _reset_agents(self):
+    #     min_gap = 0.3 + self.MIN_RADIUS / 2
+    #     ###########################################################################
+    #     # random_pos_flag is a flag that determine which side should agent rebirth
+    #     # This is very important because one agent trained at a fixed side might 
+    #     # become confused when put it to another side. Therefore, the best solution
+    #     # is to sample more balanced data, especially in a decentralised training.
+    #     idx = np.random.randint(0, 2)
+    #     random_pos_flag = [idx, 1-idx]
+    #     ###########################################################################
+    #     for i in range(self.n_agents):
+    #         if random_pos_flag[i] % 2 == 0:
+    #             x = np.random.uniform(-self.RADIUS + min_gap, -0.3)
+    #             y_lim = np.sqrt(self.RADIUS**2 - x**2)
+    #             y = np.random.uniform(-y_lim + min_gap, y_lim - min_gap)
+    #         else:
+    #             x = np.random.uniform(0.3, self.RADIUS - min_gap)
+    #             y_lim = np.sqrt(self.RADIUS**2 - x**2)
+    #             y = np.random.uniform(-y_lim + min_gap, y_lim - min_gap)
+    #         self.agents[i].set_xyz((x,y,None))
+
     def _reset_agents(self):
-        # set agent 0
         min_gap = 0.3 + self.MIN_RADIUS / 2
         for i in range(self.n_agents):
             if i % 2 == 0:

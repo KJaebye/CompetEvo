@@ -1,5 +1,5 @@
 import torch
-from khrylib.utils import batch_to
+from lib.utils import batch_to
 
 
 def estimate_advantages(rewards, masks, values, gamma, tau):

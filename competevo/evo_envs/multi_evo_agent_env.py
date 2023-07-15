@@ -63,7 +63,7 @@ class MultiEvoAgentEnv(MujocoEnv):
         # create multiagent env xml
         # the xml file will be saved at "scene_xml_path"
         _, self._env_xml_path = create_multiagent_xml(
-            world_xml_path, all_agent_xml_paths, agent_scopes, rundir=rundir,
+            world_xml_path, all_agent_xml_paths, agent_scopes, outdir=rundir,
             ini_pos=init_pos, rgb=rgb
         )
         print("Scene XML path:", self._env_xml_path)

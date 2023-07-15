@@ -51,7 +51,8 @@ def create_multiagent_xml(
         world_xml, 
         all_agent_xmls, 
         agent_scopes=None,
-        rundir=os.path.join(os.path.dirname(__file__), "assets"),
+        outdir=os.path.join(os.path.dirname(__file__), "assets"),
+        outpath=None,
         ini_pos=None, 
         rgb=None
     ):
@@ -140,7 +141,7 @@ def create_multiagent_xml(
                     world_tendons.append(tendon)
 
     outname = world_xml.split("/")[-1].split(".xml")[0]  + '.' + ".".join(map(lambda x: x.split("/")[-1].split(".xml")[0], all_agent_xmls)) + ".xml"
-    outpath = rundir + '/' + outname
+    outpath = outdir + '/' + outname
 
     world.write(outpath)
     return ET.tostring(world_root), outpath
