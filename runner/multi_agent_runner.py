@@ -66,7 +66,6 @@ class MultiAgentRunner(BaseRunner):
         )
 
         """update networks"""
-
         use_shadow_data = False
         if use_shadow_data:
             for i in self.learners:
@@ -138,8 +137,8 @@ class MultiAgentRunner(BaseRunner):
             # only for display
             epoch = 1000
         termination_epoch = self.cfg.termination_epoch
-        alpha = max((termination_epoch - epoch) / termination_epoch, 0)
-        # alpha = 1
+        # alpha = max((termination_epoch - epoch) / termination_epoch, 0)
+        alpha = 1
         c_rew = []
         for info in infos:
             goal_rew = info['reward_remaining'] # goal_rew is parse rewarding
@@ -322,7 +321,7 @@ class MultiAgentRunner(BaseRunner):
                 self.logger.critical(f"save best checkpoint with agent_{i}'s rewards {self.learners[i].best_reward:.2f}!")
                 save('%s/best.p' % self.model_dir, idx=i)
     
-    def display(self, num_episode=1, mean_action=True):
+    def display(self, num_episode=3, mean_action=True):
         total_score = [0 for _ in self.learners]
         total_reward = []
         for _ in range(num_episode):

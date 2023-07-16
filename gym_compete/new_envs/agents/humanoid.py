@@ -14,10 +14,10 @@ def mass_center(mass, xpos):
 
 class Humanoid(Agent):
 
-    def __init__(self, agent_id, xml_path=None, **kwargs):
+    def __init__(self, agent_id, xml_path=None, n_agents=2, **kwargs):
         if xml_path is None:
             xml_path = os.path.join(os.path.dirname(__file__), "assets", "humanoid_body.xml")
-        super(Humanoid, self).__init__(agent_id, xml_path, **kwargs)
+        super(Humanoid, self).__init__(agent_id, xml_path, n_agents, **kwargs)
         self.team = 'walker'
 
     def set_goal(self, goal):
@@ -31,7 +31,7 @@ class Humanoid(Agent):
 
     def after_step(self, action):
         pos_after = mass_center(self.get_body_mass(), self.get_xipos())
-        forward_reward = 0.25 * (pos_after - self._pos_before) / self.env.model.opt.timestep
+        forward_reward = 1.25 * (pos_after - self._pos_before) / self.env.model.opt.timestep
         if self.move_left:
             forward_reward *= -1
         ctrl_cost = .1 * np.square(action).sum()
@@ -39,25 +39,24 @@ class Humanoid(Agent):
         contact_cost = .5e-6 * np.square(cfrc_ext).sum()
         contact_cost = min(contact_cost, 10)
         qpos = self.get_qpos()
-        agent_standing = qpos[2] >= 1.0
-        survive = 5.0 if agent_standing else -5.
+        survive = 5.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
-        reward_goal = - np.abs(qpos[0].item() - self.GOAL)
-        reward += reward_goal
+        # reward_goal = - np.abs(qpos[0].item() - self.GOAL)
+        # reward += reward_goal
 
         reward_info = dict()
         reward_info['reward_forward'] = forward_reward
         reward_info['reward_ctrl'] = ctrl_cost
         reward_info['reward_contact'] = contact_cost
         reward_info['reward_survive'] = survive
-        if self.team == 'walker':
-            reward_info['reward_goal_dist'] = reward_goal
+        # if self.team == 'walker':
+        #     reward_info['reward_goal_dist'] = reward_goal
         reward_info['reward_move'] = reward
 
         # done = not agent_standing
-        done = qpos[2] < 0.8
+        terminated = bool(qpos[2] < 1. or qpos[2] > 2.)
 
-        return reward, done, reward_info
+        return reward, terminated, reward_info
 
 
     def _get_obs(self):

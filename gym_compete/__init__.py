@@ -34,6 +34,21 @@ register(
 )
 
 register(
+    id='run-to-goal-human-v0',
+    entry_point='gym_compete.new_envs:MultiAgentEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['humanoid'],
+            'scene_xml_path': os.path.join(
+                os.path.dirname(__file__), "new_envs",
+                "assets",
+                "world_body.humanoid_body.xml"
+            ),
+            'init_pos': [(-1, 0, 1.4)],
+            'ini_euler': [(0, 0, 0)]
+            },
+)
+
+register(
     id='you-shall-not-pass-humans-v0',
     entry_point='gym_compete.new_envs:HumansBlockingEnv',
     disable_env_checker=True,

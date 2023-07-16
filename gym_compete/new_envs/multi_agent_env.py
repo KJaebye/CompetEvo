@@ -72,7 +72,7 @@ class MultiAgentEnv(MujocoEnv):
         for i, name in enumerate(agent_names):
             print("Creating agent", name)
             agent_xml_path, agent_class = agent_map[name]
-            self.agents[i] = agent_class(i, agent_xml_path, **agent_args[i])
+            self.agents[i] = agent_class(i, agent_xml_path, self.n_agents, **agent_args[i])
             all_agent_xml_paths.append(agent_xml_path)
         agent_scopes = ['agent' + str(i) for i in range(self.n_agents)]
         # print(scene_xml_path)
