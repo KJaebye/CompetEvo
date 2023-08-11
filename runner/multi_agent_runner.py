@@ -1,5 +1,6 @@
 from runner.base_runner import BaseRunner
 from custom.learners.learner import Learner
+from custom.learners.sampler import Sampler
 from custom.learners.evo_learner import EvoLearner
 from custom.utils.logger import MaLoggerRL
 from lib.rl.core.trajbatch import MaTrajBatch
@@ -58,34 +59,29 @@ class MultiAgentRunner(BaseRunner):
         """generate multiple trajectories that reach the minimum batch_size"""
         self.logger.info('#------------------------ Iteration {} --------------------------#'.format(epoch)) # actually this is iteration
         t0 = time.time()
-        batches, logs, total_scores = self.sample(self.cfg.min_batch_size)
+
+        """sampling data"""
+        batches, logs, _ = self.sample(self.cfg.min_batch_size)
         t1 = time.time()
         self.logger.info(
-            "Sampling {} steps by {} slaves from environment, spending {:.2f} s.".format(
+            "Sampling {} steps by {} slaves, spending {:.2f} s.".format(
             self.cfg.min_batch_size, self.num_threads, t1-t0)
         )
-
-        """update networks"""
-        use_shadow_data = False
-        if use_shadow_data:
-            for i in self.learners:
-                for j in self.learners:
-                    self.learners[i].update_params(batches[j])
-        else:
-            for i in self.learners:
-                self.learners[i].update_params(batches[i])
+        
+        """updating policy"""
+        for i, learner in self.learners.items():
+            learner.update_params(batches[i])
         t2 = time.time()
-        self.logger.info("Policy update time: {:.2f} s.".format(t2-t1))
+        self.logger.info("Policy update, spending: {:.2f} s.".format(t2-t1))
 
         """evaluate policy"""
-        _, log_evals, total_scores = self.sample(self.cfg.eval_batch_size, mean_action=True)
+        _, log_evals, win_rate = self.sample(self.cfg.eval_batch_size, mean_action=True)
         t3 = time.time()
         self.logger.info("Evaluation time: {:.2f} s.".format(t3-t2))
 
         info = {
             'logs': logs, 'log_evals': log_evals, 
-            'T_sample': t1 - t0, 'T_update': t2 - t1, 'T_eval': t3 - t2, 'T_total': t3 - t0, 
-            'total_scores': total_scores
+            'win_rate': win_rate
         }
         self.logger.info('Total time: {:10.2f} min'.format((t3 - self.t_start)/60))
         return info
@@ -93,30 +89,30 @@ class MultiAgentRunner(BaseRunner):
     def log_optimize_policy(self, info):
         epoch = self.epoch
         cfg = self.cfg
-        logs, log_evals, total_scores = info['logs'], info['log_evals'], info['total_scores']
+        logs, log_evals, win_rate = info['logs'], info['log_evals'], info['win_rate']
         logger, writer = self.logger, self.writer
-        best_reward = max([learner.best_reward for i, learner in self.learners.items()])
-        for i in self.learners:
-            logger.info("Agent_{} gets eval reward: {}.".format(i, log_evals[i].avg_episode_reward))
-            if log_evals[i].avg_episode_reward > best_reward:
-                best_reward = log_evals[i].avg_episode_reward
-                self.learners[i].save_best_flag = True
+
+        for i, learner in self.learners.items():
+            logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
+            if log_evals[i].avg_episode_reward > learner.best_reward or win_rate[i] > learner.best_win_rate:
+                learner.best_reward = log_evals[i].avg_episode_reward
+                learner.best_win_rate = win_rate[i]
+                learner.save_best_flag = True
             else:
-                self.learners[i].save_best_flag = False
-            self.learners[i].best_reward = best_reward
+                learner.save_best_flag = False
 
             # writer.add_scalar('train_R_avg_{}'.format(i), logs[i].avg_reward, epoch)
             writer.add_scalar('train_R_eps_avg_{}'.format(i), logs[i].avg_episode_reward, epoch)
             writer.add_scalar('eval_R_eps_avg_{}'.format(i), log_evals[i].avg_episode_reward, epoch)
             # writer.add_scalar('eval_R_avg_{}'.format(i), log_evals[i].avg_reward, epoch)
+            # logging win rate
+            writer.add_scalar("eval_win_rate_{}".format(i), win_rate[i], epoch)
     
     def optimize(self, epoch):
         self.epoch = epoch
         # load shadow agent model
         if self.cfg.use_shadow_sample and epoch > 0:
             self.load_agent_params(delta=self.cfg.delta, idx=1)
-        if self.cfg.use_opponent_sample and epoch > 0:
-            self.load_agent_params(delta=self.cfg.delta, idx=0)
         # set annealing params
         for i in self.learners:
             self.learners[i].pre_epoch_update(epoch)
@@ -137,32 +133,54 @@ class MultiAgentRunner(BaseRunner):
             # only for display
             epoch = 1000
         termination_epoch = self.cfg.termination_epoch
-        # alpha = max((termination_epoch - epoch) / termination_epoch, 0)
-        alpha = 1
+        alpha = max((termination_epoch - epoch) / termination_epoch, 0)
         c_rew = []
-        for info in infos:
+        for i, info in enumerate(infos):
             goal_rew = info['reward_remaining'] # goal_rew is parse rewarding
             move_rew = info['reward_move'] # move_rew is dense rewarding
             rew = alpha * move_rew + (1-alpha) * goal_rew
             c_rew.append(rew)
         return tuple(c_rew), infos
 
-    def sample_worker(self, pid, queue, min_batch_size, mean_action, render):
+    def sample_worker(self, pid, queue, min_batch_size, mean_action, render, idx=None):
         self.seed_worker(pid)
         
         # define multi-agent logger
         ma_logger = self.logger_cls(self.agent_num, **self.logger_kwargs).loggers
-        total_score = [0 for _ in self.learners]
+        # total score record: [agent_0_win_times, agent_1_win_times, games_num]
+        total_score = [0 for _ in range(self.agent_num)]
+        total_score.append(0)
         # define multi-agent memories
         ma_memory = []
-        for i in self.learners: ma_memory.append(Memory())
-                
+        for i in range(self.agent_num): ma_memory.append(Memory())
+
         while ma_logger[0].num_steps < min_batch_size:
+            # sample random opponent old policies before every rollout
+            samplers = {}
+            if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0 or self.epoch <= self.cfg.termination_epoch:
+                samplers = self.learners
+            else:
+                assert idx is not None
+                """set sampling policy for opponent"""
+                start = max(math.floor(
+                    (self.epoch-self.cfg.termination_epoch) * self.cfg.delta + self.cfg.termination_epoch), 
+                    self.cfg.termination_epoch)
+                end = self.epoch
+                samplers[1-idx] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
+                ckpt = np.random.randint(start, end) if start!=end else end
+                # get ckpt modeal
+                cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
+                model_cp = pickle.load(open(cp_path, "rb"))
+                samplers[1-idx].load_ckpt(model_cp)
+
+                """set sampling policy for self"""
+                samplers[idx] = self.learners[idx]
+
             states, info = self.env.reset()
             # normalize states
-            for i, learner in self.learners.items():
-                if learner.running_state is not None:
-                    states[i] = learner.running_state(states[i])
+            for i, sampler in samplers.items():
+                if sampler.running_state is not None:
+                    states[i] = sampler.running_state(states[i])
                 ma_logger[i].start_episode(self.env)
             
             for t in range(10000):
@@ -171,15 +189,15 @@ class MultiAgentRunner(BaseRunner):
                 # select actions
                 actions = []
                 
-                for i, learner in self.learners.items():
-                    actions.append(learner.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
+                for i, sampler in samplers.items():
+                    actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
                 
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
                 
                 # normalize states
-                for i, learner in self.learners.items():
-                    if learner.running_state is not None:
-                        next_states[i] = learner.running_state(next_states[i])
+                for i, sampler in samplers.items():
+                    if sampler.running_state is not None:
+                        next_states[i] = sampler.running_state(next_states[i])
 
                 # use custom or env reward
                 if self.cfg.use_exploration_curriculum:
@@ -187,7 +205,7 @@ class MultiAgentRunner(BaseRunner):
                     c_rewards, c_infos = self.custom_reward(infos)
                     rewards = c_rewards
                 else:
-                    c_rewards, c_infos = [0.0 for _ in self.learners], [np.array([0.0]) for _ in self.learners]
+                    c_rewards, c_infos = [0.0 for _ in samplers], [np.array([0.0]) for _ in samplers]
                     rewards = env_rewards
                 # add end reward
                 if self.end_reward and infos.get('end', False):
@@ -199,26 +217,27 @@ class MultiAgentRunner(BaseRunner):
 
                 # normalize rewards and train use this value
                 if self.cfg.use_reward_scaling:
-                    assert self.learners[0].reward_scaling
+                    assert samplers[0].reward_scaling
                     rewards = list(rewards)
-                    for i, learner in self.learners.items():
-                        rewards[i] = learner.reward_scaling(rewards[i])
+                    for i, sampler in samplers.items():
+                        rewards[i] = sampler.reward_scaling(rewards[i])
                     rewards = tuple(rewards)
 
-                masks = [1 for _ in self.learners]
+                masks = [1 for _ in samplers]
                 if truncated:
                     draw = True
                 elif terminateds[0]:
-                    for i in self.learners:
+                    for i in samplers:
                         if "winner" in infos[i]:
                             draw = False
                             total_score[i] += 1
-                    masks = [0 for _ in self.learners]
+                    masks = [0 for _ in samplers]
 
-                exps = [(1-use_mean_action) for _ in self.learners]
+                exps = [(1-use_mean_action) for _ in samplers]
                 self.push_memory(ma_memory, states, actions, masks, next_states, rewards, exps)
 
                 if terminateds[0] or truncated:
+                    total_score[-1] += 1
                     break
                 states = next_states
 
@@ -238,88 +257,138 @@ class MultiAgentRunner(BaseRunner):
         for i, learner in self.learners.items():
             to_test(*learner.sample_modules)
 
-        with to_cpu(*reduce(add, (learner.sample_modules for i, learner in self.learners.items()))):
-            with torch.no_grad():
-                thread_batch_size = int(math.floor(min_batch_size / nthreads))
-                torch.set_num_threads(1) # bug occurs due to thread pools copy while forking
-                queue = multiprocessing.Queue()
-                memories = [None] * nthreads
-                loggers = [None] * nthreads
-                total_scores = [None] * nthreads
-                for i in range(nthreads-1):
-                    worker_args = (i+1, queue, thread_batch_size, mean_action, render)
-                    worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
-                    worker.start()
-                memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render)
+        if (not self.cfg.use_opponent_sample) or mean_action:
+            with to_cpu(*reduce(add, (learner.sample_modules for i, learner in self.learners.items()))):
+                with torch.no_grad():
+                    thread_batch_size = int(math.floor(min_batch_size / nthreads))
+                    torch.set_num_threads(1) # bug occurs due to thread pools copy while forking
+                    queue = multiprocessing.Queue()
+                    memories = [None] * nthreads
+                    loggers = [None] * nthreads
+                    total_scores = [None] * nthreads
+                    for i in range(nthreads-1):
+                        worker_args = (i+1, queue, thread_batch_size, mean_action, render)
+                        worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
+                        worker.start()
+                    memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render)
 
-                for i in range(nthreads - 1):
-                    pid, worker_memory, worker_logger, total_score = queue.get()
-                    memories[pid] = worker_memory
-                    loggers[pid] = worker_logger
-                    total_scores[pid] = total_score
+                    for i in range(nthreads - 1):
+                        pid, worker_memory, worker_logger, total_score = queue.get()
+                        memories[pid] = worker_memory
+                        loggers[pid] = worker_logger
+                        total_scores[pid] = total_score
 
-                # merge batch data and log data from multiprocessings
-                ma_buffer = self.traj_cls(memories).buffers
-                ma_logger = self.logger_cls.merge(loggers, **self.logger_kwargs)
+                    # merge batch data and log data from multiprocessings
+                    ma_buffer = self.traj_cls(memories).buffers
+                    ma_logger = self.logger_cls.merge(loggers, **self.logger_kwargs)
 
-                # merge total scores
-                total_scores = list(map(list, zip(*total_scores)))
-                total_scores = [sum(scores) for scores in total_scores]
-        
-        for logger in ma_logger: logger.sample_time = time.time() - t_start
-        return ma_buffer, ma_logger, total_scores
+                    # win rate
+                    total_scores = list(zip(*total_scores))
+                    total_scores = [sum(scores) for scores in total_scores]
+                    win_rate = [total_scores[0]/total_scores[-1], total_scores[1]/total_scores[-1]]
+                
+            for logger in ma_logger: logger.sample_time = time.time() - t_start
+            return ma_buffer, ma_logger, win_rate
+
+        else:
+            with to_cpu(*reduce(add, (learner.sample_modules for i, learner in self.learners.items()))):
+                with torch.no_grad():
+                    thread_batch_size = int(math.floor(min_batch_size / nthreads))
+                    torch.set_num_threads(1) # bug occurs due to thread pools copy while forking
+                    # for agent0
+                    queue_0 = multiprocessing.Queue()
+                    memories_0 = [None] * nthreads
+                    loggers_0 = [None] * nthreads
+                    total_scores_0 = [None] * nthreads
+                    # for agent1
+                    queue_1 = multiprocessing.Queue()
+                    memories_1 = [None] * nthreads
+                    loggers_1 = [None] * nthreads
+                    total_scores_1 = [None] * nthreads
+
+                    for i in range(nthreads-1):
+                        worker_args_0 = (i+1, queue_0, thread_batch_size, mean_action, render, 0)
+                        worker_0 = multiprocessing.Process(target=self.sample_worker, args=worker_args_0)
+                        worker_0.start()
+                        worker_args_1 = (i+1, queue_1, thread_batch_size, mean_action, render, 1)
+                        worker_1 = multiprocessing.Process(target=self.sample_worker, args=worker_args_1)
+                        worker_1.start()
+                    memories_0[0], loggers_0[0], total_scores_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, 0)
+                    memories_1[0], loggers_1[0], total_scores_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, 1)
+
+                    for i in range(nthreads - 1):
+                        pid_0, worker_memory_0, worker_logger_0, total_score_0 = queue_0.get()
+                        memories_0[pid_0] = worker_memory_0
+                        loggers_0[pid_0] = worker_logger_0
+                        total_scores_0[pid_0] = total_score_0
+
+                        pid_1, worker_memory_1, worker_logger_1, total_score_1 = queue_1.get()
+                        memories_1[pid_1] = worker_memory_1
+                        loggers_1[pid_1] = worker_logger_1
+                        total_scores_1[pid_1] = total_score_1
+                    
+                    # merge batch data and log data from multiprocessings
+                    ma_buffer_0 = self.traj_cls(memories_0).buffers
+                    ma_logger_0 = self.logger_cls.merge(loggers_0, **self.logger_kwargs)
+
+                    # merge batch data and log data from multiprocessings
+                    ma_buffer_1 = self.traj_cls(memories_1).buffers
+                    ma_logger_1 = self.logger_cls.merge(loggers_1, **self.logger_kwargs)
+
+                    # win rate
+                    total_scores_0 = list(zip(*total_scores_0))
+                    total_scores_0 = [sum(scores) for scores in total_scores_0]
+                    total_scores_1 = list(zip(*total_scores_1))
+                    total_scores_1 = [sum(scores) for scores in total_scores_1]
+                    win_rate = [total_scores_0[0]/total_scores_0[-1], total_scores_1[1]/total_scores_1[-1]]
+
+                    # extract corresponding agent data 
+                    b = [ma_buffer_0[0], ma_buffer_1[1]]
+                    l = [ma_logger_0[0], ma_logger_1[1]]
+
+            for _ in l: _.sample_time = time.time() - t_start
+            return b, l, win_rate
     
     def load_checkpoint(self, checkpoint):
-        if isinstance(checkpoint, int):
-            cp_path = '%s/epoch_%04d.p' % (self.model_dir, checkpoint)
-            epoch = checkpoint
+        assert isinstance(checkpoint, list) or isinstance(checkpoint, tuple)
+        for i, learner in self.learners.items():
+            self.load_agent_checkpoint(checkpoint[i], i)
+    
+    def load_agent_checkpoint(self, ckpt, idx):
+        if isinstance(ckpt, int):
+            cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), ckpt)
         else:
-            assert isinstance(checkpoint, str)
-            cp_path = '%s/%s.p' % (self.model_dir, checkpoint)
-        self.logger.info('loading model from checkpoint: %s' % cp_path)
+            assert isinstance(ckpt, str)
+            cp_path = '%s/%s/%s.p' % (self.model_dir, "agent_"+str(idx), ckpt)
+        self.logger.info('loading agent_%s model from checkpoint: %s' % (str(idx), cp_path))
         model_cp = pickle.load(open(cp_path, "rb"))
 
-        # load epoch
-        if 'epoch' in model_cp:
-            epoch = model_cp['epoch']
-        else:
-            epoch = model_cp['0']['epoch']
         # load model
-        for i, learner in self.learners.items():
-            learner.load_ckpt(model_cp[str(i)])
-            learner.pre_epoch_update(epoch) # set anneal params
-    
-    def load_agent_params(self, delta=0., idx=None):
-        epoch = self.epoch
-        start = max(math.floor(epoch * delta), 1)
-        end = epoch
-        ckpt = np.random.randint(start, end) if start!=end else end
-        ckpt_path = '%s/epoch_%04d.p' % (self.model_dir, ckpt)
-        shadow_model = pickle.load(open(ckpt_path, "rb"))[str(idx)]
-        self.learners[idx].load_ckpt(shadow_model)
+        self.learners[idx].load_ckpt(model_cp)
 
     def save_checkpoint(self, epoch):
-        
-        def save(cp_path, idx=None):
-            model_cp = {}
-            for i, learner in self.learners.items():
-                if idx:
-                    model_cp[str(i)] = self.learners[idx].save_ckpt(epoch)
-                else:
-                    model_cp[str(i)] = learner.save_ckpt(epoch)
-            pickle.dump(model_cp, open(cp_path, 'wb'))
+        def save(cp_path, idx):
+            try:
+                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
+            except FileNotFoundError:
+                folder_path = os.path.dirname(cp_path)
+                os.makedirs(folder_path, exist_ok=True)
+                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
+            except Exception as e:
+                print("An error occurred while saving the model:", e)
 
         cfg = self.cfg
         additional_saves = cfg.agent_specs.get('additional_saves', None)
         if (cfg.save_model_interval > 0 and (epoch+1) % cfg.save_model_interval == 0) or \
            (additional_saves is not None and (epoch+1) % additional_saves[0] == 0 and epoch+1 <= additional_saves[1]):
             self.writer.flush()
-            save('%s/epoch_%04d.p' % (self.model_dir, epoch + 1))
+            for i in self.learners:
+                save('%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(i), epoch + 1), i)
         for i in self.learners:
             if self.learners[i].save_best_flag:
                 self.writer.flush()
                 self.logger.critical(f"save best checkpoint with agent_{i}'s rewards {self.learners[i].best_reward:.2f}!")
-                save('%s/best.p' % self.model_dir, idx=i)
+                save('%s/%s/best.p' % (self.model_dir, "agent_"+str(i)), i)
     
     def display(self, num_episode=3, mean_action=True):
         total_score = [0 for _ in self.learners]

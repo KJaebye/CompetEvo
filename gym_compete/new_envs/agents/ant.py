@@ -5,10 +5,10 @@ import os
 
 class Ant(Agent):
 
-    def __init__(self, agent_id, xml_path=None):
+    def __init__(self, agent_id, xml_path=None, n_agents=2):
         if xml_path is None:
             xml_path = os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml")
-        super(Ant, self).__init__(agent_id, xml_path)
+        super(Ant, self).__init__(agent_id, xml_path, n_agents)
 
     def set_goal(self, goal):
         self.GOAL = goal
@@ -31,7 +31,7 @@ class Ant(Agent):
         )
         qpos = self.get_qpos()
         agent_standing = qpos[2] >= 0.28
-        survive = 1.0 if agent_standing else -1.
+        survive = 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
         reward_info = dict()
@@ -41,9 +41,9 @@ class Ant(Agent):
         reward_info['reward_survive'] = survive
         reward_info['reward_move'] = reward
 
-        done = not agent_standing
+        terminated = not agent_standing
 
-        return reward, done, reward_info
+        return reward, terminated, reward_info
 
 
     def _get_obs(self):
@@ -69,6 +69,7 @@ class Ant(Agent):
         self.observation_space = Box(low, high)
 
     def reached_goal(self):
+        if self.n_agents == 1: return False
         xpos = self.get_body_com('torso')[0]
         if self.GOAL > 0 and xpos > self.GOAL:
             return True

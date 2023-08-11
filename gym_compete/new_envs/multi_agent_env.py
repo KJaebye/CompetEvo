@@ -169,7 +169,7 @@ class MultiAgentEnv(MujocoEnv):
         terminateds = self._get_done(dones, game_done)
         infos = tuple(infos)
         obses = self._get_obs()
-            
+        
         return obses, rews, terminateds, False, infos
 
     def _get_obs(self):

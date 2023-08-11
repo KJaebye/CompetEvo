@@ -1,4 +1,4 @@
-env_name: run-to-goal-human-v0
+env_name: run-to-goal-ant-v0
   
 # training parameters
 gamma: 0.995

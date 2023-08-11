@@ -25,7 +25,7 @@ def main():
                         help="run directory", 
                         required=True, 
                         type=str)
-    parser.add_argument('--epoch', type=str, default='best')
+    parser.add_argument('--ckpt', type=str, default='best')
     args = parser.parse_args()
     # Load config file
     cfg_file = args.run_dir + "config.yml"
@@ -49,7 +49,7 @@ def main():
     logger.log_dir = '%slog' % logger.run_dir
     logger.tb_dir = '%stb' % logger.run_dir
 
-    epoch = int(args.epoch) if args.epoch.isdigit() else args.epoch
+    ckpt = [int(args.ckpt) if args.ckpt.isdigit() else args.ckpt] * 2
 
     # ----------------------------------------------------------------------------#
     # Set torch and random seed
@@ -67,9 +67,8 @@ def main():
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=False)
     
-    runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=epoch)
-    runner.display(num_episode=15, mean_action=True)
-    # runner.sample(min_batch_size=10000, mean_action=True, render=True, nthreads=1)
+    runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
+    runner.display(num_episode=5, mean_action=True)
 
 if __name__ == "__main__":
     main()

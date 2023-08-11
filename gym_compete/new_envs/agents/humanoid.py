@@ -32,6 +32,8 @@ class Humanoid(Agent):
     def after_step(self, action):
         pos_after = mass_center(self.get_body_mass(), self.get_xipos())
         forward_reward = 1.25 * (pos_after - self._pos_before) / self.env.model.opt.timestep
+        # forward_reward = .25 * (pos_after - self._pos_before) / self.env.model.opt.timestep
+
         if self.move_left:
             forward_reward *= -1
         ctrl_cost = .1 * np.square(action).sum()
@@ -41,6 +43,7 @@ class Humanoid(Agent):
         qpos = self.get_qpos()
         survive = 5.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
+
         # reward_goal = - np.abs(qpos[0].item() - self.GOAL)
         # reward += reward_goal
 
@@ -119,6 +122,7 @@ class Humanoid(Agent):
         self.observation_space = Box(low, high)
 
     def reached_goal(self):
+        if self.n_agents == 1: return False
         xpos = self.get_body_com('torso')[0]
         if self.GOAL > 0 and xpos > self.GOAL:
             return True

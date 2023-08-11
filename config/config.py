@@ -63,10 +63,10 @@ class Config:
         self.env_init_height = cfg.get('env_init_height', False)
 
         # competition config
-        self.use_opponent_sample = cfg.get('use_opponent_sample', True)
+        self.use_opponent_sample = cfg.get('use_opponent_sample', False)
         self.use_shadow_sample = cfg.get('use_shadow_sample', False)
         self.delta = cfg.get('delta', 0.)
-        self.use_exploration_curriculum = cfg.get('use_exploration_curriculum', True)
+        self.use_exploration_curriculum = cfg.get('use_exploration_curriculum', False)
         self.termination_epoch = cfg.get('termination_epoch', 200)
 
         # robot config

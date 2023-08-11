@@ -19,6 +19,24 @@ register(
 )
 
 register(
+    id='run-to-goal-ant-v0',
+    entry_point='gym_compete.new_envs:MultiAgentEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['ant'],
+            'scene_xml_path': os.path.join(
+                os.path.dirname(__file__),
+                "new_envs", "assets",
+                "world_body.ant_body.xml"
+            ),
+            # 'init_pos': [(-1, 0, 0.75)],
+            # 'ini_euler': [(0, 0, 0)],
+            'init_pos': [(1, 0, 0.75)],
+            'ini_euler': [(0, 0, 180)],
+            'max_episode_steps': 500,
+            },
+)
+
+register(
     id='run-to-goal-humans-v0',
     entry_point='gym_compete.new_envs:MultiAgentEnv',
     disable_env_checker=True,
@@ -44,7 +62,8 @@ register(
                 "world_body.humanoid_body.xml"
             ),
             'init_pos': [(-1, 0, 1.4)],
-            'ini_euler': [(0, 0, 0)]
+            'ini_euler': [(0, 0, 0)],
+            'max_episode_steps': 500,
             },
 )
 

@@ -42,8 +42,9 @@ class Learner:
         self.value_opt_niter = 1
         self.policy_grad_clip = [(self.policy_net.parameters(), 40)]
 
-        # initialize reward and save flag
+        # initialize best and save flag
         self.best_reward = -1000.0
+        self.best_win_rate = 0.
         self.save_best_flag = False
 
     def pre_epoch_update(self, epoch):
