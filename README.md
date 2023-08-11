@@ -13,10 +13,10 @@ docker run -it --name competevo -v ws:/root/ws --gpus=all -v /tmp/.x11-unix:/tmp
 
 # Training
 ```
-python train.py --cfg config/multiagent_escape_bowl.yaml
+python train.py --cfg config/run-to-goal-ants-v0.yaml
 ```
 
 # Dispaly
 ```
-python display.py 
+python display.py --run_dir ...
 ```
