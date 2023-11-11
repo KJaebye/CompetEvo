@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: competevo
+Version: 0.0.1
+Summary: Strategies Learning and Morph Evolution with Competition
+Author: Kangyao Huang
+Keywords: robot learning,evolution
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.8
+License-File: LICENSE
