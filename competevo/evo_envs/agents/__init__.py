@@ -1,1 +1,0 @@
-from .evo_ant_fighter import EvoAntFighter
