@@ -40,18 +40,17 @@ import torch
 import numpy as np
 import operator, random
 from copy import deepcopy
-
 import sys
-
 import abc
-from .vec_task import Env
+
+from .evo_env import EvoEnv
 
 
-class MA_VecTask(Env):
+class MA_Evo_VecTask(EvoEnv):
 
     def __init__(self, config, rl_device, sim_device, graphics_device_id, headless,
                  virtual_screen_capture: bool = False, force_render: bool = False):
-        """Initialise the `MA_VecTask`.
+        """Initialise the `MA_Evo_VecTask`.
 
         Args:
             config: config dictionary for the environment.
@@ -88,17 +87,59 @@ class MA_VecTask(Env):
         self.last_rand_step = -1
         for env_id in range(self.num_envs):
             self.extern_actor_params[env_id] = None
-
-        # create envs, sim and viewer
+        
+    def reset(self):
+        """
+            Reset the environment.
+        """
+        # destroy last sim
+        if self.sim is not None:
+            self.gym.destroy_sim(self.sim)
+            self.viewer.close()
+        
         self.sim_initialized = False
+        self.stage = "skeleton_transform"
+        self.cur_t = 0
+
+    def step(self, actions):
+        if not self.sim_initialized:
+            self.stage = ""
+            return self._get_obs(), 0, False, {'use_transform_action': False, 'stage': 'execution'}
+        
+        self.cur_t += 1
+        # skeleton transform stage
+        if self.stage == 'skeleton_transform':
+            skel_a = actions[:, -1]
+            succ = self.apply_skel_action(skel_a)
+            if not succ:
+                return self._get_obs(), 0.0, True, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+
+            if self.cur_t == self.cfg.skel_transform_nsteps:
+                self.transit_attribute_transform()
+
+            ob = self._get_obs()
+            reward = 0.0
+            done = False
+            return ob, reward, done, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+
+    def gym_reset(self, assets: list):
+        """
+            Reset the gym envs by creating all envs with differnet robot desgins.
+        """
+        # create new sim and viewer
         self.create_sim()
         self.gym.prepare_sim(self.sim)
         self.sim_initialized = True
 
         self.set_viewer()
-        self.allocate_buffers()
-
         self.obs_dict = {}
+
+
+    def get_robot_info(self):
+        """
+            Get robot skeletons and arttributes information.
+        """
+        return NotImplementedError
 
     def set_viewer(self):
         """Create the viewer."""
@@ -147,8 +188,6 @@ class MA_VecTask(Env):
         self.reset_buf = torch.ones(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.timeout_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
-        self.progress_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.randomize_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
@@ -204,10 +243,9 @@ class MA_VecTask(Env):
     @abc.abstractmethod
     def post_physics_step(self):
         """Compute reward and observations, reset any environments that require it."""
-        return NotImplementedError
 
-    def step(self, actions: torch.Tensor):
-        """Step the physics of the environment.
+    def gym_step(self, actions: torch.Tensor):
+        """Step the physics of the Isaac Gym environment.
 
         Args:
             actions: actions to apply
@@ -256,19 +294,6 @@ class MA_VecTask(Env):
 
         return actions
 
-    def reset(self, env_ids=None) -> torch.Tensor:
-        """Reset the environment.
-        """
-        if (env_ids is None):
-            # zero_actions = self.zero_actions()
-            # self.step(zero_actions)
-            env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
-            self.reset_idx(env_ids)
-            self.compute_observations()
-            self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
-        else:
-            self._reset_envs(env_ids=env_ids)
-        return
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):

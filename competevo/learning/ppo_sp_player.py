@@ -127,7 +127,6 @@ class SPPlayer(BasePlayer):
             player.reset_envs()
 
     def _build_player_pool(self, params, player_num):
-
         if self.player_pool_type == 'multi_thread':
             return PFSPPlayerProcessPool(max_length=player_num,
                                          device=self.device)
