@@ -204,7 +204,6 @@ class MA_VecTask(Env):
     @abc.abstractmethod
     def post_physics_step(self):
         """Compute reward and observations, reset any environments that require it."""
-        return NotImplementedError
 
     def step(self, actions: torch.Tensor):
         """Step the physics of the environment.

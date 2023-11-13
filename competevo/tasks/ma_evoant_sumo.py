@@ -111,29 +111,91 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.hp = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
         self.hp_op = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
 
-    def step(self, actions):
-        if not self.sim_initialized:
-            return self._get_obs(), 0, False, {'use_transform_action': False, 'stage': 'execution'}
-        
-        self.cur_t += 1
-        # skeleton transform stage
-        if self.stage == 'skeleton_transform':
-            skel_a = actions[:]
-            succ = self.apply_skel_action(skel_a)
-            if not succ:
-                return self._get_obs(), 0.0, True, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+    def pre_physics_step(self, actions):
+        # actions.shape = [num_envs * num_agents, num_actions], stacked as followed:
+        # {[(agent1_act_1, agent1_act2)|(agent2_act1, agent2_act2)|...]_(env0),
+        #  [(agent1_act_1, agent1_act2)|(agent2_act1, agent2_act2)|...]_(env1),
+        #  ... }
 
-            if self.cur_t == self.cfg.skel_transform_nsteps:
-                self.transit_attribute_transform()
+        self.actions = actions.clone().to(self.device)
+        self.actions = torch.cat((self.actions[:self.num_envs], self.actions[self.num_envs:]), dim=-1)
 
-            ob = self._get_obs()
-            reward = 0.0
-            done = False
-            return ob, reward, done, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+        # reshape [num_envs * num_agents, num_actions] to [num_envs, num_agents * num_actions]
+        targets = self.actions
 
+        self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(targets))
 
+    def post_physics_step(self):
+        """
+            Gym post step.
+        """
+        self.progress_buf += 1
+        self.randomize_buf += 1
 
+        self.compute_observations()
+        self.compute_reward(self.actions)
+        self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
 
+    def compute_observations(self, actions: None):
+        """
+            Calculate ant observations.
+        """
+        if self.stage == "skel_trans":
+            assert actions is not None, "Skeleton transform needs actions to get obs, edge, node, and body_ind infos!"
+            # agent
+            self.obs_buf[:self.num_envs] = ...
+            self.edge_buf[:self.num_envs] = ...
+            self.stage_buf[:self.num_envs] = 0 # 0 for skel_trans
+            self.num_nodes_buf[:self.num_envs] = ...
+            self.body_ind[:self.num_envs] = ...
+            # agent opponent
+            self.obs_buf[self.num_envs:] = ...
+            self.edge_buf[self.num_envs:] = ...
+            self.stage_buf[self.num_envs:] = 0 # 0 for skel_trans
+            self.num_nodes_buf[self.num_envs:] = ...
+            self.body_ind[self.num_envs:] = ...
+        elif self.stage == "attr_trans":
+            assert actions is not None, "Attribute transform needs actions to get obs, edge, node, and body_ind infos!"
+            # agent
+            self.obs_buf[:self.num_envs] = ...
+            self.edge_buf[:self.num_envs] = ...
+            self.stage_buf[:self.num_envs] = 0 # 0 for skel_trans
+            self.num_nodes_buf[:self.num_envs] = ...
+            self.body_ind[:self.num_envs] = ...
+            # agent opponent
+            self.obs_buf[self.num_envs:] = ...
+            self.edge_buf[self.num_envs:] = ...
+            self.stage_buf[self.num_envs:] = 0 # 0 for skel_trans
+            self.num_nodes_buf[self.num_envs:] = ...
+            self.body_ind[self.num_envs:] = ...
+        else: # execution stage
+            assert self.sim_initialized is True
+            self.gym.refresh_dof_state_tensor(self.sim)
+            self.gym.refresh_actor_root_state_tensor(self.sim)
+            self.gym.refresh_force_sensor_tensor(self.sim)
+            self.gym.refresh_dof_force_tensor(self.sim)
+            self.obs_buf[:self.num_envs] = \
+                compute_ant_observations(
+                    self.root_states[0::2],
+                    self.root_states[1::2],
+                    self.dof_pos,
+                    self.dof_vel,
+                    self.dof_limits_lower,
+                    self.dof_limits_upper,
+                    self.dof_vel_scale,
+                    self.termination_height
+                )
+
+            self.obs_buf[self.num_envs:] = compute_ant_observations(
+                self.root_states[1::2],
+                self.root_states[0::2],
+                self.dof_pos_op,
+                self.dof_vel_op,
+                self.dof_limits_lower,
+                self.dof_limits_upper,
+                self.dof_vel_scale,
+                self.termination_height
+            )
 
 
 

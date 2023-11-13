@@ -41,6 +41,7 @@ env:
     assetFileName: "mjcf/nv_ant.xml"
 
 robot:
+  skel_transform_nsteps: 5
   obs_specs:
     attr: ['depth']
     sim: []
@@ -49,7 +50,7 @@ robot:
     use_projected_params: true
     use_body_ind: true
   max_body_depth: 4
-  
+
 
 
 # set to True if you use camera sensors in the environment

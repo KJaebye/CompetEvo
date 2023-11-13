@@ -78,6 +78,7 @@ class EvoEnv(ABC):
         # self.num_actions = config["env"]["numActions"]
 
         # design options
+        self.skel_transform_nsteps = config["robot"]["skel_transform_nsteps"]
         self.clip_qvel = config["robot"]["obs_specs"]["clip_qvel"]
         self.use_projected_params = config["robot"]["obs_specs"]["use_projected_params"]
         self.abs_design = config["robot"]["obs_specs"]["abs_design"]

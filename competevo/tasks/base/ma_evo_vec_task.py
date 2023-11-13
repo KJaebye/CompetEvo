@@ -45,6 +45,7 @@ import abc
 
 from .evo_env import EvoEnv
 
+stages = ['skel_trans', 'attr_trans', 'execution']
 
 class MA_Evo_VecTask(EvoEnv):
 
@@ -98,29 +99,34 @@ class MA_Evo_VecTask(EvoEnv):
             self.viewer.close()
         
         self.sim_initialized = False
-        self.stage = "skeleton_transform"
+        self.stage = "skel_trans"
         self.cur_t = 0
 
     def step(self, actions):
-        if not self.sim_initialized:
-            self.stage = ""
-            return self._get_obs(), 0, False, {'use_transform_action': False, 'stage': 'execution'}
-        
         self.cur_t += 1
         # skeleton transform stage
-        if self.stage == 'skeleton_transform':
+        if self.stage == 'skel_trans':
             skel_a = actions[:, -1]
             succ = self.apply_skel_action(skel_a)
             if not succ:
-                return self._get_obs(), 0.0, True, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+                self.compute_observations(skel_a)
+                self.compute_rewards()
+                return
+            if self.cur_t == self.skel_transform_nsteps:
+                self.stage = 'attr_trans'
+            self.compute_observations(skel_a)
+            self.compute_rewards()
+            return
+        # attribute transform stage
+        elif self.stage == 'attr_trans':
+            
 
-            if self.cur_t == self.cfg.skel_transform_nsteps:
-                self.transit_attribute_transform()
 
-            ob = self._get_obs()
-            reward = 0.0
-            done = False
-            return ob, reward, done, {'use_transform_action': True, 'stage': 'skeleton_transform'}
+
+        
+        
+    def compute_observations(self, actions: None):
+        return NotImplementedError
 
     def gym_reset(self, assets: list):
         """
@@ -177,12 +183,19 @@ class MA_Evo_VecTask(EvoEnv):
         inherit from this one, and are read in `step` and other related functions.
 
         """
-
         # allocate buffers
+        # transform2act state data
         self.obs_buf = torch.zeros(
-            (self.num_envs * self.num_agents, self.num_obs), device=self.device, dtype=torch.float)
-        self.states_buf = torch.zeros(
-            (self.num_envs, self.num_states), device=self.device, dtype=torch.float)
+            (self.num_envs * self.num_agents, self.max_num_nodes, self.obs_dim), device=self.device, dtype=torch.float)
+        self.edge_buf = torch.zeros(
+            (self.num_envs * self.num_agents, 2, (self.max_num_nodes-1)*2), device=self.device, dtype=torch.float)
+        self.stage_buf = torch.zeros(
+            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.int)
+        self.num_nodes_buf = torch.zeros(
+            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.float)
+        self.body_ind = torch.zeros(
+            (self.num_envs * self.num_agents, self.max_num_nodes), device=self.device, dtype=torch.float)
+        
         self.rew_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(

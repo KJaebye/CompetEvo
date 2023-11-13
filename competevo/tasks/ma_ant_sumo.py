@@ -378,9 +378,9 @@ class MA_Ant_Sumo(MA_VecTask):
         #  ... }
 
         self.actions = actions.clone().to(self.device)
-        self.actions = torch.cat((self.actions[:self.num_envs], self.actions[self.num_envs:]), dim=-1)
-
         # reshape [num_envs * num_agents, num_actions] to [num_envs, num_agents * num_actions]
+        self.actions = torch.cat((self.actions[:self.num_envs], self.actions[self.num_envs:]), dim=-1)
+        
         targets = self.actions
 
         self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(targets))

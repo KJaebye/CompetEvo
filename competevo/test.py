@@ -69,7 +69,8 @@ assets = []
 t0 = time.time()
 for asset_file in asset_files:
     asset_root = "../assets"
-    asset = gym.load_asset(sim, asset_root, asset_file)
+    # asset = gym.load_asset(sim, asset_root, asset_file)
+    asset = gym.load_mjcf(sim, asset_root, asset_file)
     assets.append(asset)
 t1 = time.time()
 print(t1-t0)
