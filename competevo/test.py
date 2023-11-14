@@ -1,6 +1,10 @@
 from isaacgym import gymapi
+from isaacgym import gymtorch
+from isaacgym.gymtorch import *
 from isaacgym import gymutil
 import time
+from competevo.robot.xml_robot import Robot
+import numpy as np
 
 def print_asset_info(asset, name):
     print("======== Asset info %s: ========" % (name))
@@ -32,6 +36,63 @@ def print_asset_info(asset, name):
         type_name = gym.get_dof_type_string(type)
         print(" %2d: '%s' (%s)" % (i, name, type_name))
 
+def get_graph_fc_edges(num_nodes):
+    edges = []
+    for i in range(num_nodes - 1):
+        for j in range(i + 1, num_nodes):
+            edges.append([i, j])
+            edges.append([j, i])
+    edges = np.stack(edges, axis=1)
+    return edges
+
+def get_attr_fixed(cfg, robot):
+    obs = []
+    for i, body in enumerate(robot.bodies):
+        obs_i = []
+        if 'depth' in cfg.get("attr", {}):
+            obs_depth = np.zeros(cfg.get('max_body_depth', 4))
+            obs_depth[body.depth] = 1.0
+            obs_i.append(obs_depth)
+        if 'jrange' in cfg.get("attr", {}):
+            obs_jrange = body.get_joint_range()
+            obs_i.append(obs_jrange)
+        if 'skel' in cfg.get("attr", {}):
+            obs_add = allow_add_body(body)
+            obs_rm = allow_remove_body(body)
+            obs_i.append(np.array([float(obs_add), float(obs_rm)]))
+        if len(obs_i) > 0:
+            obs_i = np.concatenate(obs_i)
+            obs.append(obs_i)
+    
+    if len(obs) == 0:
+        return None
+    obs = np.stack(obs)
+    return obs
+
+def get_attr_design(robot):
+    obs = []
+    for i, body in enumerate(robot.bodies):
+        obs_i = body.get_params([], pad_zeros=True, demap_params=True)
+        obs.append(obs_i)
+    obs = np.stack(obs)
+    return obs
+
+def allow_add_body(cfg, body):
+    add_body_condition = cfg['add_body_condition']
+    max_nchild = add_body_condition.get('max_nchild', 3)
+    min_nchild = add_body_condition.get('min_nchild', 0)
+    return body.depth >= cfg.get('min_body_depth', 1) and body.depth < cfg.get('max_body_depth', 4) - 1 and len(body.child) < max_nchild and len(body.child) >= min_nchild
+
+def allow_remove_body(cfg, body):
+    if body.depth >= cfg.get('min_body_depth', 1) + 1 and len(body.child) == 0:
+        if body.depth == 1:
+            return body.parent.child.index(body) > 0
+        else:
+            return True
+    return False
+
+import datetime
+import os
 
 # initialize gym
 gym = gymapi.acquire_gym()
@@ -64,16 +125,60 @@ if viewer is None:
     print("*** Failed to create viewer")
     quit()
 
-asset_files = ["mjcf/nv_ant.xml", "mjcf/base_ant.xml"]
+import yaml
+cfg_path = f'/home/kjaebye/ws/competevo/competevo/robot/evo_ant.yml'
+yml = yaml.safe_load(open(cfg_path, 'r'))
+cfg = yml['robot']
+base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant_evo_test.xml'
+xml_robot = Robot(cfg, base_ant_path, is_xml_str=False)
+
+# edit skel
+# skel_action = [0, 0, 0, 0, 0]
+skel_action = [1, 1, 1, 1, 1]
+bodies = list(xml_robot.bodies)
+for body, a in zip(bodies, skel_action):
+    if a == 1 and allow_add_body(cfg, body):
+        xml_robot.add_child_to_body(body)
+    if a == 2 and allow_remove_body(cfg, body):
+        xml_robot.remove_body(body)
+num_node = len(list(xml_robot.bodies))
+num_dof = num_node - 1
+print("num_node:\n", num_node)
+
+# edit attribute
+params_names = xml_robot.get_params(get_name=True)
+params = xml_robot.get_params()
+# print(params)
+
+new_params = params #+ .05
+xml_robot.set_params(new_params)
+params_new = xml_robot.get_params()
+
+design_ref_params = get_attr_design(xml_robot)
+attr_design_dim = design_ref_params.shape[-1]
+print("attr_design_shape:\n", design_ref_params.shape)
+attr_fixed_dim = get_attr_fixed(cfg['obs_specs'], xml_robot).shape[-1]
+print("attr_fixed_shape:\n", get_attr_fixed(cfg['obs_specs'], xml_robot).shape)
+edges = get_graph_fc_edges(num_node)
+print("fc_graph edges:\n", edges)
+edges = xml_robot.get_gnn_edges()
+print("gnn edges:\n", edges)
+
+# write a xml
+os.makedirs('out', exist_ok=True)
+model_name = "ant_evo"
+xml_robot.write_xml(f'out/{model_name}_test.xml')
+asset_file = f"{model_name}_test.xml"
+
 assets = []
-t0 = time.time()
-for asset_file in asset_files:
-    asset_root = "../assets"
-    # asset = gym.load_asset(sim, asset_root, asset_file)
-    asset = gym.load_mjcf(sim, asset_root, asset_file)
-    assets.append(asset)
-t1 = time.time()
-print(t1-t0)
+asset_root = "./out"
+asset = gym.load_mjcf(sim, asset_root, asset_file)
+assets.append(asset)
+
+num_bodies = gym.get_asset_rigid_body_count(asset)
+print("num_bodies:\n", num_bodies)
+body_names = [gym.get_asset_rigid_body_name(asset, i) for i in range(num_bodies)]
+print("body_names:\n", body_names)
 
 # Setup environment spacing
 spacing = 2.0
@@ -101,10 +206,33 @@ for asset in assets:
     envs.append(env)
     actor_handles.append(actor_handle)
 
+# data aqurire
+actor_root_state = gym.acquire_actor_root_state_tensor(sim)
+dof_state_tensor = gym.acquire_dof_state_tensor(sim)
+sensor_tensor = gym.acquire_force_sensor_tensor(sim)
+
+gym.refresh_dof_state_tensor(sim)
+gym.refresh_actor_root_state_tensor(sim)
+
+root_states = gymtorch.wrap_tensor(actor_root_state)
+print(f'root states:\n {root_states}')
+
+# create some wrapper tensors for different slices
+dof_state = gymtorch.wrap_tensor(dof_state_tensor)
+print(f"dof state:\n {dof_state}")
+
+dof_prop = gym.get_actor_dof_properties(env, actor_handle)
+print("dof_prop:\n", dof_prop)
+
 while not gym.query_viewer_has_closed(viewer):
     # step the physics
     gym.simulate(sim)
     gym.fetch_results(sim, True)
+
+    # gym.refresh_actor_root_state_tensor(sim)
+    # gym.refresh_dof_state_tensor(sim)
+    # print(root_states)
+    # print(dof_state)
 
     # update the viewer
     gym.step_graphics(sim)

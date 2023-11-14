@@ -102,28 +102,11 @@ class MA_Evo_VecTask(EvoEnv):
         self.stage = "skel_trans"
         self.cur_t = 0
 
+        # reset buffers
+        self.allocate_buffers()
+
     def step(self, actions):
-        self.cur_t += 1
-        # skeleton transform stage
-        if self.stage == 'skel_trans':
-            skel_a = actions[:, -1]
-            succ = self.apply_skel_action(skel_a)
-            if not succ:
-                self.compute_observations(skel_a)
-                self.compute_rewards()
-                return
-            if self.cur_t == self.skel_transform_nsteps:
-                self.stage = 'attr_trans'
-            self.compute_observations(skel_a)
-            self.compute_rewards()
-            return
-        # attribute transform stage
-        elif self.stage == 'attr_trans':
-            
-
-
-
-        
+        return NotImplementedError
         
     def compute_observations(self, actions: None):
         return NotImplementedError
@@ -136,10 +119,10 @@ class MA_Evo_VecTask(EvoEnv):
         self.create_sim()
         self.gym.prepare_sim(self.sim)
         self.sim_initialized = True
-
         self.set_viewer()
-        self.obs_dict = {}
 
+        for asset in assets:
+            ...
 
     def get_robot_info(self):
         """
@@ -192,7 +175,7 @@ class MA_Evo_VecTask(EvoEnv):
         self.stage_buf = torch.zeros(
             (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.int)
         self.num_nodes_buf = torch.zeros(
-            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.float)
+            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.int)
         self.body_ind = torch.zeros(
             (self.num_envs * self.num_agents, self.max_num_nodes), device=self.device, dtype=torch.float)
         
@@ -201,6 +184,8 @@ class MA_Evo_VecTask(EvoEnv):
         self.reset_buf = torch.ones(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.timeout_buf = torch.zeros(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+        self.progress_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.randomize_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
@@ -263,6 +248,8 @@ class MA_Evo_VecTask(EvoEnv):
         Args:
             actions: actions to apply
         """
+        # check zero becuase in execution stage, only control action is computated
+        assert torch.all(actions[:, :, self.control_action_dim:] == 0)
 
         # randomize actions
         if self.dr_randomizations.get('actions', None):

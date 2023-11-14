@@ -72,49 +72,6 @@ class EvoEnv(ABC):
         self.num_environments = config["env"]["numEnvs"]
         self.num_agents = config["env"].get("numAgents", 1)  # used for multi-agent environments
 
-        # define transform2act evo obs, action dimensions
-        # self.num_observations = config["env"]["numObservations"]
-        # self.num_states = config["env"].get("numStates", 0)
-        # self.num_actions = config["env"]["numActions"]
-
-        # design options
-        self.skel_transform_nsteps = config["robot"]["skel_transform_nsteps"]
-        self.clip_qvel = config["robot"]["obs_specs"]["clip_qvel"]
-        self.use_projected_params = config["robot"]["obs_specs"]["use_projected_params"]
-        self.abs_design = config["robot"]["obs_specs"]["abs_design"]
-        self.use_body_ind = config["robot"]["obs_specs"]["use_body_ind"]
-
-        self.sim_specs = config["robot"]["obs_specs"]["sim"]
-        self.attr_specs = config["robot"]["obs_specs"]["attr"]
-
-        # dims
-        self.design_ref_params = 0
-        self.design_cur_params = 0
-        self.design_param_names = 0
-        self.attr_design_dim = 0
-        self.attr_fixed_dim = 0
-        self.gym_obs_dim = 0
-        self.index_base = 5
-
-        # actions dim
-        ###############################################################
-        #      control_action       attr_action        skel_action 
-        #   #-----------------##--------------------##---------------#
-        ###############################################################
-        self.skel_action_dim = 3 if config["robot"]["enable_remove"] else 2
-        self.attr_action_dim = self.attr_design_dim
-        self.control_action_dim = 1
-        self.action_dim = self.control_action_dim + self.attr_action_dim + 1
-        
-        # obses dim
-        ###############################################################
-        #      attr_fixed            gym_obs          attr_design 
-        #   #---------------##--------------------##---------------#
-        ###############################################################
-        self.skel_state_dim = self.attr_fixed_dim + self.attr_design_dim
-        self.attr_state_dim = self.attr_fixed_dim + self.attr_design_dim
-        self.obs_dim = self.attr_fixed_dim + self.gym_obs_dim + self.attr_design_dim
-
         self.control_freq_inv = config["env"].get("controlFrequencyInv", 1)
         self.clip_obs = config["env"].get("clipObservations", np.Inf)
         self.clip_actions = config["env"].get("clipActions", np.Inf)

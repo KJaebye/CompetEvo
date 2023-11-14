@@ -11,6 +11,9 @@ from isaacgym.gymtorch import *
 # from torch.tensor import Tensor
 
 from competevo.utils.torch_jit_utils import *
+from competevo.robot.xml_robot import Robot
+from competevo.robot.robo_utils import *
+
 from .base.ma_evo_vec_task import MA_Evo_VecTask
 
 
@@ -47,12 +50,82 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.Kd = self.cfg["env"]["control"]["damping"]
 
         # see func: compute_ant_observations() for details
-        # self.cfg["env"]["numObservations"] = 48 # dof pos(2) + dof vel(2) + dof action(2) + feet force sensor(force&torque, 6)
-        self.cfg["env"][
-            "numObservations"] = 40
-        self.cfg["env"]["numActions"] = 8
-        self.cfg["env"]["numAgents"] = 2
+        
+        # define transform2act evo obs, action dimensions
+        # robot config
+        robo_config = self.cfg['robot']
 
+        # design options
+        self.robot_param_scale = robo_config['robot_param_scale']
+        self.skel_transform_nsteps = robo_config["skel_transform_nsteps"]
+        self.clip_qvel = robo_config["obs_specs"]["clip_qvel"]
+        self.use_projected_params = robo_config["obs_specs"]["use_projected_params"]
+        self.abs_design = robo_config["obs_specs"]["abs_design"]
+        self.use_body_ind = robo_config["obs_specs"]["use_body_ind"]
+
+        self.sim_specs = robo_config["obs_specs"]["sim"]
+        self.attr_specs = robo_config["obs_specs"]["attr"]
+
+        # define all robots: num_envs * 2
+        self.base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
+        self.robots = {}
+        self.asset_files = []
+        # xml tmp dir
+        self.out_dir = 'out/evo_ant'
+        os.makedirs(self.out_dir, exist_ok=True)
+        for i in range(self.num_envs):
+            name = f"evo_ant_{i}"
+            name_op = f"evo_ant_op_{i}"
+            self.robots[name] = Robot(robo_config, self.base_ant_path, is_xml_str=False)
+            self.robots[name_op] = Robot(robo_config, self.base_ant_path, is_xml_str=False)
+            self.asset_files.append(f"{name}.xml")
+            self.asset_files.append(f"{name_op}.xml")
+
+        # data saved by names
+        self.design_ref_params = {}
+        self.design_cur_params = {}
+        self.design_param_names = {}
+        self.edges = {}
+        self.use_transform_action = {}
+        self.num_nodes = {}
+        
+        for name, robot in self.robots.items():
+            self.design_ref_params[name] = get_attr_design(robot)
+            self.design_cur_params[name] = get_attr_design(robot)
+            self.design_param_names = robot.get_params(get_name=True)
+            if robo_config["obs_specs"].get('fc_graph', False):
+                self.edges[name] = get_graph_fc_edges(len(robot.bodies))
+            else:
+                self.edges[name] = robot.get_gnn_edges()
+            self.num_nodes[name] = len(list(robot.bodies))
+        
+        # constant variables
+        self.attr_design_dim = 5
+        self.attr_fixed_dim = 4
+        self.gym_obs_dim = ... # 13?
+        self.index_base = 5
+
+        # actions dim: (num_nodes, action_dim)
+        ###############################################################
+        # action for every node:
+        #    control_action      attr_action        skel_action 
+        #   #-------------##--------------------##---------------#
+        self.skel_num_action = 3 if robo_config["enable_remove"] else 2 # it is not an action dimension
+        self.attr_action_dim = self.attr_design_dim
+        self.control_action_dim = 1 
+        self.action_dim = self.control_action_dim + self.attr_action_dim + 1
+        
+        # states dim and construction:
+        # [obses, edges, stage, num_nodes, body_index]
+
+        # obses dim (num_nodes, obs_dim)
+        ###############################################################
+        # observation for every node:
+        #      attr_fixed            gym_obs          attr_design 
+        #   #---------------##--------------------##---------------#
+        self.skel_state_dim = self.attr_fixed_dim + self.attr_design_dim
+        self.attr_state_dim = self.attr_fixed_dim + self.attr_design_dim
+        self.obs_dim = self.attr_fixed_dim + self.gym_obs_dim + self.attr_design_dim
 
         self.use_central_value = False
 
@@ -60,6 +133,9 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                          graphics_device_id=graphics_device_id,
                          headless=headless, virtual_screen_capture=virtual_screen_capture,
                          force_render=force_render)
+
+    def gym_reset(self, assets: list):
+        super().gym_reset(assets)
 
         if self.viewer is not None:
             for env in self.envs:
@@ -111,6 +187,77 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.hp = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
         self.hp_op = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
 
+
+    def step(self, actions):
+        """ action shape: (num_envs, num_agents, action_dim)
+        """
+        self.cur_t += 1
+        # skeleton transform stage
+        skel_a = actions[:, :, -1]
+        if self.stage == 'skel_trans':
+            def skel_trans(idx, actions, op=False):
+                name = f"evo_ant_{idx}" if op else f"evo_ant_op_{idx}"
+                apply_skel_action(self.robots[name], actions[op, :])
+                self.design_cur_params[name] = get_attr_design(self.robots[name])
+
+            # apply skel transform actions on robots
+            for idx in range(self.num_envs):
+                skel_trans(idx, skel_a[idx], op=False)
+                skel_trans(idx, skel_a[idx], op=True)
+
+            if self.cur_t == self.skel_transform_nsteps:
+                self.transit_attribute_transform()
+            self.compute_observations(skel_a)
+            self.compute_rewards()
+            return
+        
+        # attribute transform stage
+        elif self.stage == 'attr_trans':
+            design_a = actions[:, :, self.control_action_dim:-1]
+            
+            def attr_trans(idx, design_a, op=False):
+                name = f"evo_ant_{idx}" if op else f"evo_ant_op_{idx}"
+                if self.abs_design:
+                    design_params = design_a[op, :] * self.robot_param_scale
+                else:
+                    design_params = self.design_cur_params[name] \
+                                    + design_a[op, :] * self.robot_param_scale
+                set_design_params(self.robots[name], design_params, self.out_dir, name)
+
+                if self.use_projected_params:
+                    self.design_cur_params[name] = get_attr_design(self.robots[name])
+                else:
+                    self.design_cur_params[name] = design_params[op, :].copy()
+            
+            # apply attr transform actions on robots
+            for idx in range(self.num_envs):
+                attr_trans(idx, design_a[idx], op=False)
+                attr_trans(idx, design_a[idx], op=True)
+
+            self.transit_execution()
+
+            self.compute_observations(design_a)
+            self.compute_rewards()
+
+            ###############################################################################
+            ######## Create IsaacGym sim and envs for Control Training ####################
+            # create assets list
+            assets = ...
+            self.gym_reset(assets)
+
+
+        # execution stage
+        else:
+            self.control_nsteps += 1
+            self.gym_step(actions)
+            
+    def transit_attribute_transform(self):
+        self.stage = 'attribute_transform'
+
+    def transit_execution(self):
+        self.stage = 'execution'
+        self.control_nsteps = 0
+
     def pre_physics_step(self, actions):
         # actions.shape = [num_envs * num_agents, num_actions], stacked as followed:
         # {[(agent1_act_1, agent1_act2)|(agent2_act1, agent2_act2)|...]_(env0),
@@ -127,7 +274,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
     def post_physics_step(self):
         """
-            Gym post step.
+            IsaacGym post step.
         """
         self.progress_buf += 1
         self.randomize_buf += 1
