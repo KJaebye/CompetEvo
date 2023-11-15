@@ -1,4 +1,5 @@
 from typing import Tuple
+import attr
 import numpy as np
 import os
 import math
@@ -66,38 +67,35 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.sim_specs = robo_config["obs_specs"]["sim"]
         self.attr_specs = robo_config["obs_specs"]["attr"]
 
-        # define all robots: num_envs * 2
+        # define robots: 2
         self.base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
         self.robots = {}
-        self.asset_files = []
         # xml tmp dir
         self.out_dir = 'out/evo_ant'
         os.makedirs(self.out_dir, exist_ok=True)
-        for i in range(self.num_envs):
-            name = f"evo_ant_{i}"
-            name_op = f"evo_ant_op_{i}"
-            self.robots[name] = Robot(robo_config, self.base_ant_path, is_xml_str=False)
-            self.robots[name_op] = Robot(robo_config, self.base_ant_path, is_xml_str=False)
-            self.asset_files.append(f"{name}.xml")
-            self.asset_files.append(f"{name_op}.xml")
+        name = "evo_ant"
+        name_op = "evo_ant_op"
+        self.robot = Robot(robo_config, self.base_ant_path, is_xml_str=False)
+        self.robot_op = Robot(robo_config, self.base_ant_path, is_xml_str=False)
 
-        # data saved by names
-        self.design_ref_params = {}
-        self.design_cur_params = {}
-        self.design_param_names = {}
-        self.edges = {}
-        self.use_transform_action = {}
-        self.num_nodes = {}
-        
-        for name, robot in self.robots.items():
-            self.design_ref_params[name] = get_attr_design(robot)
-            self.design_cur_params[name] = get_attr_design(robot)
-            self.design_param_names = robot.get_params(get_name=True)
-            if robo_config["obs_specs"].get('fc_graph', False):
-                self.edges[name] = get_graph_fc_edges(len(robot.bodies))
-            else:
-                self.edges[name] = robot.get_gnn_edges()
-            self.num_nodes[name] = len(list(robot.bodies))
+        # ant
+        self.design_ref_params = get_attr_design(self.robot)
+        self.design_cur_params = get_attr_design(self.robot)
+        self.design_param_names = self.robot.get_params(get_name=True)
+        if robo_config["obs_specs"].get('fc_graph', False):
+            self.edges = get_graph_fc_edges(len(self.robot.bodies))
+        else:
+            self.edges = self.robot.get_gnn_edges()
+        self.num_nodes = len(list(self.robot.bodies))
+        # ant op
+        self.design_ref_params_op = get_attr_design(self.robot_op)
+        self.design_cur_params_op = get_attr_design(self.robot_op)
+        self.design_param_names_op = self.robot_op.get_params(get_name=True)
+        if robo_config["obs_specs"].get('fc_graph', False):
+            self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
+        else:
+            self.edges_op = self.robot_op.get_gnn_edges()
+        self.num_nodes_op = len(list(self.robot_op.bodies))
         
         # constant variables
         self.attr_design_dim = 5
@@ -134,9 +132,166 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                          headless=headless, virtual_screen_capture=virtual_screen_capture,
                          force_render=force_render)
 
-    def gym_reset(self, assets: list):
-        super().gym_reset(assets)
+    def step(self, all_actions: dict):
+        """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
+        """
+        assert all_actions.shape[1] == self.num_nodes + self.num_nodes_op
+        self.cur_t += 1
+        actions = all_actions[:, :self.num_nodes, :]
+        actions_op = all_actions[:, self.num_nodes:, :]
+        # skeleton transform stage
+        if self.stage == 'skel_trans':
+            # check data in a tensor are definitely equal along the first dimension
+            def check_equal(tensor):
+                return (tensor[0] == tensor).all()
+            assert check_equal(actions) and check_equal(actions_op) is True, \
+                "Skeleton transform stage needs all agents to have the same actions!"
+            # ant
+            skel_a = actions[0][:, :-1]
+            apply_skel_action(self.robot, skel_a)
+            self.design_cur_params = get_attr_design(self.robot)
+            # ant op
+            skel_a_op = actions_op[0][:, :-1]
+            apply_skel_action(self.robot_op, skel_a_op)
+            self.design_cur_params_op = get_attr_design(self.robot_op)
 
+            # transit to attribute transform stage
+            if self.cur_t == self.skel_transform_nsteps:
+                self.transit_attribute_transform()
+            self.compute_observations()
+            self.compute_rewards()
+            return
+        
+        # attribute transform stage
+        elif self.stage == 'attr_trans':
+            # check data in a tensor are definitely equal along the first dimension
+            def check_equal(tensor):
+                return (tensor[0] == tensor).all()
+            assert check_equal(actions) and check_equal(actions_op) is True, \
+                "Attribute transform stage needs all agents to have the same actions!"
+            
+            # ant
+            design_a = actions[0][:, self.control_action_dim:-1]
+            if self.abs_design:
+                design_params = design_a * self.robot_param_scale
+            else:
+                design_params = self.design_cur_params \
+                                + design_a * self.robot_param_scale
+            set_design_params(self.robot, design_params, self.out_dir, "evo_ant")
+            if self.use_projected_params:
+                self.design_cur_params = get_attr_design(self.robot)
+            else:
+                self.design_cur_params = design_params.copy()
+            # ant op
+            design_a_op = actions_op[0][:, self.control_action_dim:-1]
+            if self.abs_design:
+                design_params_op = design_a_op * self.robot_param_scale
+            else:
+                design_params_op = self.design_cur_params_op \
+                                   + design_a_op * self.robot_param_scale
+            set_design_params(self.robot_op, design_params_op, self.out_dir, "evo_ant_op")
+            if self.use_projected_params:
+                self.design_cur_params_op = get_attr_design(self.robot_op)
+            else:
+                self.design_cur_params_op = design_params_op.copy()
+
+            # transit to execution stage
+            self.transit_execution()
+
+            self.compute_observations()
+            self.compute_rewards()
+
+            ###############################################################################
+            ######## Create IsaacGym sim and envs for Execution ####################
+            ############################################################################### 
+            self.create_sim() # create sim and envs
+            self.gym.prepare_sim(self.sim)
+            self.sim_initialized = True
+            self.set_viewer()
+            self.allocate_buffers() # init buffers
+
+            # add border, add camera
+            self.add_border_cam()
+            # init gym state
+            self.gym_state_init()
+            self.gym_reset()
+
+        # execution stage
+        else:
+            # check zero becuase in execution stage, only control action is computated
+            assert torch.all(all_actions[:, :, self.control_action_dim:] == 0)
+            self.control_nsteps += 1
+            self.gym_step(all_actions)
+    
+    def gym_reset(self) -> torch.Tensor:
+        """Reset all environments.
+        """
+        env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+        self.reset_idx(env_ids)
+        self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
+        # reset buffers
+        self.allocate_buffers()
+
+    def reset_idx(self, env_ids):
+        # print('reset.....', env_ids)
+        # Randomization can happen only at reset time, since it can reset actor positions on GPU
+        if self.randomize:
+            self.apply_randomizations(self.randomization_params)
+
+        # ant
+        positions = torch_rand_float(-0.2, 0.2, (len(env_ids), self.num_dof), device=self.device)
+        velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
+
+        self.dof_pos[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions, self.dof_limits_lower,
+                                             self.dof_limits_upper)
+        self.dof_vel[env_ids] = velocities
+        # ant op
+        positions_op = torch_rand_float(-0.2, 0.2, (len(env_ids), self.num_dof_op), device=self.device)
+        velocities_op = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof_op), device=self.device)
+
+        self.dof_pos_op[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions_op, self.dof_limits_lower_op,
+                                                self.dof_limits_upper_op)
+        self.dof_vel_op[env_ids] = velocities_op
+
+        env_ids_int32 = (torch.cat((self.actor_indices[env_ids], self.actor_indices_op[env_ids]))).to(dtype=torch.int32)
+        agent_env_ids = expand_env_ids(env_ids, 2)
+
+        rand_angle = torch.rand((len(env_ids),), device=self.device) * torch.pi * 2
+
+        rand_pos = torch.ones((len(agent_env_ids), 2), device=self.device) * (
+                self.borderline_space * torch.ones((len(agent_env_ids), 2), device=self.device) - torch.rand(
+            (len(agent_env_ids), 2), device=self.device) * 2)
+        rand_pos[0::2, 0] *= torch.cos(rand_angle)
+        rand_pos[0::2, 1] *= torch.sin(rand_angle)
+        rand_pos[1::2, 0] *= torch.cos(rand_angle + torch.pi)
+        rand_pos[1::2, 1] *= torch.sin(rand_angle + torch.pi)
+        rand_floats = torch_rand_float(-1.0, 1.0, (len(agent_env_ids), 3), device=self.device)
+        rand_rotation = quat_from_angle_axis(rand_floats[:, 1] * np.pi, self.z_unit_tensor[agent_env_ids])
+        rand_rotation2 = quat_from_angle_axis(rand_floats[:, 2] * np.pi, self.z_unit_tensor[agent_env_ids])
+        self.root_states[agent_env_ids] = self.initial_root_states[agent_env_ids]
+        self.root_states[agent_env_ids, :2] = rand_pos
+        self.root_states[agent_env_ids[1::2], 3:7] = rand_rotation[1::2]
+        self.root_states[agent_env_ids[0::2], 3:7] = rand_rotation2[0::2]
+        self.gym.set_actor_root_state_tensor_indexed(self.sim,
+                                                     gymtorch.unwrap_tensor(self.root_states),
+                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+
+        self.gym.set_dof_state_tensor_indexed(self.sim,
+                                              gymtorch.unwrap_tensor(self.dof_state),
+                                              gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+        self.pos_before = self.root_states[0::2, :2].clone()
+
+        self.progress_buf[env_ids] = 0
+        self.reset_buf[env_ids] = 0
+
+    def transit_attribute_transform(self):
+        self.stage = 'attribute_transform'
+
+    def transit_execution(self):
+        self.stage = 'execution'
+        self.control_nsteps = 0
+    
+    def add_border_cam(self):
         if self.viewer is not None:
             for env in self.envs:
                 self._add_circle_borderline(env)
@@ -144,14 +299,10 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             cam_target = gymapi.Vec3(10.0, 0.0, 0.0)
             self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
+    def gym_state_init(self):
         # get gym GPU state tensors
-        actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
-        dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
-        sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)
-
-        sensors_per_env = 4
-        self.vec_sensor_tensor = gymtorch.wrap_tensor(sensor_tensor).view(self.num_envs * self.num_agents,
-                                                                          sensors_per_env * 6)
+        actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim) # all actors root state
+        dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim) # all actors dof state
 
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
@@ -163,11 +314,11 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
         # create some wrapper tensors for different slices
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
-        print(f"dof state shape: {self.dof_state.shape}")
+        print(f"dof states shape: {self.dof_state.shape}")
         self.dof_pos = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_dof, 0]
-        self.dof_pos_op = self.dof_state.view(self.num_envs, -1, 2)[:, self.num_dof:2 * self.num_dof, 0]
+        self.dof_pos_op = self.dof_state.view(self.num_envs, -1, 2)[:, self.num_dof:, 0]
         self.dof_vel = self.dof_state.view(self.num_envs, -1, 2)[:, :self.num_dof, 1]
-        self.dof_vel_op = self.dof_state.view(self.num_envs, -1, 2)[:, self.num_dof:2 * self.num_dof, 1]
+        self.dof_vel_op = self.dof_state.view(self.num_envs, -1, 2)[:, self.num_dof:, 1]
 
         self.initial_dof_pos = torch.zeros_like(self.dof_pos, device=self.device, dtype=torch.float)
         zero_tensor = torch.tensor([0.0], device=self.device)
@@ -178,7 +329,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.dt = self.cfg["sim"]["dt"]
 
         torques = self.gym.acquire_dof_force_tensor(self.sim)
-        self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, 2 * self.num_dof)
+        self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof + self.num_dof_op)
 
         self.x_unit_tensor = to_torch([1, 0, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
         self.y_unit_tensor = to_torch([0, 1, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
@@ -187,87 +338,179 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.hp = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
         self.hp_op = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
 
+    def allocate_buffers(self):
+        """Allocate the observation, states, etc. buffers.
 
-    def step(self, actions):
-        """ action shape: (num_envs, num_agents, action_dim)
+        These are what is used to set observations and states in the environment classes which
+        inherit from this one, and are read in `step` and other related functions.
+
         """
-        self.cur_t += 1
-        # skeleton transform stage
-        skel_a = actions[:, :, -1]
-        if self.stage == 'skel_trans':
-            def skel_trans(idx, actions, op=False):
-                name = f"evo_ant_{idx}" if op else f"evo_ant_op_{idx}"
-                apply_skel_action(self.robots[name], actions[op, :])
-                self.design_cur_params[name] = get_attr_design(self.robots[name])
-
-            # apply skel transform actions on robots
-            for idx in range(self.num_envs):
-                skel_trans(idx, skel_a[idx], op=False)
-                skel_trans(idx, skel_a[idx], op=True)
-
-            if self.cur_t == self.skel_transform_nsteps:
-                self.transit_attribute_transform()
-            self.compute_observations(skel_a)
-            self.compute_rewards()
-            return
+        # allocate buffers
+        # transform2act state data
+        self.obs_buf = torch.zeros(
+            (self.num_envs, self.num_nodes + self.num_nodes_op, self.obs_dim), device=self.device, dtype=torch.float)
+        self.edge_buf = torch.zeros(
+            (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.float)
+        self.stage_buf = torch.ones(
+            (self.num_envs, 1), device=self.device, dtype=torch.int) * 2 # state flag == 2 means execution stage
+        self.num_nodes_buf = torch.zeros(
+            (self.num_envs, 2), device=self.device, dtype=torch.int)
+        self.body_ind = torch.zeros(
+            (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.float)
         
-        # attribute transform stage
-        elif self.stage == 'attr_trans':
-            design_a = actions[:, :, self.control_action_dim:-1]
-            
-            def attr_trans(idx, design_a, op=False):
-                name = f"evo_ant_{idx}" if op else f"evo_ant_op_{idx}"
-                if self.abs_design:
-                    design_params = design_a[op, :] * self.robot_param_scale
+        self.rew_buf = torch.zeros(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
+        self.reset_buf = torch.ones(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+        self.timeout_buf = torch.zeros(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+        self.progress_buf = torch.zeros(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+        self.randomize_buf = torch.zeros(
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+        self.extras = {}
+
+
+    def create_sim(self):
+        self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
+        self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
+
+        self._create_ground_plane()
+        print(f'num envs {self.num_envs} env spacing {self.cfg["env"]["envSpacing"]}')
+        self._create_envs(self.cfg["env"]['envSpacing'], int(np.sqrt(self.num_envs)))
+
+        # If randomizing, apply once immediately on startup before the fist sim step
+        if self.randomize:
+            self.apply_randomizations(self.randomization_params)
+
+    def _create_ground_plane(self):
+        plane_params = gymapi.PlaneParams()
+        plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
+        plane_params.static_friction = self.plane_static_friction
+        plane_params.dynamic_friction = self.plane_dynamic_friction
+        self.gym.add_ground(self.sim, plane_params)
+
+    def _create_envs(self, spacing, num_per_row):
+        lower = gymapi.Vec3(-spacing, -spacing, 0.0)
+        upper = gymapi.Vec3(spacing, spacing, spacing)
+
+        asset_options = gymapi.AssetOptions()
+        # Note - DOF mode is set in the MJCF file and loaded by Isaac Gym
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
+        asset_options.angular_damping = 0.0
+
+        # load assets
+        name = "evo_ant"
+        name_op = "evo_ant_op"
+        file_name = name + ".xml"
+        file_name_op = name_op + ".xml"
+        ant_asset = self.gym.load_mjcf(self.sim, self.out_dir, file_name, asset_options)
+        ant_asset_op = self.gym.load_mjcf(self.sim, self.out_dir, file_name_op, asset_options)
+
+        # create envs and actors
+        # set agent and opponent start pose
+        box_pose = gymapi.Transform()
+        box_pose.p = gymapi.Vec3(0, 0, 0)
+        start_pose = gymapi.Transform()
+        start_pose.p = gymapi.Vec3(-self.borderline_space + 1, -self.borderline_space + 1, 1.)
+        start_pose_op = gymapi.Transform()
+        start_pose_op.p = gymapi.Vec3(self.borderline_space - 1, self.borderline_space - 1, 1.)
+
+        print(start_pose.p, start_pose_op.p)
+        self.start_rotation = torch.tensor([start_pose.r.x, start_pose.r.y, start_pose.r.z, start_pose.r.w],
+                                           device=self.device)
+
+        self.ant_handles = []
+        self.actor_indices = []
+        self.actor_handles_op = []
+        self.actor_indices_op = []
+
+        self.envs = []
+        self.pos_before = torch.zeros(2, device=self.device)
+
+        self.dof_limits_lower = []
+        self.dof_limits_upper = []
+        self.dof_limits_lower_op = []
+        self.dof_limits_upper_op = []
+
+        for i in range(self.num_envs):
+            # create env instance
+            env_ptr = self.gym.create_env(
+                self.sim, lower, upper, num_per_row
+            )
+            name = f"evo_ant_{i}"
+            name_op = f"evo_ant_op_{i}"
+
+            #------------------------- set ant props -----------------------#
+            ant_handle = self.gym.create_actor(env_ptr, ant_asset, start_pose, name, i, -1, 0)
+            actor_index = self.gym.get_actor_index(env_ptr, ant_handle, gymapi.DOMAIN_SIM)
+            # set def_props
+            dof_props = self.gym.get_actor_dof_properties(env_ptr, ant_handle)
+            self.num_dof = self.gym.get_actor_dof_count(env_ptr, ant_handle)
+            self.num_bodies = self.gym.get_actor_rigid_body_count(env_ptr, ant_handle)  # num_dof + 1(torso)
+            assert self.num_bodies == self.num_nodes
+            for i in range(self.num_dof):
+                dof_props['driveMode'][i] = gymapi.DOF_MODE_POS
+                dof_props['stiffness'][i] = self.Kp
+                dof_props['damping'][i] = self.Kd
+            for j in range(self.num_dof):
+                if dof_props['lower'][j] > dof_props['upper'][j]:
+                    self.dof_limits_lower.append(dof_props['upper'][j])
+                    self.dof_limits_upper.append(dof_props['lower'][j])
                 else:
-                    design_params = self.design_cur_params[name] \
-                                    + design_a[op, :] * self.robot_param_scale
-                set_design_params(self.robots[name], design_params, self.out_dir, name)
+                    self.dof_limits_lower.append(dof_props['lower'][j])
+                    self.dof_limits_upper.append(dof_props['upper'][j])
 
-                if self.use_projected_params:
-                    self.design_cur_params[name] = get_attr_design(self.robots[name])
+            self.gym.set_actor_dof_properties(env_ptr, ant_handle, dof_props)
+            self.actor_indices.append(actor_index)
+            self.gym.enable_actor_dof_force_sensors(env_ptr, ant_handle)
+            # set color
+            for j in range(self.num_bodies):
+                self.gym.set_rigid_body_color(
+                    env_ptr, ant_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.71, 0.49, 0.01))
+
+            #------------------------- set ant_op props -----------------------#
+            ant_handle_op = self.gym.create_actor(env_ptr, ant_asset_op, start_pose_op, name_op, i, -1, 0)
+            actor_index_op = self.gym.get_actor_index(env_ptr, ant_handle_op, gymapi.DOMAIN_SIM)
+            # set def_props
+            dof_props_op = self.gym.get_actor_dof_properties(env_ptr, ant_handle_op)
+            self.num_dof_op = self.gym.get_actor_dof_count(env_ptr, ant_handle_op)
+            self.num_bodies_op = self.gym.get_actor_rigid_body_count(env_ptr, ant_handle_op)  # num_dof + 1(torso)
+            assert self.num_bodies_op == self.num_nodes_op
+            for i in range(self.num_dof_op):
+                dof_props_op['driveMode'][i] = gymapi.DOF_MODE_POS
+                dof_props_op['stiffness'][i] = self.Kp
+                dof_props_op['damping'][i] = self.Kd
+            for j in range(self.num_dof_op):
+                if dof_props_op['lower'][j] > dof_props_op['upper'][j]:
+                    self.dof_limits_lower_op.append(dof_props_op['upper'][j])
+                    self.dof_limits_upper_op.append(dof_props_op['lower'][j])
                 else:
-                    self.design_cur_params[name] = design_params[op, :].copy()
-            
-            # apply attr transform actions on robots
-            for idx in range(self.num_envs):
-                attr_trans(idx, design_a[idx], op=False)
-                attr_trans(idx, design_a[idx], op=True)
+                    self.dof_limits_lower_op.append(dof_props_op['lower'][j])
+                    self.dof_limits_upper_op.append(dof_props_op['upper'][j])
 
-            self.transit_execution()
+            self.gym.set_actor_dof_properties(env_ptr, ant_handle_op, dof_props_op)
+            self.actor_indices_op.append(actor_index_op)
+            self.gym.enable_actor_dof_force_sensors(env_ptr, ant_handle_op)
+            # set color
+            for j in range(self.num_bodies_op):
+                self.gym.set_rigid_body_color(
+                    env_ptr, ant_handle_op, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.15, 0.21, 0.42))
 
-            self.compute_observations(design_a)
-            self.compute_rewards()
+            self.envs.append(env_ptr)
+            self.ant_handles.append(ant_handle)
+            self.actor_handles_op.append(ant_handle_op)
 
-            ###############################################################################
-            ######## Create IsaacGym sim and envs for Control Training ####################
-            # create assets list
-            assets = ...
-            self.gym_reset(assets)
-
-
-        # execution stage
-        else:
-            self.control_nsteps += 1
-            self.gym_step(actions)
-            
-    def transit_attribute_transform(self):
-        self.stage = 'attribute_transform'
-
-    def transit_execution(self):
-        self.stage = 'execution'
-        self.control_nsteps = 0
+        self.dof_limits_lower = to_torch(self.dof_limits_lower, device=self.device)
+        self.dof_limits_lower_op = to_torch(self.dof_limits_lower_op, device=self.device)
+        self.dof_limits_upper = to_torch(self.dof_limits_upper, device=self.device)
+        self.dof_limits_upper_op = to_torch(self.dof_limits_upper_op, device=self.device)
+        self.actor_indices = to_torch(self.actor_indices, dtype=torch.long, device=self.device)
+        self.actor_indices_op = to_torch(self.actor_indices_op, dtype=torch.long, device=self.device)
 
     def pre_physics_step(self, actions):
-        # actions.shape = [num_envs * num_agents, num_actions], stacked as followed:
-        # {[(agent1_act_1, agent1_act2)|(agent2_act1, agent2_act2)|...]_(env0),
-        #  [(agent1_act_1, agent1_act2)|(agent2_act1, agent2_act2)|...]_(env1),
-        #  ... }
-
+        # actions.shape = [num_envs, num_dof + num_dof_op, num_actions]
         self.actions = actions.clone().to(self.device)
-        self.actions = torch.cat((self.actions[:self.num_envs], self.actions[self.num_envs:]), dim=-1)
-
-        # reshape [num_envs * num_agents, num_actions] to [num_envs, num_agents * num_actions]
         targets = self.actions
 
         self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(targets))

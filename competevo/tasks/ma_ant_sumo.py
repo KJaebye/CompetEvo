@@ -241,9 +241,9 @@ class MA_Ant_Sumo(MA_VecTask):
             self.actor_indices_op.append(actor_index_op)
             for j in range(self.num_bodies):
                 self.gym.set_rigid_body_color(
-                    env_ptr, ant_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.97, 0.38, 0.06))
+                    env_ptr, ant_handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.71, 0.49, 0.01))
                 self.gym.set_rigid_body_color(
-                    env_ptr, ant_handle_op, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.24, 0.38, 0.06))
+                    env_ptr, ant_handle_op, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.15, 0.21, 0.42))
 
             self.envs.append(env_ptr)
             self.ant_handles.append(ant_handle)

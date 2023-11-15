@@ -42,6 +42,7 @@ env:
 
 robot:
   robot_param_scale: 1
+  max_num_nodes: 20
 
   skel_transform_nsteps: 5
   obs_specs:

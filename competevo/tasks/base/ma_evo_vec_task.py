@@ -89,6 +89,9 @@ class MA_Evo_VecTask(EvoEnv):
         for env_id in range(self.num_envs):
             self.extern_actor_params[env_id] = None
         
+        # set attribute sim
+        self.sim = None
+        
     def reset(self):
         """
             Reset the environment.
@@ -102,28 +105,12 @@ class MA_Evo_VecTask(EvoEnv):
         self.stage = "skel_trans"
         self.cur_t = 0
 
-        # reset buffers
-        self.allocate_buffers()
-
     def step(self, actions):
         return NotImplementedError
         
-    def compute_observations(self, actions: None):
+    def compute_observations(self):
         return NotImplementedError
-
-    def gym_reset(self, assets: list):
-        """
-            Reset the gym envs by creating all envs with differnet robot desgins.
-        """
-        # create new sim and viewer
-        self.create_sim()
-        self.gym.prepare_sim(self.sim)
-        self.sim_initialized = True
-        self.set_viewer()
-
-        for asset in assets:
-            ...
-
+    
     def get_robot_info(self):
         """
             Get robot skeletons and arttributes information.
@@ -166,30 +153,7 @@ class MA_Evo_VecTask(EvoEnv):
         inherit from this one, and are read in `step` and other related functions.
 
         """
-        # allocate buffers
-        # transform2act state data
-        self.obs_buf = torch.zeros(
-            (self.num_envs * self.num_agents, self.max_num_nodes, self.obs_dim), device=self.device, dtype=torch.float)
-        self.edge_buf = torch.zeros(
-            (self.num_envs * self.num_agents, 2, (self.max_num_nodes-1)*2), device=self.device, dtype=torch.float)
-        self.stage_buf = torch.zeros(
-            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.int)
-        self.num_nodes_buf = torch.zeros(
-            (self.num_envs * self.num_agents, 1), device=self.device, dtype=torch.int)
-        self.body_ind = torch.zeros(
-            (self.num_envs * self.num_agents, self.max_num_nodes), device=self.device, dtype=torch.float)
-        
-        self.rew_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
-        self.reset_buf = torch.ones(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
-        self.timeout_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
-        self.progress_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
-        self.randomize_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
-        self.extras = {}
+        return NotImplementedError
 
     def set_sim_params_up_axis(self, sim_params: gymapi.SimParams, axis: str) -> int:
         """Set gravity based on up axis and return axis index.
@@ -248,9 +212,6 @@ class MA_Evo_VecTask(EvoEnv):
         Args:
             actions: actions to apply
         """
-        # check zero becuase in execution stage, only control action is computated
-        assert torch.all(actions[:, :, self.control_action_dim:] == 0)
-
         # randomize actions
         if self.dr_randomizations.get('actions', None):
             actions = self.dr_randomizations['actions']['noise_lambda'](actions)
@@ -294,6 +255,19 @@ class MA_Evo_VecTask(EvoEnv):
 
         return actions
 
+    def gym_reset(self, env_ids=None) -> torch.Tensor:
+        """Reset the environment.
+        """
+        if (env_ids is None):
+            # zero_actions = self.zero_actions()
+            # self.step(zero_actions)
+            env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+            self.reset_idx(env_ids)
+            self.compute_observations()
+            self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
+        else:
+            self._reset_envs(env_ids=env_ids)
+        return
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):

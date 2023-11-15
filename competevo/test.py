@@ -110,6 +110,7 @@ if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
 
 sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
+gym.prepare_sim(sim)
 
 if sim is None:
     print("*** Failed to create sim")
@@ -129,7 +130,7 @@ import yaml
 cfg_path = f'/home/kjaebye/ws/competevo/competevo/robot/evo_ant.yml'
 yml = yaml.safe_load(open(cfg_path, 'r'))
 cfg = yml['robot']
-base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant_evo_test.xml'
+base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
 xml_robot = Robot(cfg, base_ant_path, is_xml_str=False)
 
 # edit skel
@@ -143,7 +144,7 @@ for body, a in zip(bodies, skel_action):
         xml_robot.remove_body(body)
 num_node = len(list(xml_robot.bodies))
 num_dof = num_node - 1
-print("num_node:\n", num_node)
+# print("num_node:\n", num_node)
 
 # edit attribute
 params_names = xml_robot.get_params(get_name=True)
@@ -156,13 +157,13 @@ params_new = xml_robot.get_params()
 
 design_ref_params = get_attr_design(xml_robot)
 attr_design_dim = design_ref_params.shape[-1]
-print("attr_design_shape:\n", design_ref_params.shape)
+# print("attr_design_shape:\n", design_ref_params.shape)
 attr_fixed_dim = get_attr_fixed(cfg['obs_specs'], xml_robot).shape[-1]
-print("attr_fixed_shape:\n", get_attr_fixed(cfg['obs_specs'], xml_robot).shape)
+# print("attr_fixed_shape:\n", get_attr_fixed(cfg['obs_specs'], xml_robot).shape)
 edges = get_graph_fc_edges(num_node)
-print("fc_graph edges:\n", edges)
+# print("fc_graph edges:\n", edges)
 edges = xml_robot.get_gnn_edges()
-print("gnn edges:\n", edges)
+# print("gnn edges:\n", edges)
 
 # write a xml
 os.makedirs('out', exist_ok=True)
@@ -175,13 +176,20 @@ asset_root = "./out"
 asset = gym.load_mjcf(sim, asset_root, asset_file)
 assets.append(asset)
 
+base_asset_file = f"ant.xml"
+base_asset = gym.load_mjcf(sim, asset_root, base_asset_file)
+assets.append(base_asset)
+
+
 num_bodies = gym.get_asset_rigid_body_count(asset)
-print("num_bodies:\n", num_bodies)
+# print("num_bodies:\n", num_bodies)
 body_names = [gym.get_asset_rigid_body_name(asset, i) for i in range(num_bodies)]
-print("body_names:\n", body_names)
+# print("body_names:\n", body_names)
+asset_dof_props = gym.get_asset_dof_properties(asset)
+# print("dof_props:\n", asset_dof_props)
 
 # Setup environment spacing
-spacing = 2.0
+spacing = 5.0
 lower = gymapi.Vec3(-spacing, 0.0, -spacing)
 upper = gymapi.Vec3(spacing, spacing, spacing)
 
@@ -192,20 +200,34 @@ gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
 
 envs = []
 actor_handles = []
-for asset in assets:
+actor_handles_op = []
+for i in range(4):
     # Create one environment
-    env = gym.create_env(sim, lower, upper, 1)
+    env = gym.create_env(sim, lower, upper, 2)
 
     # add actor
     pose = gymapi.Transform()
-    pose.p = gymapi.Vec3(0.0, 1.32, 0.0)
+    pose.p = gymapi.Vec3(1.0, 1.32, 0.0)
     pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
 
-    actor_handle = gym.create_actor(env, asset, pose, "actor", -1, -1, 0)
+    pose_op = gymapi.Transform()
+    pose_op.p = gymapi.Vec3(-2.0, 1.32, 0.0)
+    pose_op.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
+
+    # start_pose = gymapi.Transform()
+    # start_pose.p = gymapi.Vec3(-2, -2, 1.)
+    # start_pose.r = gymapi.Quat(0.707107, 0.0, 0.0, -0.707107)
+    # start_pose_op = gymapi.Transform()
+    # start_pose_op.p = gymapi.Vec3(2, 2, 1.)
+    # start_pose_op.r = gymapi.Quat(0.707107, 0.0, 0.0, -0.707107)
+
+    actor_handle = gym.create_actor(env, asset, pose, "actor", i, -1, 0)
+    actor_handle_op = gym.create_actor(env, base_asset, pose_op, "actor_op", i, -1, 0)
+    actor_handles.append(actor_handle)
+    actor_handles_op.append(actor_handle_op)
 
     envs.append(env)
-    actor_handles.append(actor_handle)
-
+    
 # data aqurire
 actor_root_state = gym.acquire_actor_root_state_tensor(sim)
 dof_state_tensor = gym.acquire_dof_state_tensor(sim)
@@ -221,18 +243,25 @@ print(f'root states:\n {root_states}')
 dof_state = gymtorch.wrap_tensor(dof_state_tensor)
 print(f"dof state:\n {dof_state}")
 
-dof_prop = gym.get_actor_dof_properties(env, actor_handle)
-print("dof_prop:\n", dof_prop)
+actor_dof_prop = gym.get_actor_dof_properties(env, actor_handles_op[0])
+print("dof_prop:\n", actor_dof_prop)
+
+num_bodies = gym.get_actor_rigid_body_count(env, actor_handles_op[0])
+num_dof = gym.get_actor_dof_count(env, actor_handles_op[0])
+print("num_bodies:\n", num_bodies)
+print("num_dof:\n", num_dof)
+
+dof_state_tensor = gym.acquire_dof_state_tensor(sim)
+dof_state = gymtorch.wrap_tensor(dof_state_tensor)
 
 while not gym.query_viewer_has_closed(viewer):
     # step the physics
     gym.simulate(sim)
     gym.fetch_results(sim, True)
 
-    # gym.refresh_actor_root_state_tensor(sim)
-    # gym.refresh_dof_state_tensor(sim)
-    # print(root_states)
-    # print(dof_state)
+    gym.refresh_actor_root_state_tensor(sim)
+    print("actor_root_state:\n", root_states)
+
 
     # update the viewer
     gym.step_graphics(sim)
