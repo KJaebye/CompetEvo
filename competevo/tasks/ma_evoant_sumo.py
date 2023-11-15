@@ -3,6 +3,7 @@ import attr
 import numpy as np
 import os
 import math
+from sympy import N
 import torch
 import random
 
@@ -352,7 +353,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.edge_buf = torch.zeros(
             (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.float)
         self.stage_buf = torch.ones(
-            (self.num_envs, 1), device=self.device, dtype=torch.int) * 2 # state flag == 2 means execution stage
+            (self.num_envs, 1), device=self.device, dtype=torch.int)
         self.num_nodes_buf = torch.zeros(
             (self.num_envs, 2), device=self.device, dtype=torch.int)
         self.body_ind = torch.zeros(
@@ -526,14 +527,17 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.compute_reward(self.actions)
         self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
 
-    def compute_observations(self, actions: None):
+    def compute_observations(self, actions=None):
         """
             Calculate ant observations.
         """
         if self.stage == "skel_trans":
             assert actions is not None, "Skeleton transform needs actions to get obs, edge, node, and body_ind infos!"
             # agent
-            self.obs_buf[:self.num_envs] = ...
+            self.obs_buf[:] = torch.cat(
+                get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot), 
+                torch.zeros((self.num_nodes, self.gym_obs_dim), device=self.device),
+                get_attr_design(self.robot))
             self.edge_buf[:self.num_envs] = ...
             self.stage_buf[:self.num_envs] = 0 # 0 for skel_trans
             self.num_nodes_buf[:self.num_envs] = ...
@@ -559,15 +563,16 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.num_nodes_buf[self.num_envs:] = ...
             self.body_ind[self.num_envs:] = ...
         else: # execution stage
-            assert self.sim_initialized is True
+            assert self.sim_initialized is True and actions is None
+            # these refresh functions are necessary to get the latest state of the simulation
             self.gym.refresh_dof_state_tensor(self.sim)
             self.gym.refresh_actor_root_state_tensor(self.sim)
             self.gym.refresh_force_sensor_tensor(self.sim)
             self.gym.refresh_dof_force_tensor(self.sim)
-            self.obs_buf[:self.num_envs] = \
+            self.obs_buf[:, :self.num_nodes] = \
                 compute_ant_observations(
-                    self.root_states[0::2],
-                    self.root_states[1::2],
+                    self.root_states[0::2], # ant torse states
+                    self.root_states[1::2], # ant op torse states
                     self.dof_pos,
                     self.dof_vel,
                     self.dof_limits_lower,
@@ -576,13 +581,13 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                     self.termination_height
                 )
 
-            self.obs_buf[self.num_envs:] = compute_ant_observations(
-                self.root_states[1::2],
-                self.root_states[0::2],
+            self.obs_buf[:, self.num_nodes:] = compute_ant_observations(
+                self.root_states[1::2], # ant op torse states
+                self.root_states[0::2], # ant torse states
                 self.dof_pos_op,
                 self.dof_vel_op,
-                self.dof_limits_lower,
-                self.dof_limits_upper,
+                self.dof_limits_lower_op,
+                self.dof_limits_upper_op,
                 self.dof_vel_scale,
                 self.termination_height
             )
