@@ -106,6 +106,30 @@ class Transform2ActBuilder():
                 init_fc_weights(self.control_action_mean)
             self.control_action_log_std = nn.Parameter(torch.ones(1, self.control_action_dim) * self.actor_cfg['control_log_std'], requires_grad=not self.actor_cfg['fix_control_std'])
 
+            #######################################################################
+            ####### define value #################################################
+            ########################################################################
+            self.critic_norm = RunningNorm(self.value_state_dim)
+            cur_dim = self.value_state_dim
+            if 'pre_mlp' in self.critic_cfg:
+                self.critic_pre_mlp = MLP(cur_dim, self.critic_cfg['pre_mlp'], self.critic_cfg['htype'])
+                cur_dim = self.critic_pre_mlp.out_dim
+            else:
+                self.critic_pre_mlp = None
+            if 'gnn_specs' in self.critic_cfg:
+                self.critic_gnn = GNNSimple(cur_dim, self.critic_cfg['gnn_specs'])
+                cur_dim = self.critic_gnn.out_dim
+            else:
+                self.critic_gnn = None
+            if 'mlp' in self.critic_cfg:
+                self.critic_mlp = MLP(cur_dim, self.critic_cfg['mlp'], self.critic_cfg['htype'])
+                cur_dim = self.critic_mlp.out_dim
+            else:
+                self.critic_mlp = None
+            self.value_head = nn.Linear(cur_dim, 1)
+            init_fc_weights(self.value_head)
+
+
         def forward(self, states_dict: dict):
             """
                 Input:
@@ -118,13 +142,15 @@ class Transform2ActBuilder():
                     body_index: (:, num_nodes)
             """
             stages = ['skel_trans', 'attr_trans', 'execution']
-
             obses = states_dict['obses']
             edges = states_dict['edges']
             stage = states_dict['stage']
             num_nodes = states_dict['num_nodes']
             body_ind = states_dict['body_index'] if "body_index" in states_dict else None
 
+            ########################################################################
+            ############ policy forward #############################################
+            ########################################################################
             # re-construct states by stage
             def filter_state(x: torch.tensor, flag: str):
                 if flag not in stages:
@@ -210,6 +236,32 @@ class Transform2ActBuilder():
                 num_nodes_cum_control = None
                 control_dist = None
             
+            ########################################################################
+            ############ value forward #############################################
+            ########################################################################
+            if self.design_flag_in_state:
+                design_flag = torch.tensor(np.repeat(use_transform_action, num_nodes)).to(obs.device)
+                if self.onehot_design_flag:
+                    design_flag_onehot = torch.zeros(design_flag.shape[0], 3).to(obs.device)
+                    design_flag_onehot.scatter_(1, design_flag.unsqueeze(1), 1)
+                    x = torch.cat([obs, design_flag_onehot], dim=-1)
+                else:
+                    x = torch.cat([obs, design_flag.unsqueeze(1)], dim=-1)
+            else:
+                x = obs
+            x = self.norm(x)
+            if self.pre_mlp is not None:
+                x = self.pre_mlp(x)
+            if self.gnn is not None:
+                x = self.gnn(x, edges)
+            if self.mlp is not None:
+                x = self.mlp(x)
+            value_nodes = self.value_head(x)
+            if num_nodes_cum is None:
+                value = value_nodes[[0]]
+            else:
+                value = value_nodes[torch.LongTensor(np.concatenate([np.zeros(1), num_nodes_cum[:-1]]))]
+
             return control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \
                     total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
@@ -237,6 +289,14 @@ class Transform2ActBuilder():
             self.control_action_dim = params["control_action_dim"]
             self.action_dim = self.control_action_dim + self.attr_action_dim + 1
             self.skel_uniform_prob = params.get('skel_uniform_prob', 0.0)
+
+            # critic params
+            self.design_flag_in_state = params["value_specs"].get('design_flag_in_state', False)
+            self.onehot_design_flag = params["value_specs"].get('onehot_design_flag', False)
+            self.value_state_dim = self.attr_fixed_dim + self.gym_obs_dim + self.attr_design_dim
+            self.value_state_dim = self.value_state_dim + self.design_flag_in_state * (3 if self.onehot_design_flag else 1)
+
+
 
     def build(self, name, **kwargs):
         net = Transform2ActBuilder.Network(self.params, **kwargs)
