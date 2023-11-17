@@ -83,10 +83,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.design_ref_params = get_attr_design(self.robot)
         self.design_cur_params = get_attr_design(self.robot)
         self.design_param_names = self.robot.get_params(get_name=True)
-        if robo_config["obs_specs"].get('fc_graph', False):
-            self.edges = get_graph_fc_edges(len(self.robot.bodies))
-        else:
-            self.edges = self.robot.get_gnn_edges()
         self.num_nodes = len(list(self.robot.bodies))
         # ant op
         self.design_ref_params_op = get_attr_design(self.robot_op)
@@ -101,27 +97,48 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         # constant variables
         self.attr_design_dim = 5
         self.attr_fixed_dim = 4
-        self.gym_obs_dim = ... # 13?
+        self.gym_obs_dim = 26 # 13(root states) + 7(op root states) + 2(dist) + 1(height termination) + 1(op height termination) + 2(dof pos/vel)
         self.index_base = 5
 
         # actions dim: (num_nodes, action_dim)
         ###############################################################
         # action for every node:
-        #    control_action      attr_action        skel_action 
-        #   #-------------##--------------------##---------------#
-        self.skel_num_action = 3 if robo_config["enable_remove"] else 2 # it is not an action dimension
+        #                 control_action      attr_action        skel_action 
+        #  node0(root):  #-------------##--------------------##---------------#
+        #  node1      :  #-------------##--------------------##---------------#
+        #  node2      :  #-------------##--------------------##---------------#
+        #  .....      :  #-------------##--------------------##---------------#
+        #  nodeN      :  #-------------##--------------------##---------------#
+
+        self.skel_num_action = 3 if robo_config["enable_remove"] else 2 # skel action dimension is 1
         self.attr_action_dim = self.attr_design_dim
         self.control_action_dim = 1 
         self.action_dim = self.control_action_dim + self.attr_action_dim + 1
         
         # states dim and construction:
-        # [obses, edges, stage, num_nodes, body_index]
+        # {obses, edges, stage, num_nodes, body_index}
 
         # obses dim (num_nodes, obs_dim)
         ###############################################################
         # observation for every node:
-        #      attr_fixed            gym_obs          attr_design 
-        #   #---------------##--------------------##---------------#
+        #                   attr_fixed           gym_obs          attr_design 
+        #  node0(root): #---------------##--------------------##---------------#
+        #  node1      : #---------------##--------------------##---------------#
+        #  node2      : #---------------##--------------------##---------------#
+        #  node3      : #---------------##--------------------##---------------#
+        #  .....      : #---------------##--------------------##---------------#
+        #  nodeN      : #---------------##--------------------##---------------#
+        # 
+        # The gym_obs has structures as follow:
+        #                  24 (states)       2 (pos, vel)
+        #  node0(root): xxxxxxxxxxxxxxxxxxxxx - oooo
+        #  node1      : ooooooooooooooooooooo - xxxx
+        #  node2      : ooooooooooooooooooooo - xxxx
+        #  node3      : ooooooooooooooooooooo - xxxx
+        #  .....      : ooooooooooooooooooooo - xxxx
+        #  nodeN      : ooooooooooooooooooooo - xxxx
+        # Only the first node (root/agent torso) has the root state, other nodes use zero-padding as instead.
+        # 
         self.skel_state_dim = self.attr_fixed_dim + self.attr_design_dim
         self.attr_state_dim = self.attr_fixed_dim + self.attr_design_dim
         self.obs_dim = self.attr_fixed_dim + self.gym_obs_dim + self.attr_design_dim
@@ -132,6 +149,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                          graphics_device_id=graphics_device_id,
                          headless=headless, virtual_screen_capture=virtual_screen_capture,
                          force_render=force_render)
+        
+        self.allocate_buffers() # init buffers
 
     def step(self, all_actions: dict):
         """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
@@ -160,7 +179,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             if self.cur_t == self.skel_transform_nsteps:
                 self.transit_attribute_transform()
             self.compute_observations()
-            self.compute_rewards()
+            self.compute_reward()
             return
         
         # attribute transform stage
@@ -200,16 +219,15 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.transit_execution()
 
             self.compute_observations()
-            self.compute_rewards()
+            self.compute_reward()
 
             ###############################################################################
             ######## Create IsaacGym sim and envs for Execution ####################
             ############################################################################### 
             self.create_sim() # create sim and envs
             self.gym.prepare_sim(self.sim)
-            self.sim_initialized = True
+            self.isaacgym_initialized = True
             self.set_viewer()
-            self.allocate_buffers() # init buffers
 
             # add border, add camera
             self.add_border_cam()
@@ -229,9 +247,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         """
         env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
         self.reset_idx(env_ids)
-        self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
-        # reset buffers
-        self.allocate_buffers()
+        self.pos_before = self.obs_buf[:, 0, :2].clone()
 
     def reset_idx(self, env_ids):
         # print('reset.....', env_ids)
@@ -332,9 +348,9 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         torques = self.gym.acquire_dof_force_tensor(self.sim)
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof + self.num_dof_op)
 
-        self.x_unit_tensor = to_torch([1, 0, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
-        self.y_unit_tensor = to_torch([0, 1, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
-        self.z_unit_tensor = to_torch([0, 0, 1], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        # self.x_unit_tensor = to_torch([1, 0, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        # self.y_unit_tensor = to_torch([0, 1, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        # self.z_unit_tensor = to_torch([0, 0, 1], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
 
         self.hp = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
         self.hp_op = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
@@ -350,14 +366,18 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         # transform2act state data
         self.obs_buf = torch.zeros(
             (self.num_envs, self.num_nodes + self.num_nodes_op, self.obs_dim), device=self.device, dtype=torch.float)
-        self.edge_buf = torch.zeros(
-            (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.float)
+        if self.cfg['robot']['obs_specs'].get('fc_graph', False):
+            pass
+        else: # use gnn_edges
+            self.edge_buf = torch.zeros(
+                (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.float)
         self.stage_buf = torch.ones(
             (self.num_envs, 1), device=self.device, dtype=torch.int)
         self.num_nodes_buf = torch.zeros(
             (self.num_envs, 2), device=self.device, dtype=torch.int)
-        self.body_ind = torch.zeros(
-            (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.float)
+        if self.use_body_ind:
+            self.body_ind = torch.zeros(
+                (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.float)
         
         self.rew_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
@@ -366,7 +386,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.timeout_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.progress_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+            self.num_envs * self.num_agents, device=self.device, dtype=torch.long) # progress buffer only for isaacgym simulation, before isaacgym, it is always zero
         self.randomize_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.extras = {}
@@ -524,55 +544,66 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.randomize_buf += 1
 
         self.compute_observations()
-        self.compute_reward(self.actions)
-        self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
+        self.compute_reward()
+        self.pos_before = self.obs_buf[:, 0, :2].clone() # first node is ant torso
 
-    def compute_observations(self, actions=None):
+    def compute_observations(self):
         """
             Calculate ant observations.
         """
-        if self.stage == "skel_trans":
-            assert actions is not None, "Skeleton transform needs actions to get obs, edge, node, and body_ind infos!"
-            # agent
-            self.obs_buf[:] = torch.cat(
-                get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot), 
-                torch.zeros((self.num_nodes, self.gym_obs_dim), device=self.device),
-                get_attr_design(self.robot))
-            self.edge_buf[:self.num_envs] = ...
-            self.stage_buf[:self.num_envs] = 0 # 0 for skel_trans
-            self.num_nodes_buf[:self.num_envs] = ...
-            self.body_ind[:self.num_envs] = ...
-            # agent opponent
-            self.obs_buf[self.num_envs:] = ...
-            self.edge_buf[self.num_envs:] = ...
-            self.stage_buf[self.num_envs:] = 0 # 0 for skel_trans
-            self.num_nodes_buf[self.num_envs:] = ...
-            self.body_ind[self.num_envs:] = ...
-        elif self.stage == "attr_trans":
-            assert actions is not None, "Attribute transform needs actions to get obs, edge, node, and body_ind infos!"
-            # agent
-            self.obs_buf[:self.num_envs] = ...
-            self.edge_buf[:self.num_envs] = ...
-            self.stage_buf[:self.num_envs] = 0 # 0 for skel_trans
-            self.num_nodes_buf[:self.num_envs] = ...
-            self.body_ind[:self.num_envs] = ...
-            # agent opponent
-            self.obs_buf[self.num_envs:] = ...
-            self.edge_buf[self.num_envs:] = ...
-            self.stage_buf[self.num_envs:] = 0 # 0 for skel_trans
-            self.num_nodes_buf[self.num_envs:] = ...
-            self.body_ind[self.num_envs:] = ...
-        else: # execution stage
-            assert self.sim_initialized is True and actions is None
+        if self.stage == "skel_trans" or "attr_trans":
+            #--------------------------- agent -----------------------------#
+            attr_fixed_obs = get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot).repeat(self.num_envs, 1)
+            gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float)
+            design_obs = self.design_cur_params.repeat(self.num_envs, 1)
+            # obs
+            self.obs_buf[:, :self.num_nodes] = torch.cat((attr_fixed_obs, gym_obs, design_obs), dim=1)
+            # edges
+            if self.cfg['robot']['obs_specs'].get('fc_graph', False):
+                self.edges = get_graph_fc_edges(len(self.robot.bodies))
+            else:
+                self.edges = self.robot.get_gnn_edges()
+                self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.repeat(self.num_envs, 1) # create vector of edges
+            # stage flag
+            self.stage_buf = torch.zeros((self.num_envs, 1)) if self.stage == "skel_trans" else torch.ones((self.num_envs, 1))# 0 for skel_trans
+            # num_nodes
+            self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
+            # body index
+            if self.use_body_ind:
+                self.body_index = get_body_index(self.robot, self.index_base)
+                self.body_ind[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
+
+            #-------------------------- agent opponent -----------------------#
+            attr_fixed_obs_op = get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot_op).repeat(self.num_envs, 1)
+            gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float)
+            design_obs_op = self.design_cur_params_op.repeat(self.num_envs, 1)
+            # obs
+            self.obs_buf[:, self.num_nodes:] = torch.cat((attr_fixed_obs_op, gym_obs_op, design_obs_op), dim=1)
+            # edges
+            if self.cfg['robot']['obs_specs'].get('fc_graph', False):
+                self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
+            else:
+                self.edges_op = self.robot_op.get_gnn_edges()
+                self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.repeat(self.num_envs, 1) # create vector of edges
+            # num_nodes
+            self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
+            if self.use_body_ind:
+                self.body_index_op = get_body_index(self.robot_op, self.index_base)
+                self.body_ind[:, :self.num_nodes] = self.body_index_op.repeat(self.num_envs, 1)
+            
+        else: # execution stage: isaacgym simulation
+            assert self.isaacgym_initialized is True 
             # these refresh functions are necessary to get the latest state of the simulation
             self.gym.refresh_dof_state_tensor(self.sim)
             self.gym.refresh_actor_root_state_tensor(self.sim)
             self.gym.refresh_force_sensor_tensor(self.sim)
             self.gym.refresh_dof_force_tensor(self.sim)
+            # obs
             self.obs_buf[:, :self.num_nodes] = \
                 compute_ant_observations(
                     self.root_states[0::2], # ant torse states
                     self.root_states[1::2], # ant op torse states
+                    self.num_nodes,
                     self.dof_pos,
                     self.dof_vel,
                     self.dof_limits_lower,
@@ -580,10 +611,10 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                     self.dof_vel_scale,
                     self.termination_height
                 )
-
             self.obs_buf[:, self.num_nodes:] = compute_ant_observations(
                 self.root_states[1::2], # ant op torse states
                 self.root_states[0::2], # ant torse states
+                self.num_nodes_op,
                 self.dof_pos_op,
                 self.dof_vel_op,
                 self.dof_limits_lower_op,
@@ -591,26 +622,49 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                 self.dof_vel_scale,
                 self.termination_height
             )
+            # edges
+            self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.repeat(self.num_envs, 1)
+            self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.repeat(self.num_envs, 1)
+            # stage flag
+            self.stage_buf = torch.ones((self.num_envs, 1)) * 2 # 2 means execution stage
+            # num_nodes
+            self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
+            self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
+            # body index
+            if self.use_body_ind:
+                self.body_ind[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
+                self.body_ind[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def compute_reward(self):
+        if self.stage == "skel_trans" or "attr_trans":
+            self.rew_buf[:self.num_agents] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float)
+            self.rew_buf[self.num_agents:] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float)
+            self.reset_buf = torch.zeros((self.num_envs * self.num_agents), device=self.device, dtype=torch.long)
+        else: # execution stage
+            self.rew_buf[:], self.reset_buf[:], self.hp[:], self.hp_op[:], \
+            self.extras['win'], self.extras['lose'], self.extras['draw'] = compute_ant_reward(
+                self.obs_buf[:, :self.num_nodes],
+                self.obs_buf[:, self.num_nodes:],
+                self.reset_buf,
+                self.progress_buf,
+                self.pos_before,
+                self.torques[:, :self.num_dof],
+                self.hp,
+                self.hp_op,
+                self.termination_height,
+                self.max_episode_length,
+                self.borderline_space,
+                self.draw_penalty_scale,
+                self.win_reward_scale,
+                self.move_to_op_reward_scale,
+                self.stay_in_center_reward_scale,
+                self.action_cost_scale,
+                self.push_scale,
+                self.joints_at_limit_cost_scale,
+                self.dense_reward_scale,
+                self.hp_decay_scale,
+                self.dt,
+            )
 
 #####################################################################
 ###=========================jit functions=========================###
@@ -669,10 +723,10 @@ def compute_ant_reward(
 ):
     # type: (Tensor, Tensor, Tensor, Tensor,Tensor,Tensor,Tensor,Tensor,float, float,float, float,float,float,float,float,float,float,float,float,float) -> Tuple[Tensor, Tensor,Tensor,Tensor,Tensor,Tensor,Tensor]
 
-    hp -= (obs_buf[:, 2] < termination_height) * hp_decay_scale
-    hp_op -= (obs_buf_op[:, 2] < termination_height) * hp_decay_scale
-    is_out = torch.sum(torch.square(obs_buf[:, 0:2]), dim=-1) >= borderline_space ** 2
-    is_out_op = torch.sum(torch.square(obs_buf_op[:, 0:2]), dim=-1) >= borderline_space ** 2
+    hp -= (obs_buf[:, 0, 2] < termination_height) * hp_decay_scale # the first node is torso
+    hp_op -= (obs_buf_op[:, 0, 2] < termination_height) * hp_decay_scale # the first node is torso
+    is_out = torch.sum(torch.square(obs_buf[:, 0, 0:2]), dim=-1) >= borderline_space ** 2
+    is_out_op = torch.sum(torch.square(obs_buf_op[:, 0, 0:2]), dim=-1) >= borderline_space ** 2
     is_out = is_out | (hp <= 0)
     is_out_op = is_out_op | (hp_op <= 0)
     # reset agents
@@ -688,12 +742,12 @@ def compute_ant_reward(
     lose_penalty = -win_reward_scale * is_out
     draw_penalty = torch.where(progress_buf >= max_episode_length - 1, tmp_ones * draw_penalty_scale,
                                torch.zeros_like(reset, dtype=torch.float))
-    move_reward = compute_move_reward(obs_buf[:, 0:2], pos_before,
-                                      obs_buf_op[:, 0:2], dt,
+    move_reward = compute_move_reward(obs_buf[:, 0, 0:2], pos_before,
+                                      obs_buf_op[:, 0, 0:2], dt,
                                       move_to_op_reward_scale)
     # stay_in_center_reward = stay_in_center_reward_scale * torch.exp(-torch.linalg.norm(obs_buf[:, :2], dim=-1))
-    dof_at_limit_cost = torch.sum(obs_buf[:, 13:21] > 0.99, dim=-1) * joints_at_limit_cost_scale
-    push_reward = -push_scale * torch.exp(-torch.linalg.norm(obs_buf_op[:, :2], dim=-1))
+    dof_at_limit_cost = torch.sum(obs_buf[:, 1:, -2] > 0.99, dim=-1) * joints_at_limit_cost_scale
+    push_reward = -push_scale * torch.exp(-torch.linalg.norm(obs_buf_op[:, 0, :2], dim=-1))
     action_cost_penalty = torch.sum(torch.square(torques), dim=1) * action_cost_scale
     not_move_penalty = -10 * torch.exp(-torch.sum(torch.abs(torques), dim=1))
     dense_reward = move_reward + dof_at_limit_cost + push_reward + action_cost_penalty + not_move_penalty
@@ -706,6 +760,7 @@ def compute_ant_reward(
 def compute_ant_observations(
         root_states,
         root_states_op,
+        num_nodes,
         dof_pos,
         dof_vel,
         dof_limits_lower,
@@ -713,13 +768,26 @@ def compute_ant_observations(
         dof_vel_scale,
         termination_height
 ):
-    # type: (Tensor,Tensor,Tensor,Tensor,Tensor,Tensor,float,float)->Tensor
+    # type: (Tensor,Tensor,int,Tensor,Tensor,Tensor,Tensor,float,float)->Tensor
     dof_pos_scaled = unscale(dof_pos, dof_limits_lower, dof_limits_upper)
-    obs = torch.cat(
-        (root_states[:, :13], dof_pos_scaled, dof_vel * dof_vel_scale, root_states_op[:, :7],
-         root_states[:, :2] - root_states_op[:, :2], torch.unsqueeze(root_states[:, 2] < termination_height, -1),
-         torch.unsqueeze(root_states_op[:, 2] < termination_height, -1)), dim=-1)
-
+    obs_root = torch.cat(
+        torch.unsqueeze(root_states[:, :13], dim=1), # 13, (num_envs, 1, 13)
+        torch.unsqueeze(root_states_op[:, :7], dim=1), # 7, (num_envs, 1, 7)
+        torch.unsqueeze(root_states[:, :2] - root_states_op[:, :2], dim=1), # 2, (num_envs, 1, 2)
+        torch.unsqueeze(root_states[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
+        torch.unsqueeze(root_states_op[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
+        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float), # 1, root pos=0
+        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float), # 1, root vel=0
+        -1
+    ) # shape should be (num_envs, 1, 24)
+    obs_nodes = torch.cat(
+        torch.zeros((root_states.shape[0], 1, 22), device=root_states.device, dtype=torch.float), # 22, all 0
+        dof_pos_scaled,
+        dof_vel * dof_vel_scale,
+        -1
+    ) # shape should be (num_envs, num_dof, 24)
+    obs = torch.cat((obs_root, obs_nodes), dim=1) # (num_envs, num_nodes, gym_obs_dim=24)
+    assert obs.shape[1] == num_nodes
     return obs
 
 

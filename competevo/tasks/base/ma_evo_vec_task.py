@@ -101,9 +101,11 @@ class MA_Evo_VecTask(EvoEnv):
             self.gym.destroy_sim(self.sim)
             self.viewer.close()
         
-        self.sim_initialized = False
+        self.isaacgym_initialized = False
         self.stage = "skel_trans"
         self.cur_t = 0
+        # reset buffer
+        self.allocate_buffers()
 
     def step(self, actions):
         return NotImplementedError
@@ -576,7 +578,7 @@ class MA_Evo_VecTask(EvoEnv):
                         continue
                     if prop_name == 'scale':
                         setup_only = prop_attrs.get('setup_only', False)
-                        if (setup_only and not self.sim_initialized) or not setup_only:
+                        if (setup_only and not self.isaacgym_initialized) or not setup_only:
                             attr_randomization_params = prop_attrs
                             sample = generate_random_samples(attr_randomization_params, 1,
                                                              self.last_step, None)
@@ -597,7 +599,7 @@ class MA_Evo_VecTask(EvoEnv):
                         for p, og_p in zip(prop, self.original_props[prop_name]):
                             for attr, attr_randomization_params in prop_attrs.items():
                                 setup_only = attr_randomization_params.get('setup_only', False)
-                                if (setup_only and not self.sim_initialized) or not setup_only:
+                                if (setup_only and not self.isaacgym_initialized) or not setup_only:
                                     smpl = None
                                     if self.actor_params_generator is not None:
                                         smpl, extern_offsets[env_id] = get_attr_val_from_sample(
@@ -612,7 +614,7 @@ class MA_Evo_VecTask(EvoEnv):
                             self.original_props[prop_name] = deepcopy(prop)
                         for attr, attr_randomization_params in prop_attrs.items():
                             setup_only = attr_randomization_params.get('setup_only', False)
-                            if (setup_only and not self.sim_initialized) or not setup_only:
+                            if (setup_only and not self.isaacgym_initialized) or not setup_only:
                                 smpl = None
                                 if self.actor_params_generator is not None:
                                     smpl, extern_offsets[env_id] = get_attr_val_from_sample(

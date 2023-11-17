@@ -5,28 +5,58 @@ params:
     name: self_play_continuous
 
   model:
-    name: continuous_a2c_logstd
+    name: transform2act
 
   network:
-    name: actor_critic
-    separate: False
-    space:
-      continuous:
-        mu_activation: None
-        sigma_activation: None
-        mu_init:
-          name: default
-        sigma_init:
-          name: const_initializer
-          val: 0
-        fixed_sigma: True
-    mlp:
-      units: [ 256, 128, 64 ]
-      activation: elu
-      d2rl: False
+    name: transform2act
+    attr_fixed_dim: 4
+    attr_design_dim: 5
+    gym_obs_dim: 26
+    enable_remove: ${....task.robot.enable_remove}
+    control_action_dim: 1
 
-      initializer:
-        name: default
+    policy_specs:
+      htype: tanh
+      skel_gnn_specs:
+        layer_type: graph_conv
+        hdims: [64, 64, 64]
+        aggr: add
+        bias: true
+      skel_index_mlp:
+        hdims: [128, 128]
+        rescale_linear: true
+      control_gnn_specs:
+        layer_type: graph_conv
+        hdims: [64, 64, 64]
+        aggr: add
+        bias: true
+      control_index_mlp:
+        hdims: [128, 128]
+        rescale_linear: true
+      attr_gnn_specs:
+        layer_type: graph_conv
+        hdims: [64, 64, 64]
+        aggr: add
+        bias: true
+      attr_index_mlp:
+        hdims: [128, 128]
+        rescale_linear: true
+      control_log_std: 0
+      attr_log_std: -2.3
+      fix_control_std: false
+      fix_attr_std: false
+    
+    value_specs:
+      htype: tanh
+      design_flag_in_state: true
+      onehot_design_flag: true
+      mlp: [512, 256]
+      gnn_specs:
+        layer_type: graph_conv
+        hdims: [64, 64, 64]
+        aggr: add
+        bias: true
+
   # self play agent related
   player_pool_type: ${...player_pool_type}
   load_checkpoint: ${if:${...checkpoint},True,False} # flag which sets whether to load the checkpoint

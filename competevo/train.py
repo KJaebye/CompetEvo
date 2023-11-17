@@ -29,6 +29,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import datetime
+from pyexpat import model
 from statistics import mode
 import isaacgym
 import os
@@ -55,6 +56,8 @@ from competevo.learning import ppo_sp_player
 from competevo.learning import hrl_sp_player
 from competevo.learning import vectorized_models
 from competevo.learning import vectorized_network_builder
+from competevo.learning import transform2act_models
+from competevo.learning import transform2act_network_builder
 import competevo
 
 
@@ -152,6 +155,9 @@ def launch_rlg_hydra(cfg: DictConfig):
         model_builder.register_model('ase', lambda network, **kwargs: ase_models.ModelASEContinuous(network))
         model_builder.register_model('vectorized_a2c',
                                      lambda network, **kwargs: vectorized_models.ModelVectorizedA2C(network))
+        model_builder.register_model('transform2act', lambda network, **kwargs: transform2act_models.ModelTransform2Act(network))
+
+        model_builder.register_network('transform2act', lambda **kwargs: transform2act_network_builder.Transform2ActBuilder())
         model_builder.register_network('vectorized_a2c',
                                        lambda **kwargs: vectorized_network_builder.VectorizedA2CBuilder())
         model_builder.register_network('ase', lambda **kwargs: ase_network_builder.ASEBuilder())

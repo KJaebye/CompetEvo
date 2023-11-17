@@ -42,6 +42,14 @@ def get_attr_fixed(cfg, robot):
     obs = np.stack(obs)
     return obs
 
+def get_body_index(robot: Robot, index_base=5):
+        index = []
+        for i, body in enumerate(robot.bodies):
+            ind = int(body.name, base=index_base)
+            index.append(ind)
+        index = np.array(index)
+        return index
+
 def allow_add_body(cfg, body):
     add_body_condition = cfg['add_body_condition']
     max_nchild = add_body_condition.get('max_nchild', 3)
