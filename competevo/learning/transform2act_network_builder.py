@@ -258,14 +258,14 @@ class Transform2ActBuilder():
                 x = self.critic_mlp(x)
             value_nodes = self.value_head(x)
             if num_nodes_cum is None:
-                value = value_nodes[[0]]
+                values = value_nodes[[0]]
             else:
-                value = value_nodes[torch.LongTensor(torch.cat([torch.zeros(1), num_nodes_cum[:-1]]))]
+                values = value_nodes[torch.LongTensor(torch.cat([torch.zeros(1), num_nodes_cum[:-1]]))]
 
             return control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \
                 total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
-                x.device, value
+                x.device, values
                     
         def is_separate_critic(self):
             return self.separate

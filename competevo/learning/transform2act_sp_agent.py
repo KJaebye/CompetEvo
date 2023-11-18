@@ -79,7 +79,30 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             'has_central_value' : self.has_central_value,
             'use_action_masks' : self.use_action_masks
         }
-        self.experience_buffer = ExperienceBuffer(self.env_info, algo_info, self.ppo_device)
+
+        # define experience buffer for varying nodes number EVO data
+        class EvoExperienceBuffer():
+            """
+                This buffer records data including: obses, actions, rewards, dones, values.
+            """
+            def __init__(self, batch_size, algo_info, device) -> None:
+                self.num_actors = algo_info['num_actors']
+                self.horizon_length = algo_info['horizon_length']
+                self.has_central_value = algo_info['has_central_value']
+                self.use_action_masks = algo_info['use_action_masks']
+                self.num_agents = 1
+
+                self.tensor_dict = {}
+                self.tensor_dict['obses'] = []
+                self.tensor_dict['actions'] = []
+                self.tensor_dict['rewards'] = []
+                self.tensor_dict['dones'] = []
+                self.tensor_dict['values'] = []
+
+            def update_data(self, key, idx, data):
+                self.tensor_dict[key].append(data)
+
+        self.experience_buffer = EvoExperienceBuffer(batch_size, algo_info, self.device)
 
         val_shape = (self.horizon_length, batch_size, self.value_size)
         current_rewards_shape = (batch_size, self.value_size)
@@ -88,15 +111,14 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         self.dones = torch.ones((batch_size,), dtype=torch.uint8, device=self.ppo_device)
 
         self.update_list = ['actions', 'values']
-        self.tensor_list = self.update_list + ['obses', 'states', 'dones']
+        self.tensor_list = ['obses', 'dones' 'values'] + self.update_list
 
     def play_steps(self):
         update_list = self.update_list
         step_time = 0.0
-        env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
-        
+
         for n in range(self.horizon_length):
-            self.obs = self.env_reset(env_done_indices)
+            self.obs = self.env_reset()
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
@@ -104,6 +126,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 res_dict_op = self.get_action_values(self.obs, is_op=True)
 
                 res_dict = self.get_action_values(self.obs)
+
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
             for k in update_list:
@@ -115,7 +138,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 self.player_pool.thread_pool.shutdown()
             step_time_start = time.time()
             self.obs, rewards, self.dones, infos = self.env_step(
-                torch.cat((res_dict['actions'], res_dict_op['actions']), dim=0))
+                torch.cat((res_dict['actions'], res_dict_op['actions']), dim=1))
             step_time_end = time.time()
             step_time += (step_time_end - step_time_start)
 
@@ -128,6 +151,14 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             self.current_rewards += rewards
             self.current_lengths += 1
+
+
+
+
+
+
+
+            
             all_done_indices = self.dones.nonzero(as_tuple=False)
             env_done_indices = self.dones.view(self.num_actors, self.num_agents).all(dim=1).nonzero(as_tuple=False)
             # print(f"env done indices: {env_done_indices}")
@@ -164,12 +195,11 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
     def env_step(self, actions):
         actions = self.preprocess_actions(actions)
         obs, rewards, dones, infos = self.vec_env.step(actions)
-        obs['obs_op'] = obs['obs'][self.num_actors:]
-        obs['obs'] = obs['obs'][:self.num_actors]
+        splited_obs = self.split_obs(obs)
         if self.is_tensor_obses:
             if self.value_size == 1:
                 rewards = rewards.unsqueeze(1)
-            return self.obs_to_tensors(obs), rewards.to(self.ppo_device), dones.to(self.ppo_device), infos
+            return self.obs_to_tensors(splited_obs), rewards.to(self.ppo_device), dones.to(self.ppo_device), infos
         else:
             if self.value_size == 1:
                 rewards = np.expand_dims(rewards, axis=1)
@@ -177,11 +207,30 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 dones).to(self.ppo_device), infos
 
     def env_reset(self, env_ids=None):
-        obs = self.vec_env.reset(env_ids)
+        obs = self.vec_env.reset()
         obs = self.obs_to_tensors(obs)
-        obs['obs_op'] = obs['obs'][self.num_actors:]
-        obs['obs'] = obs['obs'][:self.num_actors]
-        return obs
+        splited_obs = self.split_obs(obs)
+        return splited_obs
+    
+    def split_obs(self, obs:dict):
+        splited_obs = {}
+
+        op = {}
+        op['obses'] = obs['obses'][:, self.num_nodes:]
+        op['edges'] = obs['edges'][:, :, (self.num_nodes-1)*2:]
+        op['stage'] = obs['stage'] # every agent has the same stage
+        op['num_nodes'] = obs['num_nodes'][:, 0:]
+        op['body_index'] = obs['body_index'][:, self.num_nodes:]
+        splited_obs['op'] = op
+        
+        ego = {}
+        ego['obses'] = obs['obses'][:, :self.num_nodes]
+        ego['edges'] = obs['edges'][:, :, :(self.num_nodes-1)*2]
+        ego['stage'] = obs['stage'] # every agent has the same stage
+        ego['num_nodes'] = obs['num_nodes'][:, 0]
+        ego['body_index'] = obs['body_index'][:, :self.num_nodes]
+        splited_obs['ego'] = ego
+        return splited_obs
     
     def train(self):
         self.init_tensors()
@@ -299,14 +348,13 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         self.writer.add_scalar('rate/win_rate', win_rate, self.epoch_num)
 
     def get_action_values(self, obs, is_op=False):
-        processed_obs = self._preproc_obs(obs['obs_op'] if is_op else obs['obs'])
+        processed_obs = self._preproc_obs(obs['op'] if is_op else obs['ego'])
         if not is_op:
             self.model.eval()
         input_dict = {
             'is_train': False,
             'prev_actions': None,
             'obs': processed_obs,
-            'rnn_states': self.rnn_states
         }
         with torch.no_grad():
             if is_op:
@@ -317,7 +365,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 }
                 self.player_pool.inference(input_dict, res_dict, processed_obs)
             else:
-                res_dict = self.model(input_dict)
+                res_dict = self.model.get_action_values(input_dict)
             if self.has_central_value:
                 states = obs['states']
                 input_dict = {

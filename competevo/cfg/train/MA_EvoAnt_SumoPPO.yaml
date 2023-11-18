@@ -78,6 +78,7 @@ params:
     normalize_input: True
     normalize_value: True
     value_bootstrap: True
+    clip_actions: False
     num_actors: ${....task.env.numEnvs}
     reward_shaper:
       scale_value: 0.01

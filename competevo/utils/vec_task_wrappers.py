@@ -61,7 +61,8 @@ class VecTaskPythonWrapper(VecTaskPython):
 
     def fetch_amp_obs_demo(self, num_samples):
         return self.task.fetch_amp_obs_demo(num_samples)
-    
+
+
 class EvoVecTaskPythonWrapper(VecTaskPython):
     def __init__(self, task, rl_device, clip_observations=5.0, clip_actions=None):
         super().__init__(task, rl_device, clip_observations, clip_actions)
