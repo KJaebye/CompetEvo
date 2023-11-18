@@ -37,7 +37,7 @@ from isaacgym import gymapi
 from isaacgym import gymutil
 from omegaconf import DictConfig
 from competevo.tasks import isaacgym_task_map
-from competevo.utils.vec_task_wrappers import VecTaskPythonWrapper
+from competevo.utils.vec_task_wrappers import VecTaskPythonWrapper, EvoVecTaskPythonWrapper
 from competevo.utils.config import parse_sim_params
 
 SIM_TIMESTEP = 1.0 / 60.0
@@ -100,6 +100,18 @@ def get_rlgames_env_creator(
                                        task_config.get("clip_observations", np.inf),
                                        task_config.get("clip_actions", 1.0),
                                        AMP=True)
+        elif task_name == "MA_EvoAnt_Sumo":
+            task = isaacgym_task_map[task_name](
+                cfg=task_config,
+                rl_device=rl_device,
+                sim_device=sim_device,
+                graphics_device_id=graphics_device_id,
+                headless=headless,
+                virtual_screen_capture=virtual_screen_capture,
+                force_render=force_render,
+            )
+            env = EvoVecTaskPythonWrapper(task, rl_device, task_config.get("clip_observations", np.inf))
+        
         else:
             task = isaacgym_task_map[task_name](
                 cfg=task_config,

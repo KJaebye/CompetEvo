@@ -68,31 +68,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.sim_specs = robo_config["obs_specs"]["sim"]
         self.attr_specs = robo_config["obs_specs"]["attr"]
 
-        # define robots: 2
-        self.base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
-        self.robots = {}
-        # xml tmp dir
-        self.out_dir = 'out/evo_ant'
-        os.makedirs(self.out_dir, exist_ok=True)
-        name = "evo_ant"
-        name_op = "evo_ant_op"
-        self.robot = Robot(robo_config, self.base_ant_path, is_xml_str=False)
-        self.robot_op = Robot(robo_config, self.base_ant_path, is_xml_str=False)
-
-        # ant
-        self.design_ref_params = get_attr_design(self.robot)
-        self.design_cur_params = get_attr_design(self.robot)
-        self.design_param_names = self.robot.get_params(get_name=True)
-        self.num_nodes = len(list(self.robot.bodies))
-        # ant op
-        self.design_ref_params_op = get_attr_design(self.robot_op)
-        self.design_cur_params_op = get_attr_design(self.robot_op)
-        self.design_param_names_op = self.robot_op.get_params(get_name=True)
-        if robo_config["obs_specs"].get('fc_graph', False):
-            self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
-        else:
-            self.edges_op = self.robot_op.get_gnn_edges()
-        self.num_nodes_op = len(list(self.robot_op.bodies))
+        self.reset_robot(robo_config)
         
         # constant variables
         self.attr_design_dim = 5
@@ -152,7 +128,52 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         
         self.allocate_buffers() # init buffers
 
-    def step(self, all_actions: dict):
+    def reset_robot(self, robo_config):
+        # define robots: 2
+        self.base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
+        self.robots = {}
+        # xml tmp dir
+        self.out_dir = 'out/evo_ant'
+        os.makedirs(self.out_dir, exist_ok=True)
+        name = "evo_ant"
+        name_op = "evo_ant_op"
+        self.robot = Robot(robo_config, self.base_ant_path, is_xml_str=False)
+        self.robot_op = Robot(robo_config, self.base_ant_path, is_xml_str=False)
+
+        # ant
+        self.design_ref_params = get_attr_design(self.robot)
+        self.design_cur_params = get_attr_design(self.robot)
+        self.design_param_names = self.robot.get_params(get_name=True)
+        self.num_nodes = len(list(self.robot.bodies))
+        # ant op
+        self.design_ref_params_op = get_attr_design(self.robot_op)
+        self.design_cur_params_op = get_attr_design(self.robot_op)
+        self.design_param_names_op = self.robot_op.get_params(get_name=True)
+        if robo_config["obs_specs"].get('fc_graph', False):
+            self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
+        else:
+            self.edges_op = self.robot_op.get_gnn_edges()
+        self.num_nodes_op = len(list(self.robot_op.bodies))
+
+    def reset(self):
+        """
+            Reset the environment.
+        """
+        # destroy last sim
+        if self.sim is not None:
+            self.gym.destroy_sim(self.sim)
+            self.viewer.close()
+        
+        self.isaacgym_initialized = False
+        self.stage = "skel_trans"
+        self.cur_t = 0
+        # reset buffer
+        self.allocate_buffers()
+        # reset robots
+        self.reset_robot()
+        self.compute_observations()
+
+    def step(self, all_actions: torch.tensor):
         """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
         """
         assert all_actions.shape[1] == self.num_nodes + self.num_nodes_op
@@ -376,7 +397,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.num_nodes_buf = torch.zeros(
             (self.num_envs, 2), device=self.device, dtype=torch.int)
         if self.use_body_ind:
-            self.body_ind = torch.zeros(
+            self.body_ind_buf = torch.zeros(
                 (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.float)
         
         self.rew_buf = torch.zeros(
@@ -390,7 +411,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.randomize_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.extras = {}
-
 
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
@@ -547,6 +567,22 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.compute_reward()
         self.pos_before = self.obs_buf[:, 0, :2].clone() # first node is ant torso
 
+    def get_sim_obs(self):
+        # obs:
+        #  {obses, edges, stage, num_nodes, body_index}
+        #  obses: (:, num_nodes, attr_fixed_dim + gym_obs_dim + attr_design_dim)
+        #  edges: (:, 2, num_dof * 2)
+        #  stage: (:, 1)
+        #  num_nodes: (:, 1)
+        #  body_index: (:, num_nodes)
+        obs = {}
+        obs['obses'] = self.obs_buf.to(self.rl_device)
+        obs['edges'] = self.edge_buf.to(self.rl_device)
+        obs['stage'] = self.stage_buf.to(self.rl_device)
+        obs['num_nodes'] = self.num_nodes_buf.to(self.rl_device)
+        obs['body_index'] = self.body_ind_buf.to(self.rl_device)
+        return obs
+
     def compute_observations(self):
         """
             Calculate ant observations.
@@ -571,7 +607,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # body index
             if self.use_body_ind:
                 self.body_index = get_body_index(self.robot, self.index_base)
-                self.body_ind[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
 
             #-------------------------- agent opponent -----------------------#
             attr_fixed_obs_op = get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot_op).repeat(self.num_envs, 1)
@@ -589,7 +625,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
             if self.use_body_ind:
                 self.body_index_op = get_body_index(self.robot_op, self.index_base)
-                self.body_ind[:, :self.num_nodes] = self.body_index_op.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
             
         else: # execution stage: isaacgym simulation
             assert self.isaacgym_initialized is True 
@@ -632,8 +668,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
             # body index
             if self.use_body_ind:
-                self.body_ind[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
-                self.body_ind[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
 
     def compute_reward(self):
         if self.stage == "skel_trans" or "attr_trans":

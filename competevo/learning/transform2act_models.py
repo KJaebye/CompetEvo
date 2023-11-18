@@ -24,48 +24,36 @@ class ModelTransform2Act():
 
     class Network(BaseModelNetwork):
         def __init__(self, network, **kwargs):
-            BaseModelNetwork.__init__(self, **kwargs)
-            self.network = network
-
-        def is_rnn(self):
-            return self.network.is_rnn()
+            self.transform2act_network = network
+            self.action_dim = self.transform2act_network.action_dim
+            self.control_action_dim = self.transform2act_network.control_action_dim
             
-        def get_default_rnn_state(self):
-            return self.network.get_default_rnn_state()
-
         def forward(self, input_dict):
-            is_train = input_dict.get('is_train', True)
-            prev_actions = input_dict.get('prev_actions', None)
-            input_dict['obs'] = self.norm_obs(input_dict['obs'])
-            mu, logstd, value, states = self.network(input_dict)
-            sigma = torch.exp(logstd)
-            distr = torch.distributions.Normal(mu, sigma)
-            if is_train:
-                entropy = distr.entropy().sum(dim=-1)
-                prev_neglogp = self.neglogp(prev_actions, mu, sigma, logstd)
-                result = {
-                    'prev_neglogp' : torch.squeeze(prev_neglogp),
-                    'values' : value,
-                    'entropy' : entropy,
-                    'rnn_states' : states,
-                    'mus' : mu,
-                    'sigmas' : sigma
-                }                
-                return result
-            else:
-                selected_action = distr.sample()
-                neglogp = self.neglogp(selected_action, mu, sigma, logstd)
-                result = {
-                    'neglogpacs' : torch.squeeze(neglogp),
-                    'values' : self.unnorm_value(value),
-                    'actions' : selected_action,
-                    'rnn_states' : states,
-                    'mus' : mu,
-                    'sigmas' : sigma
-                }
-                return result
+            return self.transform2act_network(input_dict)
 
-        def neglogp(self, x, mean, std, logstd):
-            return 0.5 * (((x - mean) / std)**2).sum(dim=-1) \
-                + 0.5 * np.log(2.0 * np.pi) * x.size()[-1] \
-                + logstd.sum(dim=-1)
+        def select_action(self, x, mean_action=False):
+            control_dist, attr_dist, skel_dist, node_design_mask, _, total_num_nodes, _, _, _, device, _ = self.forward(x)
+            if control_dist is not None:
+                control_action = control_dist.mean_sample() if mean_action else control_dist.sample()
+            else:
+                control_action = None
+
+            if attr_dist is not None:
+                attr_action = attr_dist.mean_sample() if mean_action else attr_dist.sample()
+            else:
+                attr_action = None
+
+            if skel_dist is not None:
+                skel_action = skel_dist.mean_sample() if mean_action else skel_dist.sample()
+            else:
+                skel_action = None
+
+            action = torch.zeros(total_num_nodes, self.action_dim).to(device)
+            if control_action is not None:
+                action[node_design_mask['execution'], :self.control_action_dim] = control_action
+            if attr_action is not None:
+                action[node_design_mask['attr_trans'], self.control_action_dim:-1] = attr_action
+            if skel_action is not None:
+                action[node_design_mask['skel_trans'], [-1]] = skel_action
+            return action
+

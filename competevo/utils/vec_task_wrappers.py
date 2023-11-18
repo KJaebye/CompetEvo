@@ -61,3 +61,24 @@ class VecTaskPythonWrapper(VecTaskPython):
 
     def fetch_amp_obs_demo(self, num_samples):
         return self.task.fetch_amp_obs_demo(num_samples)
+    
+class EvoVecTaskPythonWrapper(VecTaskPython):
+    def __init__(self, task, rl_device, clip_observations=5.0, clip_actions=None):
+        super().__init__(task, rl_device, clip_observations, clip_actions)
+        self.num_agents = task.num_agents
+
+    def get_state(self):
+        return torch.clamp(self.task.states_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
+
+    def step(self, actions):
+        if self.clip_actions is not None:
+            actions_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
+
+        self.task.step(actions_tensor)
+
+        return self.task.get_sim_obs(), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
+
+    def reset(self):
+        # reset the simulator
+        self.task.reset()
+        return self.task.get_sim_obs()

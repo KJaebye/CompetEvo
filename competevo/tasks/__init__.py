@@ -31,9 +31,13 @@ from .ma_ant_sumo import MA_Ant_Sumo
 from .ma_ant_battle import MA_Ant_Battle
 from .ma_humanoid_strike import HumanoidStrike
 
+from .ma_evoant_sumo import MA_EvoAnt_Sumo
+
 # Mappings from strings to environments
 isaacgym_task_map = {
     "MA_Ant_Sumo": MA_Ant_Sumo,
     "MA_Ant_Battle": MA_Ant_Battle,
-    "MA_Humanoid_Strike": HumanoidStrike
+    "MA_Humanoid_Strike": HumanoidStrike,
+
+    "MA_EvoAnt_Sumo": MA_EvoAnt_Sumo,
 }

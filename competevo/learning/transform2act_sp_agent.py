@@ -71,6 +71,25 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         else:
             return PFSPPlayerPool(max_length=self.max_his_player_num, device=self.device)
 
+    def init_tensors(self):
+        batch_size = self.num_agents * self.num_actors
+        algo_info = {
+            'num_actors' : self.num_actors,
+            'horizon_length' : self.horizon_length,
+            'has_central_value' : self.has_central_value,
+            'use_action_masks' : self.use_action_masks
+        }
+        self.experience_buffer = ExperienceBuffer(self.env_info, algo_info, self.ppo_device)
+
+        val_shape = (self.horizon_length, batch_size, self.value_size)
+        current_rewards_shape = (batch_size, self.value_size)
+        self.current_rewards = torch.zeros(current_rewards_shape, dtype=torch.float32, device=self.ppo_device)
+        self.current_lengths = torch.zeros(batch_size, dtype=torch.float32, device=self.ppo_device)
+        self.dones = torch.ones((batch_size,), dtype=torch.uint8, device=self.ppo_device)
+
+        self.update_list = ['actions', 'values']
+        self.tensor_list = self.update_list + ['obses', 'states', 'dones']
+
     def play_steps(self):
         update_list = self.update_list
         step_time = 0.0
@@ -163,7 +182,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         obs['obs_op'] = obs['obs'][self.num_actors:]
         obs['obs'] = obs['obs'][:self.num_actors]
         return obs
-
+    
     def train(self):
         self.init_tensors()
         self.mean_rewards = self.last_mean_rewards = -100500

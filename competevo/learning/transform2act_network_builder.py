@@ -239,33 +239,33 @@ class Transform2ActBuilder():
             ########################################################################
             ############ value forward #############################################
             ########################################################################
+            num_nodes_cum = torch.cumsum(num_nodes) if num_nodes.shape[0] > 1 else None
             if self.design_flag_in_state:
-                design_flag = torch.tensor(np.repeat(use_transform_action, num_nodes)).to(obs.device)
                 if self.onehot_design_flag:
-                    design_flag_onehot = torch.zeros(design_flag.shape[0], 3).to(obs.device)
-                    design_flag_onehot.scatter_(1, design_flag.unsqueeze(1), 1)
-                    x = torch.cat([obs, design_flag_onehot], dim=-1)
+                    design_flag_onehot = torch.zeros(expanded_stage.shape[0], 3).to(obses.device)
+                    design_flag_onehot.scatter_(1, expanded_stage.unsqueeze(1), 1)
+                    x = torch.cat([obses, design_flag_onehot], dim=-1)
                 else:
-                    x = torch.cat([obs, design_flag.unsqueeze(1)], dim=-1)
+                    x = torch.cat([obses, expanded_stage.unsqueeze(1)], dim=-1)
             else:
-                x = obs
-            x = self.norm(x)
-            if self.pre_mlp is not None:
-                x = self.pre_mlp(x)
-            if self.gnn is not None:
-                x = self.gnn(x, edges)
-            if self.mlp is not None:
-                x = self.mlp(x)
+                x = obses
+            x = self.critic_norm(x)
+            if self.critic_pre_mlp is not None:
+                x = self.critic_pre_mlp(x)
+            if self.critic_gnn is not None:
+                x = self.critic_gnn(x, edges)
+            if self.critic_mlp is not None:
+                x = self.critic_mlp(x)
             value_nodes = self.value_head(x)
             if num_nodes_cum is None:
                 value = value_nodes[[0]]
             else:
-                value = value_nodes[torch.LongTensor(np.concatenate([np.zeros(1), num_nodes_cum[:-1]]))]
+                value = value_nodes[torch.LongTensor(torch.cat([torch.zeros(1), num_nodes_cum[:-1]]))]
 
             return control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \
-                    total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
-                        x[0][0].device
+                total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
+                x.device, value
                     
         def is_separate_critic(self):
             return self.separate
