@@ -260,7 +260,7 @@ while not gym.query_viewer_has_closed(viewer):
     gym.fetch_results(sim, True)
 
     gym.refresh_actor_root_state_tensor(sim)
-    print("actor_root_state:\n", root_states)
+    # print("actor_root_state:\n", root_states)
 
 
     # update the viewer

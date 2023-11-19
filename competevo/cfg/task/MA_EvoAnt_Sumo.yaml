@@ -40,12 +40,19 @@ env:
   asset:
     assetFileName: "mjcf/nv_ant.xml"
 
+
 robot:
   robot_param_scale: 1
-  max_num_nodes: 20
+  skel_transform_nsteps: 5
   enable_remove: false
 
-  skel_transform_nsteps: 5
+  max_body_depth: 4
+  add_body_condition:
+    max_nchild: 2
+
+  param_mapping: sin
+  no_root_offset: true
+
   obs_specs:
     attr: ['depth']
     sim: []
@@ -53,16 +60,15 @@ robot:
     clip_qvel: true
     use_projected_params: true
     use_body_ind: true
-  max_body_depth: 4
-
-  param_mapping: sin
-  no_root_offset: true
+  
   body_params:
     offset:
       type: 'xy'
       lb: [-0.5, -0.5]
       ub: [0.5, 0.5]
+
   joint_params: {}
+
   geom_params:
     size:
       lb: 0.03
@@ -70,6 +76,7 @@ robot:
     ext_start:
       lb: 0.0
       ub: 0.2
+
   actuator_params:
     gear:
       lb: 20

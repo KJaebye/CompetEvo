@@ -26,7 +26,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from omegaconf import DictConfig, OmegaConf
+from ast import List
+from omegaconf import DictConfig, OmegaConf, ListConfig
 from typing import Dict
 
 def omegaconf_to_dict(d: DictConfig)->Dict:
@@ -38,6 +39,14 @@ def omegaconf_to_dict(d: DictConfig)->Dict:
         else:
             ret[k] = v
     return ret
+
+def omegaconflist_to_list(d: dict)->list:
+    if isinstance(d, ListConfig):
+        return list(d)
+    elif isinstance(d, dict):
+        return {key: omegaconflist_to_list(value) for key, value in d.items()}
+    else:
+        return d
 
 def print_dict(val, nesting: int = -4, start: bool = True):
     """Outputs a nested dictionory."""

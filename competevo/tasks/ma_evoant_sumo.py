@@ -10,6 +10,7 @@ import random
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.gymtorch import *
+from competevo.utils.reformat import omegaconf_to_dict, omegaconflist_to_list
 # from torch.tensor import Tensor
 
 from competevo.utils.torch_jit_utils import *
@@ -130,13 +131,18 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
     def reset_robot(self, robo_config):
         # define robots: 2
-        self.base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
+        self.base_ant_path = '/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
         self.robots = {}
         # xml tmp dir
         self.out_dir = 'out/evo_ant'
         os.makedirs(self.out_dir, exist_ok=True)
         name = "evo_ant"
         name_op = "evo_ant_op"
+
+        # reformate robo_config
+        robo_config = omegaconf_to_dict(robo_config)
+        robo_config = omegaconflist_to_list(robo_config)
+
         self.robot = Robot(robo_config, self.base_ant_path, is_xml_str=False)
         self.robot_op = Robot(robo_config, self.base_ant_path, is_xml_str=False)
 
