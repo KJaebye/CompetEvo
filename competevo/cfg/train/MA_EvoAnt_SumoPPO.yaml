@@ -75,8 +75,8 @@ params:
     multi_gpu: ${....multi_gpu}
     ppo: True
     mixed_precision: False
-    normalize_input: True
-    normalize_value: True
+    normalize_input: False # actually already normed by default
+    normalize_value: False # actually already normed by default
     value_bootstrap: True
     clip_actions: False
     num_actors: ${....task.env.numEnvs}

@@ -13,6 +13,8 @@ from rl_games.algos_torch import a2c_continuous
 from rl_games.common.a2c_common import swap_and_flatten01
 from rl_games.algos_torch import torch_ext
 from rl_games.algos_torch import central_value
+from rl_games.common import common_losses
+
 import torch
 from torch import optim
 from tensorboardX import SummaryWriter
@@ -23,6 +25,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
     def __init__(self, base_name, params):
         params['config']['device'] = params['device']
         super().__init__(base_name, params)
+        self.bound_loss_type = self.config.get('bound_loss_type', None)  # None for evo
+
         self.player_pool_type = params['player_pool_type']
         self.base_model_config = {
             'actions_num': self.actions_num,
@@ -95,12 +99,33 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 self.tensor_dict = {}
                 self.tensor_dict['obses'] = []
                 self.tensor_dict['actions'] = []
-                self.tensor_dict['rewards'] = []
-                self.tensor_dict['dones'] = []
-                self.tensor_dict['values'] = []
 
-            def update_data(self, key, idx, data):
-                self.tensor_dict[key].append(data)
+                self.tensor_dict['rewards'] = torch.zeros((self.horizon_length, self.num_actors, 1), dtype=torch.float32, device=device)
+                self.tensor_dict['dones'] = torch.zeros((self.horizon_length, self.num_actors,), dtype=torch.uint8, device=device)
+                self.tensor_dict['values'] = torch.zeros((self.horizon_length, self.num_actors, 1), dtype=torch.float32, device=device)
+                self.tensor_dict['neglogpacs'] = torch.zeros((self.horizon_length, self.num_actors,), dtype=torch.float32, device=device)
+
+            def update_data(self, key, idx, val):
+                if key == 'obses' or key == 'actions':
+                    self.tensor_dict[key].append(val)
+                else:
+                    self.tensor_dict[key][idx] = val
+            
+            def get_transformed_list(self, transform_op, tensor_list):
+                res_dict = {}
+                for k in tensor_list:
+                    v = self.tensor_dict.get(k)
+                    if v is None:
+                        continue
+                    if type(v) is dict:
+                        transformed_dict = {}
+                        for kd,vd in v.items():
+                            transformed_dict[kd] = transform_op(vd)
+                        res_dict[k] = transformed_dict
+                    else:
+                        res_dict[k] = transform_op(v)
+                
+                return res_dict
 
         self.experience_buffer = EvoExperienceBuffer(batch_size, algo_info, self.device)
 
@@ -116,9 +141,10 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
     def play_steps(self):
         update_list = self.update_list
         step_time = 0.0
+        env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
 
         for n in range(self.horizon_length):
-            self.obs = self.env_reset()
+            self.obs = self.env_gym_reset(env_done_indices)
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
@@ -127,7 +153,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
                 res_dict = self.get_action_values(self.obs)
 
-            self.experience_buffer.update_data('obses', n, self.obs['obs'])
+            self.experience_buffer.update_data('obses', n, self.obs['ego']['obses'])
             self.experience_buffer.update_data('dones', n, self.dones)
             for k in update_list:
                 self.experience_buffer.update_data(k, n, res_dict[k])
@@ -149,16 +175,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
 
-            self.current_rewards += rewards
-            self.current_lengths += 1
+            self.current_rewards += rewards # (num_envs, 1)
+            self.current_lengths += 1 # (num_envs, 1)
 
-
-
-
-
-
-
-            
             all_done_indices = self.dones.nonzero(as_tuple=False)
             env_done_indices = self.dones.view(self.num_actors, self.num_agents).all(dim=1).nonzero(as_tuple=False)
             # print(f"env done indices: {env_done_indices}")
@@ -177,10 +196,15 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             env_done_indices = env_done_indices[:, 0]
 
-        last_values = self.get_values(self.obs)
+        last_values = self.get_values(self.obs) # (num_envs, 1)
 
-        fdones = self.dones.float()
-        mb_fdones = self.experience_buffer.tensor_dict['dones'].float()
+        fdones = self.dones.float() # (num_envs, 1)
+        # tensor_dict['dones']: List: horizon_length, (num_envs, 1)
+        # tensor_dict['values']: List: horizon_length, (num_envs, 1)
+        # tensor_dict['rewards']: List: horizon_length, (num_envs, 1)
+        # tensor_dict['actions']: List: horizon_length, (total_num_nodes, action_dim)
+        # tensor_dict['obses']: List: horizon_length, (total_num_nodes, obs_dim)
+        mb_fdones = self.experience_buffer.tensor_dict['dones'].float() # (horizon_length, num_envs, 1)
         mb_values = self.experience_buffer.tensor_dict['values']
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
         mb_advs = self.discount_values(fdones, last_values, mb_fdones, mb_values, mb_rewards)
@@ -206,11 +230,14 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             return self.obs_to_tensors(obs), torch.from_numpy(rewards).to(self.ppo_device).float(), torch.from_numpy(
                 dones).to(self.ppo_device), infos
 
-    def env_reset(self, env_ids=None):
-        obs = self.vec_env.reset()
+    def env_gym_reset(self, env_ids=None):
+        obs = self.vec_env.gym_reset(env_ids)
         obs = self.obs_to_tensors(obs)
         splited_obs = self.split_obs(obs)
         return splited_obs
+    
+    def env_reset(self):
+        ...
     
     def split_obs(self, obs:dict):
         splited_obs = {}
@@ -232,6 +259,172 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         splited_obs['ego'] = ego
         return splited_obs
     
+    def prepare_dataset(self, batch_dict):
+        obses = batch_dict['obses']
+        returns = batch_dict['returns']
+        dones = batch_dict['dones']
+        values = batch_dict['values']
+        actions = batch_dict['actions']
+        neglogpacs = batch_dict['neglogpacs']
+
+        rnn_states = batch_dict.get('rnn_states', None)
+        rnn_masks = batch_dict.get('rnn_masks', None)
+
+        advantages = returns - values
+
+        advantages = torch.sum(advantages, axis=1)
+
+        if self.normalize_advantage:
+            if self.is_rnn:
+                if self.normalize_rms_advantage:
+                    advantages = self.advantage_mean_std(advantages, mask=rnn_masks)
+                else:
+                    advantages = torch_ext.normalization_with_masks(advantages, rnn_masks)
+            else:
+                if self.normalize_rms_advantage:
+                    advantages = self.advantage_mean_std(advantages)
+                else:
+                    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+        dataset_dict = {}
+        dataset_dict['old_values'] = values
+        dataset_dict['old_logp_actions'] = neglogpacs
+        dataset_dict['advantages'] = advantages
+        dataset_dict['returns'] = returns
+        dataset_dict['actions'] = actions
+        dataset_dict['obs'] = obses
+        dataset_dict['dones'] = dones
+
+        dataset_dict['rnn_states'] = rnn_states
+        dataset_dict['rnn_masks'] = rnn_masks
+
+        self.dataset.update_values_dict(dataset_dict)
+
+        if self.has_central_value:
+            dataset_dict = {}
+            dataset_dict['old_values'] = values
+            dataset_dict['advantages'] = advantages
+            dataset_dict['returns'] = returns
+            dataset_dict['actions'] = actions
+            dataset_dict['obs'] = batch_dict['states']
+            dataset_dict['dones'] = dones
+            dataset_dict['rnn_masks'] = rnn_masks
+            self.central_value_net.update_dataset(dataset_dict)
+    
+    def calc_gradients(self, input_dict):
+        value_preds_batch = input_dict['old_values']
+        old_action_log_probs_batch = input_dict['old_logp_actions']
+        advantage = input_dict['advantages']
+        return_batch = input_dict['returns']
+        actions_batch = input_dict['actions']
+        obs_batch = input_dict['obs']
+        obs_batch = self._preproc_obs(obs_batch)
+
+        lr_mul = 1.0
+        curr_e_clip = self.e_clip
+
+        batch_dict = {
+            'is_train': True,
+            'prev_actions': actions_batch, 
+            'obs' : obs_batch,
+        }
+
+        rnn_masks = None
+        if self.is_rnn:
+            rnn_masks = input_dict['rnn_masks']
+            batch_dict['rnn_states'] = input_dict['rnn_states']
+            batch_dict['seq_length'] = self.seq_len
+            
+        with torch.cuda.amp.autocast(enabled=self.mixed_precision):
+            res_dict = self.model(batch_dict)
+            action_log_probs = res_dict['prev_neglogp']
+            values = res_dict['values']
+
+            a_loss = self.actor_loss_func(old_action_log_probs_batch, action_log_probs, advantage, self.ppo, curr_e_clip)
+
+            if self.has_value_loss:
+                c_loss = common_losses.critic_loss(value_preds_batch, values, curr_e_clip, return_batch, self.clip_value)
+            else:
+                c_loss = torch.zeros(1, device=self.ppo_device)
+            if self.bound_loss_type == 'regularisation':
+                b_loss = self.reg_loss(mu)
+            elif self.bound_loss_type == 'bound':
+                b_loss = self.bound_loss(mu)
+            else:
+                b_loss = torch.zeros(1, device=self.ppo_device)
+            losses, sum_mask = torch_ext.apply_masks([a_loss.unsqueeze(1), c_loss, b_loss.unsqueeze(1)], rnn_masks)
+            a_loss, c_loss, b_loss = losses[0], losses[1], losses[2]
+
+            loss = a_loss + 0.5 * c_loss * self.critic_coef + b_loss * self.bounds_loss_coef
+            
+            if self.multi_gpu:
+                self.optimizer.zero_grad()
+            else:
+                for param in self.model.parameters():
+                    param.grad = None
+
+        self.scaler.scale(loss).backward()
+        #TODO: Refactor this ugliest code of they year
+        self.trancate_gradients_and_step()
+
+        self.diagnostics.mini_batch(self,
+        {
+            'values' : value_preds_batch,
+            'returns' : return_batch,
+            'new_neglogp' : action_log_probs,
+            'old_neglogp' : old_action_log_probs_batch,
+            'masks' : rnn_masks
+        }, curr_e_clip, 0)
+
+        self.train_result = (a_loss, c_loss, self.last_lr, lr_mul, b_loss)
+
+    def train_epoch(self):
+        super().train_epoch()
+
+        self.set_eval()
+        play_time_start = time.time()
+        with torch.no_grad():
+            if self.is_rnn:
+                batch_dict = self.play_steps_rnn()
+            else:
+                batch_dict = self.play_steps()
+
+        play_time_end = time.time()
+        update_time_start = time.time()
+        rnn_masks = batch_dict.get('rnn_masks', None)
+
+        self.set_train()
+        self.curr_frames = batch_dict.pop('played_frames')
+        self.prepare_dataset(batch_dict)
+        self.algo_observer.after_steps()
+        if self.has_central_value:
+            self.train_central_value()
+
+        a_losses = []
+        c_losses = []
+        b_losses = []
+
+        for mini_ep in range(0, self.mini_epochs_num):
+            for i in range(len(self.dataset)):
+                a_loss, c_loss, last_lr, lr_mul, b_loss = self.train_actor_critic(self.dataset[i])
+                a_losses.append(a_loss)
+                c_losses.append(c_loss)
+                if self.bounds_loss_coef is not None:
+                    b_losses.append(b_loss)
+
+            if self.schedule_type == 'standard':
+                self.last_lr, self.entropy_coef = self.scheduler.update(self.last_lr, self.entropy_coef, self.epoch_num, 0, av_kls.item())
+                self.update_lr(self.last_lr)
+
+            self.diagnostics.mini_epoch(self, mini_ep)
+
+        update_time_end = time.time()
+        play_time = play_time_end - play_time_start
+        update_time = update_time_end - update_time_start
+        total_time = update_time_end - play_time_start
+
+        return batch_dict['step_time'], play_time, update_time, total_time, a_losses, c_losses, b_losses, last_lr, lr_mul
+    
     def train(self):
         self.init_tensors()
         self.mean_rewards = self.last_mean_rewards = -100500
@@ -250,7 +443,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
         while True:
             epoch_num = self.update_epoch()
-            step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, entropies, kls, last_lr, lr_mul = self.train_epoch()
+            step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, last_lr, lr_mul = self.train_epoch()
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)
             total_time += sum_time
@@ -274,7 +467,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                         f'fps step: {fps_step:.0f} fps step and policy inference: {fps_step_inference:.0f} fps total: {fps_total:.0f} epoch: {epoch_num}/{self.max_epochs}')
 
                 self.write_stats(total_time, epoch_num, step_time, play_time, update_time, a_losses, c_losses,
-                                 entropies, kls, last_lr, lr_mul, frame, scaled_time, scaled_play_time, curr_frames)
+                                 last_lr, lr_mul, frame, scaled_time, scaled_play_time, curr_frames)
 
                 self.algo_observer.after_print_stats(frame, epoch_num, total_time)
 
@@ -331,6 +524,24 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             if should_exit:
                 return self.last_mean_rewards, epoch_num
 
+    def write_stats(self, total_time, epoch_num, step_time, play_time, update_time, a_losses, c_losses, last_lr, lr_mul, frame, scaled_time, scaled_play_time, curr_frames):
+        # do we need scaled time?
+        self.diagnostics.send_info(self.writer)
+        self.writer.add_scalar('performance/step_inference_rl_update_fps', curr_frames / scaled_time, frame)
+        self.writer.add_scalar('performance/step_inference_fps', curr_frames / scaled_play_time, frame)
+        self.writer.add_scalar('performance/step_fps', curr_frames / step_time, frame)
+        self.writer.add_scalar('performance/rl_update_time', update_time, frame)
+        self.writer.add_scalar('performance/step_inference_time', play_time, frame)
+        self.writer.add_scalar('performance/step_time', step_time, frame)
+        self.writer.add_scalar('losses/a_loss', torch_ext.mean_list(a_losses).item(), frame)
+        self.writer.add_scalar('losses/c_loss', torch_ext.mean_list(c_losses).item(), frame)
+                
+        self.writer.add_scalar('info/last_lr', last_lr * lr_mul, frame)
+        self.writer.add_scalar('info/lr_mul', lr_mul, frame)
+        self.writer.add_scalar('info/e_clip', self.e_clip * lr_mul, frame)
+        self.writer.add_scalar('info/epochs', epoch_num, frame)
+        self.algo_observer.after_print_stats(frame, epoch_num, total_time)
+
     def update_metric(self):
         tot_win_rate = 0
         tot_games_num = 0
@@ -365,7 +576,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 }
                 self.player_pool.inference(input_dict, res_dict, processed_obs)
             else:
-                res_dict = self.model.get_action_values(input_dict)
+                res_dict = self.model(input_dict)
             if self.has_central_value:
                 states = obs['states']
                 input_dict = {
@@ -375,6 +586,30 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 value = self.get_central_value(input_dict)
                 res_dict['values'] = value
         return res_dict
+
+    def get_values(self, obs):
+        with torch.no_grad():
+            if self.has_central_value:
+                states = obs['states']
+                self.central_value_net.eval()
+                input_dict = {
+                    'is_train': False,
+                    'states' : states,
+                    'actions' : None,
+                    'is_done': self.dones,
+                }
+                value = self.get_central_value(input_dict)
+            else:
+                self.model.eval()
+                processed_obs = self._preproc_obs(obs['ego'])
+                input_dict = {
+                    'is_train': False,
+                    'prev_actions': None, 
+                    'obs' : processed_obs,
+                }
+                result = self.model(input_dict)
+                value = result['values']
+            return value
 
     def resample_op(self, resample_indices):
         for op_idx in range(self.num_opponent_agents):

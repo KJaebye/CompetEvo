@@ -83,3 +83,8 @@ class EvoVecTaskPythonWrapper(VecTaskPython):
         # reset the simulator
         self.task.reset()
         return self.task.get_sim_obs()
+    
+    def gym_reset(self, env_ids=None):
+        self.task.gym_reset(env_ids)
+        return self.task.get_sim_obs()
+

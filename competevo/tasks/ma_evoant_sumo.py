@@ -62,7 +62,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.skel_transform_nsteps = robo_config["skel_transform_nsteps"]
         self.clip_qvel = robo_config["obs_specs"]["clip_qvel"]
         self.use_projected_params = robo_config["obs_specs"]["use_projected_params"]
-        self.abs_design = robo_config["obs_specs"]["abs_design"]
+        self.abs_design = robo_config["obs_specs"].get("abs_design", False)
         self.use_body_ind = robo_config["obs_specs"]["use_body_ind"]
 
         self.sim_specs = robo_config["obs_specs"]["sim"]
@@ -262,13 +262,20 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             assert torch.all(all_actions[:, :, self.control_action_dim:] == 0)
             self.control_nsteps += 1
             self.gym_step(all_actions)
-    
-    def gym_reset(self) -> torch.Tensor:
-        """Reset all environments.
+
+    def gym_reset(self, env_ids=None) -> torch.Tensor:
+        """Reset the gym environment.
         """
-        env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
-        self.reset_idx(env_ids)
-        self.pos_before = self.obs_buf[:, 0, :2].clone()
+        if (env_ids is None):
+            # zero_actions = self.zero_actions()
+            # self.step(zero_actions)
+            env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+            self.reset_idx(env_ids)
+            self.compute_observations()
+            self.pos_before = self.obs_buf[:, 0, :2].clone()
+        else:
+            self._reset_envs(env_ids=env_ids)
+        return
 
     def reset_idx(self, env_ids):
         # print('reset.....', env_ids)
@@ -369,9 +376,9 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         torques = self.gym.acquire_dof_force_tensor(self.sim)
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof + self.num_dof_op)
 
-        # self.x_unit_tensor = to_torch([1, 0, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
-        # self.y_unit_tensor = to_torch([0, 1, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
-        # self.z_unit_tensor = to_torch([0, 0, 1], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        self.x_unit_tensor = to_torch([1, 0, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        self.y_unit_tensor = to_torch([0, 1, 0], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
+        self.z_unit_tensor = to_torch([0, 0, 1], dtype=torch.float, device=self.device).repeat((2 * self.num_envs, 1))
 
         self.hp = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
         self.hp_op = torch.ones((self.num_envs,), device=self.device, dtype=torch.float32) * 100
@@ -806,20 +813,20 @@ def compute_ant_observations(
 ):
     # type: (Tensor,Tensor,int,Tensor,Tensor,Tensor,Tensor,float,float)->Tensor
     dof_pos_scaled = unscale(dof_pos, dof_limits_lower, dof_limits_upper)
-    obs_root = torch.cat(
+    obs_root = torch.cat((
         torch.unsqueeze(root_states[:, :13], dim=1), # 13, (num_envs, 1, 13)
         torch.unsqueeze(root_states_op[:, :7], dim=1), # 7, (num_envs, 1, 7)
         torch.unsqueeze(root_states[:, :2] - root_states_op[:, :2], dim=1), # 2, (num_envs, 1, 2)
         torch.unsqueeze(root_states[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
         torch.unsqueeze(root_states_op[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
         torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float), # 1, root pos=0
-        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float), # 1, root vel=0
+        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float)), # 1, root vel=0
         -1
     ) # shape should be (num_envs, 1, 24)
-    obs_nodes = torch.cat(
+    obs_nodes = torch.cat((
         torch.zeros((root_states.shape[0], 1, 22), device=root_states.device, dtype=torch.float), # 22, all 0
         dof_pos_scaled,
-        dof_vel * dof_vel_scale,
+        dof_vel * dof_vel_scale),
         -1
     ) # shape should be (num_envs, num_dof, 24)
     obs = torch.cat((obs_root, obs_nodes), dim=1) # (num_envs, num_nodes, gym_obs_dim=24)

@@ -24,6 +24,7 @@ INSTALL_REQUIRES = [
     "multielo @ git+https://github.com/djcunningham0/multielo.git@440f7922b90ff87009f8283d6491eb0f704e6624",
     "matplotlib==3.5.2",
     "pytest==7.1.2",
+    # "torch-geometric"： conda install pyg -c pyg
 ]
 
 # Installation operation

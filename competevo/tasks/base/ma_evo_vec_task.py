@@ -258,7 +258,7 @@ class MA_Evo_VecTask(EvoEnv):
         return actions
 
     def gym_reset(self, env_ids=None) -> torch.Tensor:
-        """Reset the environment.
+        """Reset the gym environment.
         """
         if (env_ids is None):
             # zero_actions = self.zero_actions()
@@ -266,7 +266,7 @@ class MA_Evo_VecTask(EvoEnv):
             env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
             self.reset_idx(env_ids)
             self.compute_observations()
-            self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
+            self.pos_before = self.obs_buf[:, 0, :2].clone()
         else:
             self._reset_envs(env_ids=env_ids)
         return
@@ -275,7 +275,7 @@ class MA_Evo_VecTask(EvoEnv):
         if (len(env_ids) > 0):
             self.reset_idx(env_ids)
             self.compute_observations()
-            self.pos_before = self.obs_buf[:self.num_envs, :2].clone()
+            self.pos_before = self.obs_buf[:, 0, :2].clone()
         return
 
     def reset_done(self):

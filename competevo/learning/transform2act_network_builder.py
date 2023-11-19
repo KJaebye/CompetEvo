@@ -168,8 +168,8 @@ class Transform2ActBuilder():
             assert expanded_stage.shape[0] == total_num_nodes
             # get node design mask
             for flag in stages:
-                node_design_mask[flag] = (expanded_stage == stages.index(flag)).nonzero(as_tuple=True)[0]
-                design_mask[flag] = (stage == stages.index(flag)).nonzero(as_tuple=True)[0]
+                node_design_mask[flag] = (expanded_stage == stages.index(flag))
+                design_mask[flag] = (stage == stages.index(flag))
 
             # skeleton trans
             skel_obs = filter_state(obses, "skel_trans")
@@ -271,6 +271,7 @@ class Transform2ActBuilder():
             return self.separate
 
         def load(self, params):
+            self.separate = False
             self.actor_cfg = params["policy_specs"]
             self.critic_cfg = params["value_specs"]
 

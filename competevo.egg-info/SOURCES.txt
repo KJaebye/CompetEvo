@@ -2,6 +2,7 @@ LICENSE
 README.md
 setup.py
 competevo/__init__.py
+competevo/test.py
 competevo/train.py
 competevo.egg-info/PKG-INFO
 competevo.egg-info/SOURCES.txt
@@ -9,10 +10,14 @@ competevo.egg-info/dependency_links.txt
 competevo.egg-info/not-zip-safe
 competevo.egg-info/requires.txt
 competevo.egg-info/top_level.txt
+competevo/rl/__init__.py
 competevo/tasks/__init__.py
 competevo/tasks/ma_ant_battle.py
 competevo/tasks/ma_ant_sumo.py
+competevo/tasks/ma_evoant_sumo.py
 competevo/tasks/ma_humanoid_strike.py
 competevo/tasks/base/__init__.py
+competevo/tasks/base/evo_env.py
+competevo/tasks/base/ma_evo_vec_task.py
 competevo/tasks/base/ma_vec_task.py
 competevo/tasks/base/vec_task.py
