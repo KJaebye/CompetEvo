@@ -2,7 +2,7 @@ params:
   seed: ${...seed}
 
   algo:
-    name: self_play_continuous
+    name: self_play_transform2act
 
   model:
     name: transform2act
@@ -58,7 +58,7 @@ params:
         bias: true
 
   # self play agent related
-  player_pool_type: ${...player_pool_type}
+  player_pool_type: ${resolve_default:evo,${...player_pool_type}}
   load_checkpoint: ${if:${...checkpoint},True,False} # flag which sets whether to load the checkpoint
   load_path: ${...checkpoint} # path to the checkpoint to load
   op_load_path: ${if:${...op_checkpoint},${...op_checkpoint},${...checkpoint}} # default play with myself
@@ -71,7 +71,7 @@ params:
   device: ${...rl_device}
   config:
     name: ${resolve_default:MA_EvoAnt_1v1,${....experiment}}
-    env_name: rlgpu
+    env_name: evo_rlgpu
     multi_gpu: ${....multi_gpu}
     ppo: True
     mixed_precision: False

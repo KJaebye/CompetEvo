@@ -69,6 +69,11 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.sim_specs = robo_config["obs_specs"]["sim"]
         self.attr_specs = robo_config["obs_specs"]["attr"]
 
+        super().__init__(config=self.cfg, sim_device=sim_device, rl_device=rl_device,
+                         graphics_device_id=graphics_device_id,
+                         headless=headless, virtual_screen_capture=virtual_screen_capture,
+                         force_render=force_render)
+
         self.reset_robot(robo_config)
         
         # constant variables
@@ -121,11 +126,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.obs_dim = self.attr_fixed_dim + self.gym_obs_dim + self.attr_design_dim
 
         self.use_central_value = False
-
-        super().__init__(config=self.cfg, sim_device=sim_device, rl_device=rl_device,
-                         graphics_device_id=graphics_device_id,
-                         headless=headless, virtual_screen_capture=virtual_screen_capture,
-                         force_render=force_render)
         
         self.allocate_buffers() # init buffers
 
@@ -147,37 +147,41 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.robot_op = Robot(robo_config, self.base_ant_path, is_xml_str=False)
 
         # ant
-        self.design_ref_params = get_attr_design(self.robot)
-        self.design_cur_params = get_attr_design(self.robot)
+        self.design_ref_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
+        self.design_cur_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
         self.design_param_names = self.robot.get_params(get_name=True)
         self.num_nodes = len(list(self.robot.bodies))
         # ant op
-        self.design_ref_params_op = get_attr_design(self.robot_op)
-        self.design_cur_params_op = get_attr_design(self.robot_op)
+        self.design_ref_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
+        self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
         self.design_param_names_op = self.robot_op.get_params(get_name=True)
         if robo_config["obs_specs"].get('fc_graph', False):
             self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
         else:
-            self.edges_op = self.robot_op.get_gnn_edges()
+            self.edges_op = torch.from_numpy(self.robot_op.get_gnn_edges()).to(device=self.device, dtype=torch.int)
         self.num_nodes_op = len(list(self.robot_op.bodies))
 
-    def reset(self):
+    def reset(self, env_ids=None, gym_only=False):
         """
             Reset the environment.
         """
-        # destroy last sim
-        if self.sim is not None:
-            self.gym.destroy_sim(self.sim)
-            self.viewer.close()
-        
-        self.isaacgym_initialized = False
-        self.stage = "skel_trans"
-        self.cur_t = 0
-        # reset buffer
-        self.allocate_buffers()
-        # reset robots
-        self.reset_robot()
-        self.compute_observations()
+        if not gym_only:
+            # destroy last sim
+            if self.sim is not None:
+                self.gym.destroy_sim(self.sim)
+                self.viewer.close()
+            
+            self.isaacgym_initialized = False
+            self.stage = "skel_trans"
+            self.cur_t = 0
+            # reset buffer
+            self.allocate_buffers()
+            # reset robots
+            self.reset_robot(self.cfg['robot'])
+            self.compute_observations()
+        else:
+            if self.sim is not None: # reset only isaacgym sim is running
+                self.gym_reset(env_ids)
 
     def step(self, all_actions: torch.tensor):
         """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
@@ -196,11 +200,11 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # ant
             skel_a = actions[0][:, :-1]
             apply_skel_action(self.robot, skel_a)
-            self.design_cur_params = get_attr_design(self.robot)
+            self.design_cur_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
             # ant op
             skel_a_op = actions_op[0][:, :-1]
             apply_skel_action(self.robot_op, skel_a_op)
-            self.design_cur_params_op = get_attr_design(self.robot_op)
+            self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
 
             # transit to attribute transform stage
             if self.cur_t == self.skel_transform_nsteps:
@@ -226,7 +230,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                                 + design_a * self.robot_param_scale
             set_design_params(self.robot, design_params, self.out_dir, "evo_ant")
             if self.use_projected_params:
-                self.design_cur_params = get_attr_design(self.robot)
+                self.design_cur_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
             else:
                 self.design_cur_params = design_params.copy()
             # ant op
@@ -238,7 +242,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                                    + design_a_op * self.robot_param_scale
             set_design_params(self.robot_op, design_params_op, self.out_dir, "evo_ant_op")
             if self.use_projected_params:
-                self.design_cur_params_op = get_attr_design(self.robot_op)
+                self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
             else:
                 self.design_cur_params_op = design_params_op.copy()
 
@@ -284,7 +288,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         return
 
     def reset_idx(self, env_ids):
-        # print('reset.....', env_ids)
         # Randomization can happen only at reset time, since it can reset actor positions on GPU
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
@@ -404,14 +407,14 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             pass
         else: # use gnn_edges
             self.edge_buf = torch.zeros(
-                (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.float)
+                (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.int64)
         self.stage_buf = torch.ones(
             (self.num_envs, 1), device=self.device, dtype=torch.int)
         self.num_nodes_buf = torch.zeros(
             (self.num_envs, 2), device=self.device, dtype=torch.int)
         if self.use_body_ind:
             self.body_ind_buf = torch.zeros(
-                (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.float)
+                (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.int64)
         
         self.rew_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
@@ -602,43 +605,43 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         """
         if self.stage == "skel_trans" or "attr_trans":
             #--------------------------- agent -----------------------------#
-            attr_fixed_obs = get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot).repeat(self.num_envs, 1)
-            gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float)
-            design_obs = self.design_cur_params.repeat(self.num_envs, 1)
+            attr_fixed_obs = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float32)
+            design_obs = self.design_cur_params.unsqueeze(0).repeat(self.num_envs, 1, 1)
             # obs
-            self.obs_buf[:, :self.num_nodes] = torch.cat((attr_fixed_obs, gym_obs, design_obs), dim=1)
+            self.obs_buf[:, :self.num_nodes] = torch.cat((attr_fixed_obs, gym_obs, design_obs), dim=-1)
             # edges
             if self.cfg['robot']['obs_specs'].get('fc_graph', False):
-                self.edges = get_graph_fc_edges(len(self.robot.bodies))
+                self.edges = torch.from_numpy(get_graph_fc_edges(len(self.robot.bodies))).to(device=self.device, dtype=torch.int)
             else:
-                self.edges = self.robot.get_gnn_edges()
-                self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.repeat(self.num_envs, 1) # create vector of edges
+                self.edges = torch.from_numpy(self.robot.get_gnn_edges()).to(device=self.device, dtype=torch.int)
+                self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.unsqueeze(0).repeat(self.num_envs, 1, 1) # create vector of edges
             # stage flag
             self.stage_buf = torch.zeros((self.num_envs, 1)) if self.stage == "skel_trans" else torch.ones((self.num_envs, 1))# 0 for skel_trans
             # num_nodes
             self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
             # body index
             if self.use_body_ind:
-                self.body_index = get_body_index(self.robot, self.index_base)
-                self.body_ind_buf[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
+                self.body_index = torch.from_numpy(get_body_index(self.robot, self.index_base)).to(device=self.device, dtype=torch.float32)
+                self.body_ind_buf[:, :self.num_nodes] = self.body_index.unsqueeze(0).repeat(self.num_envs, 1)
 
             #-------------------------- agent opponent -----------------------#
-            attr_fixed_obs_op = get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot_op).repeat(self.num_envs, 1)
-            gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float)
-            design_obs_op = self.design_cur_params_op.repeat(self.num_envs, 1)
+            attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float32)
+            design_obs_op = self.design_cur_params_op.unsqueeze(0).repeat(self.num_envs, 1, 1)
             # obs
-            self.obs_buf[:, self.num_nodes:] = torch.cat((attr_fixed_obs_op, gym_obs_op, design_obs_op), dim=1)
+            self.obs_buf[:, self.num_nodes:] = torch.cat((attr_fixed_obs_op, gym_obs_op, design_obs_op), dim=-1)
             # edges
             if self.cfg['robot']['obs_specs'].get('fc_graph', False):
-                self.edges_op = get_graph_fc_edges(len(self.robot_op.bodies))
+                self.edges_op = torch.from_numpy(get_graph_fc_edges(len(self.robot_op.bodies))).to(device=self.device, dtype=torch.int)
             else:
-                self.edges_op = self.robot_op.get_gnn_edges()
-                self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.repeat(self.num_envs, 1) # create vector of edges
+                self.edges_op = torch.from_numpy(self.robot_op.get_gnn_edges()).to(device=self.device, dtype=torch.int)
+                self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.unsqueeze(0).repeat(self.num_envs, 1, 1) # create vector of edges
             # num_nodes
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
             if self.use_body_ind:
-                self.body_index_op = get_body_index(self.robot_op, self.index_base)
-                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
+                self.body_index_op = torch.from_numpy(get_body_index(self.robot_op, self.index_base)).to(device=self.device, dtype=torch.float32)
+                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.unsqueeze(0).repeat(self.num_envs, 1)
             
         else: # execution stage: isaacgym simulation
             assert self.isaacgym_initialized is True 

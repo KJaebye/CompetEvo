@@ -7,7 +7,7 @@ import numpy as np
 import os
 import time
 from .pfsp_player_pool import PFSPPlayerPool, SinglePlayer, PFSPPlayerThreadPool, PFSPPlayerProcessPool, \
-    PFSPPlayerVectorizedPool
+    PFSPPlayerVectorizedPool, EvoPFSPPlayerPool
 from competevo.utils.utils import load_checkpoint
 from rl_games.algos_torch import a2c_continuous
 from rl_games.common.a2c_common import swap_and_flatten01
@@ -72,6 +72,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             return PFSPPlayerVectorizedPool(max_length=self.max_his_player_num, device=self.device,
                                             vector_model_config=vector_model_config, params=params)
+        elif self.player_pool_type == 'evo':
+            return EvoPFSPPlayerPool(max_length=self.max_his_player_num, device=self.device)
         else:
             return PFSPPlayerPool(max_length=self.max_his_player_num, device=self.device)
 
@@ -144,7 +146,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
 
         for n in range(self.horizon_length):
-            self.obs = self.env_gym_reset(env_done_indices)
+            self.obs = self.env_reset(env_done_indices, gym_only=True)
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
@@ -229,34 +231,34 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 rewards = np.expand_dims(rewards, axis=1)
             return self.obs_to_tensors(obs), torch.from_numpy(rewards).to(self.ppo_device).float(), torch.from_numpy(
                 dones).to(self.ppo_device), infos
-
-    def env_gym_reset(self, env_ids=None):
-        obs = self.vec_env.gym_reset(env_ids)
+    
+    def env_reset(self, env_ids=None, gym_only=False):
+        obs = self.vec_env.reset(env_ids, gym_only)
         obs = self.obs_to_tensors(obs)
         splited_obs = self.split_obs(obs)
         return splited_obs
-    
-    def env_reset(self):
-        ...
-    
+        
     def split_obs(self, obs:dict):
         splited_obs = {}
+        obs = obs['obs']
+
+        ego = {}
+        num_nodes = obs['num_nodes'][:, 0][0].item()
+        ego['obses'] = obs['obses'][:, :num_nodes]
+        ego['edges'] = obs['edges'][:, :, :(num_nodes-1)*2]
+        ego['stage'] = obs['stage'] # every agent has the same stage
+        ego['num_nodes'] = obs['num_nodes'][:, :1]
+        ego['body_index'] = obs['body_index'][:, :num_nodes]
+        splited_obs['ego'] = ego
 
         op = {}
-        op['obses'] = obs['obses'][:, self.num_nodes:]
-        op['edges'] = obs['edges'][:, :, (self.num_nodes-1)*2:]
+        op['obses'] = obs['obses'][:, num_nodes:]
+        op['edges'] = obs['edges'][:, :, (num_nodes-1)*2:]
         op['stage'] = obs['stage'] # every agent has the same stage
-        op['num_nodes'] = obs['num_nodes'][:, 0:]
-        op['body_index'] = obs['body_index'][:, self.num_nodes:]
+        op['num_nodes'] = obs['num_nodes'][:, 1:]
+        op['body_index'] = obs['body_index'][:, num_nodes:]
         splited_obs['op'] = op
-        
-        ego = {}
-        ego['obses'] = obs['obses'][:, :self.num_nodes]
-        ego['edges'] = obs['edges'][:, :, :(self.num_nodes-1)*2]
-        ego['stage'] = obs['stage'] # every agent has the same stage
-        ego['num_nodes'] = obs['num_nodes'][:, 0]
-        ego['body_index'] = obs['body_index'][:, :self.num_nodes]
-        splited_obs['ego'] = ego
+
         return splited_obs
     
     def prepare_dataset(self, batch_dict):

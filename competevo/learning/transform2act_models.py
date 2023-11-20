@@ -24,9 +24,13 @@ class ModelTransform2Act():
 
     class Network(BaseModelNetwork):
         def __init__(self, network, **kwargs):
+            BaseModelNetwork.__init__(self, **kwargs)
             self.transform2act_network = network
             self.action_dim = self.transform2act_network.action_dim
             self.control_action_dim = self.transform2act_network.control_action_dim
+        
+        def is_rnn(self):
+            return self.transform2act_network.is_rnn()
             
         def forward(self, input_dict):
             control_dist, attr_dist, skel_dist, \
@@ -87,7 +91,7 @@ class ModelTransform2Act():
             if attr_action is not None:
                 actions[node_design_mask['attr_trans'], self.control_action_dim:-1] = attr_action
             if skel_action is not None:
-                actions[node_design_mask['skel_trans'], [-1]] = skel_action
+                actions[node_design_mask['skel_trans'], [-1]] = skel_action.to(dtype=torch.float32)
             return actions
 
         def get_log_prob(

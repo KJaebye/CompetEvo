@@ -75,6 +75,14 @@ class EvoEnv(ABC):
         self.control_freq_inv = config["env"].get("controlFrequencyInv", 1)
         self.clip_obs = config["env"].get("clipObservations", np.Inf)
         self.clip_actions = config["env"].get("clipActions", np.Inf)
+        
+        # not used but needed for compatibility with gym
+        self.num_observations = 0
+        self.num_states = 0
+        self.num_actions = 0
+        self.obs_space = spaces.Box(np.ones(self.num_obs) * -np.Inf, np.ones(self.num_obs) * np.Inf)
+        self.state_space = spaces.Box(np.ones(self.num_states) * -np.Inf, np.ones(self.num_states) * np.Inf)
+        self.act_space = spaces.Box(np.ones(self.num_actions) * -1., np.ones(self.num_actions) * 1.)
 
     @abc.abstractmethod 
     def allocate_buffers(self):
@@ -101,6 +109,26 @@ class EvoEnv(ABC):
         """
 
     @property
+    def observation_space(self) -> gym.Space:
+        """Get the environment's observation space."""
+        return self.obs_space
+
+    @property
+    def action_space(self) -> gym.Space:
+        """Get the environment's action space."""
+        return self.act_space
+
+    @property
     def num_envs(self) -> int:
         """Get the number of environments."""
         return self.num_environments
+
+    @property
+    def num_acts(self) -> int:
+        """Get the number of actions in the environment."""
+        return self.num_actions
+
+    @property
+    def num_obs(self) -> int:
+        """Get the number of observations in the environment."""
+        return self.num_observations

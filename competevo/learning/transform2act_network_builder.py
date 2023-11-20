@@ -17,8 +17,9 @@ class Transform2ActBuilder():
     def load(self, params):
         self.params = params
 
-    class Network():
+    class Network(nn.Module):
         def __init__(self, params, **kwargs):
+            super().__init__()
             self.load(params)
             
             #######################################################################
@@ -129,6 +130,42 @@ class Transform2ActBuilder():
             self.value_head = nn.Linear(cur_dim, 1)
             init_fc_weights(self.value_head)
 
+        def batch_data(
+                self, 
+                obses: torch.tensor, # obses: (:, num_nodes, attr_fixed_dim + gym_obs_dim + attr_design_dim)
+                edges: torch.tensor, # edges: (:, 2, num_dof * 2)
+                stage: torch.tensor, # stage: (:, 1)
+                num_nodes: torch.tensor, # num_nodes: (:, 1)
+                body_ind: torch.tensor, # body_index: (:, num_nodes)
+                flag:str,
+            ):
+            stages = ['skel_trans', 'attr_trans', 'execution']
+
+            stage = stage.view(-1)
+            
+            # print("expanded_stage shape:", expanded_stage.shape)
+
+            obses = obses[stage == stages.index(flag)].view(obses.shape[0]*obses.shape[1], -1)
+            print(f"{flag} obses shape:", obses.shape)
+
+            edges = edges[stage == stages.index(flag)].view(-1, edges.shape[0]*edges.shape[2])
+            print(f"{flag} edges_new shape:", edges.shape)
+            
+            num_nodes = num_nodes[stage == stages.index(flag)].view(-1)
+            # print("num_nodes shape:", num_nodes.shape)
+
+            num_nodes_cum = torch.cumsum(num_nodes, dim=0)
+            # print("num_nodes_cum shape:", num_nodes_cum.shape)
+
+            body_ind = body_ind.view(-1)
+            # print("body_ind shape:", body_ind.shape)
+
+            # if len(x) > 1:
+            #     repeat_num = [x.shape[1] for x in edges[1:]]
+            #     e_offset = np.repeat(num_nodes_cum[:-1], repeat_num)
+            #     e_offset = torch.tensor(e_offset, device=obs.device)
+            #     edges_new[:, -e_offset.shape[0]:] += e_offset
+            return obses, edges, stage, num_nodes, num_nodes_cum, body_ind
 
         def forward(self, states_dict: dict):
             """
@@ -142,49 +179,56 @@ class Transform2ActBuilder():
                     body_index: (:, num_nodes)
             """
             stages = ['skel_trans', 'attr_trans', 'execution']
+            states_dict = states_dict['obs']
+
             obses = states_dict['obses']
             edges = states_dict['edges']
             stage = states_dict['stage']
             num_nodes = states_dict['num_nodes']
             body_ind = states_dict['body_index'] if "body_index" in states_dict else None
-
-            ########################################################################
-            ############ policy forward #############################################
-            ########################################################################
-            # re-construct states by stage
-            def filter_state(x: torch.tensor, flag: str):
-                if flag not in stages:
-                    raise ValueError(f"stage_flag should be one of {stages}")
-                return x[stage == stages.index(flag)]
-                
+            
+            edges_design_mask = defaultdict(torch.tensor)
             node_design_mask = defaultdict(torch.tensor)
             design_mask = defaultdict(torch.tensor)
+            
+            stage = stage.view(-1)
+            num_nodes = num_nodes.view(-1)
+
             # expand stage according to num_ndoes
             stage_flat = stage.flatten()
             num_nodes_flat = num_nodes.flatten()
-            expanded_stage = torch.cat([stage_flat[i].repeat(num_nodes_flat[i]) for i in range(stage_flat.size(0))])
+            expanded_stage = torch.cat([stage_flat[i].repeat(num_nodes_flat[i]) for i in range(stage_flat.size(0))]).to(device=stage.device, dtype=torch.int64)
+
             total_num_nodes = num_nodes.sum(0)
-            expanded_stage = expanded_stage.view(-1, 1)
+            expanded_stage = expanded_stage.view(-1)
             assert expanded_stage.shape[0] == total_num_nodes
             # get node design mask
             for flag in stages:
                 node_design_mask[flag] = (expanded_stage == stages.index(flag))
                 design_mask[flag] = (stage == stages.index(flag))
 
+            ########################################################################
+            ############ policy forward #############################################
+            ########################################################################
             # skeleton trans
-            skel_obs = filter_state(obses, "skel_trans")
+            skel_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["skel_trans"]]
+            num_nodes_skel = num_nodes[design_mask["skel_trans"]]
+            num_nodes_cum_skel = torch.cumsum(num_nodes_skel, dim=0)
+
             if skel_obs.shape[0] != 0:
-                skel_obs = torch.cat((skel_obs[:, :, :self.attr_fixed_dim], skel_obs[:, :, -self.attr_design_dim:]), dim=-1)
+                skel_edges = edges[design_mask["skel_trans"]].view(-1, edges.shape[0]*edges.shape[2])
+                skel_body_ind = body_ind.view(-1)[node_design_mask["skel_trans"]]
+                skel_obs = torch.cat((skel_obs[:, :self.attr_fixed_dim], skel_obs[:, -self.attr_design_dim:]), dim=-1)
                 x = self.skel_norm(skel_obs)
                 if self.skel_pre_mlp is not None:
                     x = self.skel_pre_mlp(x)
                 if self.skel_gnn is not None:
-                    x = self.skel_gnn(x, filter_state(edges, "skel_trans"))
+                    x = self.skel_gnn(x, skel_edges)
 
                 if self.skel_mlp is not None:
                     x = self.skel_mlp(x)
                 if self.skel_ind_mlp is not None:
-                    skel_logits = self.skel_ind_mlp(x, filter_state(body_ind, "skel_trans"))
+                    skel_logits = self.skel_ind_mlp(x, skel_body_ind)
                 else:
                     skel_logits = self.skel_action_logits(x)
                 skel_dist = Categorical(logits=skel_logits, uniform_prob=self.skel_uniform_prob)
@@ -193,9 +237,15 @@ class Transform2ActBuilder():
                 skel_dist = None
             
             # attribute trans
-            attr_obs = filter_state(obses, "attr_trans")
+            attr_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["attr_trans"]]
+            num_nodes_design = num_nodes[design_mask["attr_trans"]]
+            num_nodes_cum_design = torch.cumsum(num_nodes_design, dim=0)
+
             if attr_obs.shape[0] != 0:
-                attr_obs = torch.cat((attr_obs[:, :, :self.attr_fixed_dim], attr_obs[:, :, -self.attr_design_dim:]), dim=-1)
+                attr_edges = edges[design_mask["attr_trans"]].view(-1, edges.shape[0]*edges.shape[2])
+                attr_body_ind = body_ind.view(-1)[node_design_mask["attr_trans"]]
+
+                attr_obs = torch.cat((attr_obs[:, :self.attr_fixed_dim], attr_obs[:, -self.attr_design_dim:]), dim=-1)
                 if self.attr_norm is not None:
                     x = self.attr_norm(attr_obs)
                 else:
@@ -203,11 +253,11 @@ class Transform2ActBuilder():
                 if self.attr_pre_mlp is not None:
                     x = self.attr_pre_mlp(x)
                 if self.attr_gnn is not None:
-                    x = self.attr_gnn(x, filter_state(edges, "attr_trans"))
+                    x = self.attr_gnn(x, attr_edges)
                 if self.attr_mlp is not None:
                     x = self.attr_mlp(x)
                 if self.attr_ind_mlp is not None:
-                    attr_action_mean = self.attr_ind_mlp(x, filter_state(body_ind, "attr_trans"))
+                    attr_action_mean = self.attr_ind_mlp(x, attr_body_ind)
                 else:
                     attr_action_mean = self.attr_action_mean(x)
                 attr_action_std = self.attr_action_log_std.expand_as(attr_action_mean).exp()
@@ -217,17 +267,23 @@ class Transform2ActBuilder():
                 attr_dist = None
             
             # execution
-            control_obs = filter_state(obses, "execution")
+            control_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["execution"]]
+            num_nodes_control = num_nodes[design_mask["execution"]]
+            num_nodes_cum_control = torch.cumsum(num_nodes_control, dim=0)
+
             if control_obs.shape[0] != 0:
+                control_edges = edges[design_mask["execution"]].view(-1, edges.shape[0]*edges.shape[2])
+                control_body_ind = body_ind.view(-1)[node_design_mask["execution"]]
+
                 x = self.control_norm(control_obs)
                 if self.control_pre_mlp is not None:
                     x = self.control_pre_mlp(x)
                 if self.control_gnn is not None:
-                    x = self.control_gnn(x, filter_state(edges, "execution"))
+                    x = self.control_gnn(x, control_edges)
                 if self.control_mlp is not None:
                     x = self.control_mlp(x)
                 if self.control_ind_mlp is not None:
-                    control_action_mean = self.control_ind_mlp(x, filter_state(body_ind, "execution"))
+                    control_action_mean = self.control_ind_mlp(x, control_body_ind)
                 else:
                     control_action_mean = self.control_action_mean(x)
                 control_action_std = self.control_action_log_std.expand_as(control_action_mean).exp()
@@ -239,39 +295,41 @@ class Transform2ActBuilder():
             ########################################################################
             ############ value forward #############################################
             ########################################################################
-            num_nodes_cum = torch.cumsum(num_nodes) if num_nodes.shape[0] > 1 else None
+            num_nodes_cum = torch.cumsum(num_nodes, dim=0) if num_nodes.shape[0] > 1 else None
             if self.design_flag_in_state:
                 if self.onehot_design_flag:
                     design_flag_onehot = torch.zeros(expanded_stage.shape[0], 3).to(obses.device)
                     design_flag_onehot.scatter_(1, expanded_stage.unsqueeze(1), 1)
-                    x = torch.cat([obses, design_flag_onehot], dim=-1)
+                    x = torch.cat([obses.view(obses.shape[0]*obses.shape[1], -1), design_flag_onehot], dim=-1)
                 else:
-                    x = torch.cat([obses, expanded_stage.unsqueeze(1)], dim=-1)
+                    x = torch.cat([obses.view(obses.shape[0]*obses.shape[1], -1), expanded_stage.unsqueeze(1)], dim=-1)
             else:
-                x = obses
+                x = obses.view(obses.shape[0]*obses.shape[1], -1)
             x = self.critic_norm(x)
             if self.critic_pre_mlp is not None:
                 x = self.critic_pre_mlp(x)
             if self.critic_gnn is not None:
-                x = self.critic_gnn(x, edges)
+                x = self.critic_gnn(x, edges.view(-1, edges.shape[0]*edges.shape[2]))
             if self.critic_mlp is not None:
                 x = self.critic_mlp(x)
             value_nodes = self.value_head(x)
             if num_nodes_cum is None:
                 values = value_nodes[[0]]
             else:
-                values = value_nodes[torch.LongTensor(torch.cat([torch.zeros(1), num_nodes_cum[:-1]]))]
+                values = value_nodes[torch.cat([torch.zeros(1).to(device=num_nodes_cum.device, dtype=num_nodes_cum.dtype), num_nodes_cum[:-1]])]
 
             return control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \
                 total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
                 x.device, values
-                    
+        
         def is_separate_critic(self):
-            return self.separate
+            return False
+
+        def is_rnn(self):
+            return False
 
         def load(self, params):
-            self.separate = False
             self.actor_cfg = params["policy_specs"]
             self.critic_cfg = params["value_specs"]
 

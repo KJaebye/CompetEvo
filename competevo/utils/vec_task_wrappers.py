@@ -64,9 +64,15 @@ class VecTaskPythonWrapper(VecTaskPython):
 
 
 class EvoVecTaskPythonWrapper(VecTaskPython):
-    def __init__(self, task, rl_device, clip_observations=5.0, clip_actions=None):
+    def __init__(self, task, rl_device, clip_observations=5.0, clip_actions=None, AMP=False):
         super().__init__(task, rl_device, clip_observations, clip_actions)
         self.num_agents = task.num_agents
+
+        if AMP:
+            self._amp_obs_space = spaces.Box(np.ones(task.get_num_amp_obs()) * -np.Inf, np.ones(task.get_num_amp_obs()) * np.Inf)
+        else:
+            self._amp_obs_space = None
+        return
 
     def get_state(self):
         return torch.clamp(self.task.states_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
@@ -79,12 +85,12 @@ class EvoVecTaskPythonWrapper(VecTaskPython):
 
         return self.task.get_sim_obs(), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
 
-    def reset(self):
+    def reset(self, env_ids=None, gym_only=False):
         # reset the simulator
-        self.task.reset()
+        self.task.reset(env_ids, gym_only)
         return self.task.get_sim_obs()
     
-    def gym_reset(self, env_ids=None):
-        self.task.gym_reset(env_ids)
-        return self.task.get_sim_obs()
+    @property
+    def amp_observation_space(self):
+        return self._amp_obs_space
 

@@ -229,3 +229,10 @@ class RLGPUEnv(vecenv.IVecEnv):
             print(info['action_space'], info['observation_space'])
 
         return info
+
+class EvoRLGPUEnv(RLGPUEnv):
+    def reset(self, env_ids=None, gym_only=False):
+        self.full_state["obs"] = self.env.reset(env_ids, gym_only)
+        if self.use_global_obs:
+            self.full_state["states"] = self.env.get_state()
+        return self.full_state

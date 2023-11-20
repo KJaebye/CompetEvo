@@ -159,7 +159,8 @@ design_ref_params = get_attr_design(xml_robot)
 attr_design_dim = design_ref_params.shape[-1]
 # print("attr_design_shape:\n", design_ref_params.shape)
 attr_fixed_dim = get_attr_fixed(cfg['obs_specs'], xml_robot).shape[-1]
-# print("attr_fixed_shape:\n", get_attr_fixed(cfg['obs_specs'], xml_robot).shape)
+print("attr_fixed_shape:\n", get_attr_fixed(cfg['obs_specs'], xml_robot).shape)
+print("get_attr_fixed:\n", get_attr_fixed(cfg['obs_specs'], xml_robot))
 edges = get_graph_fc_edges(num_node)
 # print("fc_graph edges:\n", edges)
 edges = xml_robot.get_gnn_edges()

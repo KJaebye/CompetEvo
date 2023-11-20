@@ -41,7 +41,7 @@ import gym
 
 from competevo.utils.reformat import omegaconf_to_dict, print_dict
 from competevo.utils.utils import set_np_formatting, set_seed
-from competevo.utils.rlgames_utils import RLGPUEnv, RLGPUAlgoObserver, get_rlgames_env_creator
+from competevo.utils.rlgames_utils import EvoRLGPUEnv, RLGPUEnv, RLGPUAlgoObserver, get_rlgames_env_creator
 from rl_games.common import env_configurations, vecenv
 from rl_games.torch_runner import Runner
 from rl_games.algos_torch import model_builder
@@ -52,8 +52,10 @@ from competevo.ase import hrl_models
 from competevo.ase import hrl_network_builder
 from competevo.learning import ppo_sp_agent
 from competevo.learning import hrl_sp_agent
+from competevo.learning import transform2act_sp_agent
 from competevo.learning import ppo_sp_player
 from competevo.learning import hrl_sp_player
+from competevo.learning import transform2act_sp_player
 from competevo.learning import vectorized_models
 from competevo.learning import vectorized_network_builder
 from competevo.learning import transform2act_models
@@ -133,9 +135,16 @@ def launch_rlg_hydra(cfg: DictConfig):
     # register the rl-games adapter to use inside the runner
     vecenv.register('RLGPU',
                     lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs))
+    vecenv.register('EvoRLGPU',
+                    lambda config_name, num_actors, **kwargs: EvoRLGPUEnv(config_name, num_actors, **kwargs))
 
     env_configurations.register('rlgpu', {
         'vecenv_type': 'RLGPU',
+        'env_creator': create_env_thunk,
+    })
+
+    env_configurations.register('evo_rlgpu', {
+        'vecenv_type': 'EvoRLGPU',
         'env_creator': create_env_thunk,
     })
 
@@ -145,11 +154,14 @@ def launch_rlg_hydra(cfg: DictConfig):
         runner.algo_factory.register_builder('self_play_continuous', lambda **kwargs: ppo_sp_agent.SPAgent(**kwargs))
         runner.algo_factory.register_builder('self_play_hrl', lambda **kwargs: hrl_sp_agent.HRLSPAgent(**kwargs))
         runner.algo_factory.register_builder('ase', lambda **kwargs: ase_agent.ASEAgent(**kwargs))
+        runner.algo_factory.register_builder('self_play_transform2act', lambda **kwargs: transform2act_sp_agent.T2A_SPAgent(**kwargs))
 
         runner.player_factory.register_builder('self_play_continuous',
                                                lambda **kwargs: ppo_sp_player.SPPlayer(**kwargs))
         runner.player_factory.register_builder('self_play_hrl',
                                                lambda **kwargs: hrl_sp_player.HRLSPPlayer(**kwargs))
+        # runner.player_factory.register_builder('self_play_transform2act', lambda **kwargs: transform2act_sp_player.T2A_SPPlayer(**kwargs))
+
         # runner.
         model_builder.register_model('hrl', lambda network, **kwargs: hrl_models.ModelHRLContinuous(network))
         model_builder.register_model('ase', lambda network, **kwargs: ase_models.ModelASEContinuous(network))

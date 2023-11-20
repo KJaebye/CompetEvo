@@ -155,6 +155,41 @@ class PFSPPlayerPool:
             for key in res_dict:
                 res_dict[key][player.env_indices] = out_dict[key]
 
+class EvoPFSPPlayerPool(PFSPPlayerPool):
+    def inference(self, input_dict, res_dict, processed_obs: dict):
+        distr_obs = self.distribute_obs(processed_obs, len(self.players))
+        for i, player in enumerate(self.players):
+            if len(player.env_indices[0]) == 0:
+                continue
+            input_dict['obs'] = self.dict_obs_slice(distr_obs[i], player.env_indices)
+            out_dict = player(input_dict)
+
+            for key in res_dict:
+                res_dict[key][player.env_indices] = out_dict[key]
+    
+    def distribute_obs(self, obs: dict, num_players: int) -> dict:
+        res = {}
+        num_nodes = obs['num_nodes'][0]
+        idx = torch.cat((torch.tensor([0], device=num_nodes.device), num_nodes.cumsum(0)))
+        idx_edge = torch.cat((torch.tensor([0], device=num_nodes.device), 2 * (num_nodes.cumsum(0) - 1)))
+        for i in range(num_players):
+            obs_ind = {}
+            obs_ind['obses'] = obs['obses'][:, idx[i]:idx[i+1]]
+            obs_ind['edges'] = obs['edges'][:, :, idx_edge[i]:idx_edge[i+1]]
+            obs_ind['stage'] = obs['stage']
+            obs_ind['num_nodes'] = obs['num_nodes'][:, i].unsqueeze(-1)
+            obs_ind['body_index'] = obs['body_index'][:, idx[i]:idx[i+1]]
+            res[i] = obs_ind
+        return res
+    
+    def dict_obs_slice(self, obs: dict, env_indices):
+        res = {}
+        res['obses'] = obs['obses'][env_indices]
+        res['edges'] = obs['edges'][env_indices]
+        res['stage'] = obs['stage'][env_indices]
+        res['num_nodes'] = obs['num_nodes'][env_indices]
+        res['body_index'] = obs['body_index'][env_indices]
+        return res
 
 class PFSPPlayerVectorizedPool(PFSPPlayerPool):
     def __init__(self, max_length, device, vector_model_config, params):
