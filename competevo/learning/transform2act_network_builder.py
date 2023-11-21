@@ -137,35 +137,33 @@ class Transform2ActBuilder():
                 stage: torch.tensor, # stage: (:, 1)
                 num_nodes: torch.tensor, # num_nodes: (:, 1)
                 body_ind: torch.tensor, # body_index: (:, num_nodes)
-                flag:str,
             ):
-            stages = ['skel_trans', 'attr_trans', 'execution']
 
             stage = stage.view(-1)
-            
-            # print("expanded_stage shape:", expanded_stage.shape)
+            # print("stage shape:", stage.shape)
 
-            obses = obses[stage == stages.index(flag)].view(obses.shape[0]*obses.shape[1], -1)
-            print(f"{flag} obses shape:", obses.shape)
-
-            edges = edges[stage == stages.index(flag)].view(-1, edges.shape[0]*edges.shape[2])
-            print(f"{flag} edges_new shape:", edges.shape)
+            obses = obses.view(obses.shape[0]*obses.shape[1], -1)
+            # print("obses shape:", obses.shape)
             
-            num_nodes = num_nodes[stage == stages.index(flag)].view(-1)
+            num_nodes = num_nodes.view(-1)
             # print("num_nodes shape:", num_nodes.shape)
 
             num_nodes_cum = torch.cumsum(num_nodes, dim=0)
             # print("num_nodes_cum shape:", num_nodes_cum.shape)
 
+            edges_new = edges.permute(1, 0, 2).reshape(2, -1)
+            # print("edges shape:", edges.shape)
+            # print("edges_new shape:", edges_new.shape)
+
             body_ind = body_ind.view(-1)
             # print("body_ind shape:", body_ind.shape)
 
-            # if len(x) > 1:
-            #     repeat_num = [x.shape[1] for x in edges[1:]]
-            #     e_offset = np.repeat(num_nodes_cum[:-1], repeat_num)
-            #     e_offset = torch.tensor(e_offset, device=obs.device)
-            #     edges_new[:, -e_offset.shape[0]:] += e_offset
-            return obses, edges, stage, num_nodes, num_nodes_cum, body_ind
+            if stage.shape[0] > 1:
+                repeat_num = [x.shape[1] for x in edges[1:]]
+                e_offset = torch.cat([num_nodes_cum[:-1][i].repeat(repeat_num[i]) for i in range(len(repeat_num))]).to(device=stage.device, dtype=torch.int64)
+                e_offset = e_offset.to(device=obses.device)
+                edges_new[:, -e_offset.shape[0]:] += e_offset
+            return obses, edges_new, stage, num_nodes, num_nodes_cum, body_ind
 
         def forward(self, states_dict: dict):
             """
@@ -187,7 +185,6 @@ class Transform2ActBuilder():
             num_nodes = states_dict['num_nodes']
             body_ind = states_dict['body_index'] if "body_index" in states_dict else None
             
-            edges_design_mask = defaultdict(torch.tensor)
             node_design_mask = defaultdict(torch.tensor)
             design_mask = defaultdict(torch.tensor)
             
@@ -208,16 +205,18 @@ class Transform2ActBuilder():
                 design_mask[flag] = (stage == stages.index(flag))
 
             ########################################################################
-            ############ policy forward #############################################
+            ############ policy forward ############################################
             ########################################################################
             # skeleton trans
-            skel_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["skel_trans"]]
-            num_nodes_skel = num_nodes[design_mask["skel_trans"]]
-            num_nodes_cum_skel = torch.cumsum(num_nodes_skel, dim=0)
-
+            skel_obs = obses[design_mask["skel_trans"]]
             if skel_obs.shape[0] != 0:
-                skel_edges = edges[design_mask["skel_trans"]].view(-1, edges.shape[0]*edges.shape[2])
-                skel_body_ind = body_ind.view(-1)[node_design_mask["skel_trans"]]
+                skel_obs, skel_edges, _, num_nodes_skel, num_nodes_cum_skel, skel_body_ind = \
+                    self.batch_data(obses[design_mask["skel_trans"]], 
+                                    edges[design_mask["skel_trans"]], 
+                                    stage[design_mask["skel_trans"]], 
+                                    num_nodes[design_mask["skel_trans"]], 
+                                    body_ind[design_mask["skel_trans"]])
+                
                 skel_obs = torch.cat((skel_obs[:, :self.attr_fixed_dim], skel_obs[:, -self.attr_design_dim:]), dim=-1)
                 x = self.skel_norm(skel_obs)
                 if self.skel_pre_mlp is not None:
@@ -237,14 +236,15 @@ class Transform2ActBuilder():
                 skel_dist = None
             
             # attribute trans
-            attr_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["attr_trans"]]
-            num_nodes_design = num_nodes[design_mask["attr_trans"]]
-            num_nodes_cum_design = torch.cumsum(num_nodes_design, dim=0)
-
+            attr_obs = obses[design_mask["attr_trans"]]
             if attr_obs.shape[0] != 0:
-                attr_edges = edges[design_mask["attr_trans"]].view(-1, edges.shape[0]*edges.shape[2])
-                attr_body_ind = body_ind.view(-1)[node_design_mask["attr_trans"]]
-
+                attr_obs, attr_edges, _, num_nodes_attr, num_nodes_cum_design, attr_body_ind = \
+                    self.batch_data(obses[design_mask["attr_trans"]], 
+                                    edges[design_mask["attr_trans"]], 
+                                    stage[design_mask["attr_trans"]], 
+                                    num_nodes[design_mask["attr_trans"]], 
+                                    body_ind[design_mask["attr_trans"]])
+                
                 attr_obs = torch.cat((attr_obs[:, :self.attr_fixed_dim], attr_obs[:, -self.attr_design_dim:]), dim=-1)
                 if self.attr_norm is not None:
                     x = self.attr_norm(attr_obs)
@@ -267,14 +267,15 @@ class Transform2ActBuilder():
                 attr_dist = None
             
             # execution
-            control_obs = obses.view(obses.shape[0]*obses.shape[1], -1)[node_design_mask["execution"]]
-            num_nodes_control = num_nodes[design_mask["execution"]]
-            num_nodes_cum_control = torch.cumsum(num_nodes_control, dim=0)
-
+            control_obs = obses[design_mask["execution"]]
             if control_obs.shape[0] != 0:
-                control_edges = edges[design_mask["execution"]].view(-1, edges.shape[0]*edges.shape[2])
-                control_body_ind = body_ind.view(-1)[node_design_mask["execution"]]
-
+                control_obs, control_edges, _, num_nodes_control, num_nodes_cum_control, control_body_ind = \
+                    self.batch_data(obses[design_mask["execution"]], 
+                                    edges[design_mask["execution"]], 
+                                    stage[design_mask["execution"]], 
+                                    num_nodes[design_mask["execution"]], 
+                                    body_ind[design_mask["execution"]])
+                
                 x = self.control_norm(control_obs)
                 if self.control_pre_mlp is not None:
                     x = self.control_pre_mlp(x)
