@@ -175,6 +175,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             
             self.isaacgym_initialized = False
             self.stage = "skel_trans"
+
             self.cur_t = 0
             # reset buffer
             self.allocate_buffers()
@@ -188,12 +189,11 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
     def step(self, all_actions: torch.tensor):
         """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
         """
-        print("#--------------------------------------------", self.stage, "-------------------------------------------------#")
-
         assert all_actions.shape[1] == self.num_nodes + self.num_nodes_op
         self.cur_t += 1
         actions = all_actions[:, :self.num_nodes, :]
         actions_op = all_actions[:, self.num_nodes:, :]
+
         # skeleton transform stage
         if self.stage == 'skel_trans':
             # check data in a tensor are definitely equal along the first dimension
@@ -209,12 +209,22 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             skel_a_op = actions_op[0][:, -1:]
             apply_skel_action(self.robot_op, skel_a_op)
             self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
+            
+            # update num_nodes and allocate buffer size
+            self.num_nodes = len(list(self.robot.bodies))
+            self.num_nodes_op = len(list(self.robot_op.bodies))
+            self.allocate_buffers()
 
-            # transit to attribute transform stage
-            if self.cur_t == self.skel_transform_nsteps:
-                self.transit_attribute_transform()
+            # logging
+            body_ind = get_body_index(self.robot, self.index_base)
+            print("Current body index:", body_ind)
+
             self.compute_observations()
             self.compute_reward()
+
+            # transit to attribute transform stage before return
+            if self.cur_t == self.skel_transform_nsteps:
+                self.transit_attribute_transform()
             return
         
         # attribute transform stage
@@ -258,11 +268,14 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             else:
                 self.design_cur_params_op = design_params_op.copy()
 
-            # transit to execution stage
-            self.transit_execution()
-
             self.compute_observations()
             self.compute_reward()
+
+            # logging
+            body_ind = get_body_index(self.robot, self.index_base)
+            print("Current body index:", body_ind)
+            print("Attribute design params:\n", get_attr_design(self.robot))
+            print("Attribute fixed params:\n", get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot))
 
             ###############################################################################
             ######## Create IsaacGym sim and envs for Execution ####################
@@ -278,12 +291,17 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.gym_state_init()
             self.gym_reset()
 
+            # transit stage to execution before return
+            self.transit_execution()
+            return
+
         # execution stage
         else:
             # check zero becuase in execution stage, only control action is computated
             assert torch.all(all_actions[:, :, self.control_action_dim:] == 0)
             self.control_nsteps += 1
             self.gym_step(all_actions)
+            return
 
     def gym_reset(self, env_ids=None) -> torch.Tensor:
         """Reset the gym environment.
@@ -352,9 +370,13 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
     def transit_attribute_transform(self):
         self.stage = 'attr_trans'
+        # stage flag
+        self.stage_buf = torch.ones((self.num_envs, 1)) # 1 for attr trans
 
     def transit_execution(self):
         self.stage = 'execution'
+        # stage flag
+        self.stage_buf = torch.ones((self.num_envs, 1)) * 2 # 2 for execution
         self.control_nsteps = 0
     
     def add_border_cam(self):
@@ -425,7 +447,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         else: # use gnn_edges
             self.edge_buf = torch.zeros(
                 (self.num_envs, 2, (self.num_nodes-1)*2 + (self.num_nodes_op-1)*2), device=self.device, dtype=torch.int64)
-        self.stage_buf = torch.ones(
+        self.stage_buf = torch.zeros(
             (self.num_envs, 1), device=self.device, dtype=torch.int)
         self.num_nodes_buf = torch.zeros(
             (self.num_envs, 2), device=self.device, dtype=torch.int)
@@ -446,6 +468,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.extras = {}
 
     def create_sim(self):
+        print("#------------------------------------------------", "isaacgym creating", "----------------------------------------------------#")
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
 
@@ -503,7 +526,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         start_pose_op = gymapi.Transform()
         start_pose_op.p = gymapi.Vec3(self.borderline_space - 1, self.borderline_space - 1, 1.)
 
-        print(start_pose.p, start_pose_op.p)
+        print("init pos:", start_pose.p, start_pose_op.p)
         self.start_rotation = torch.tensor([start_pose.r.x, start_pose.r.y, start_pose.r.z, start_pose.r.w],
                                            device=self.device)
 
@@ -634,10 +657,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             Calculate ant observations.
         """
         if self.stage == "skel_trans" or "attr_trans":
-            if self.stage == 'skel_trans':
-                self.num_nodes = len(list(self.robot.bodies))
-                self.num_nodes_op = len(list(self.robot_op.bodies))
-                self.allocate_buffers()
             #--------------------------- agent -----------------------------#
             attr_fixed_obs = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
             gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float32)
@@ -650,8 +669,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             else:
                 self.edges = torch.from_numpy(self.robot.get_gnn_edges()).to(device=self.device, dtype=torch.int)
                 self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.unsqueeze(0).repeat(self.num_envs, 1, 1) # create vector of edges
-            # stage flag
-            self.stage_buf = torch.zeros((self.num_envs, 1)) if self.stage == "skel_trans" else torch.ones((self.num_envs, 1))# 0 for skel_trans
+            
             # num_nodes
             self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
             # body index
@@ -712,8 +730,6 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # edges
             self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.repeat(self.num_envs, 1)
             self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.repeat(self.num_envs, 1)
-            # stage flag
-            self.stage_buf = torch.ones((self.num_envs, 1)) * 2 # 2 means execution stage
             # num_nodes
             self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)

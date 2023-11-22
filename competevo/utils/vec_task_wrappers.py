@@ -83,7 +83,7 @@ class EvoVecTaskPythonWrapper(VecTaskPython):
         else:
             actions_tensor = actions
         self.task.step(actions_tensor)
-        
+
         return self.task.get_sim_obs(), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
 
     def reset(self, env_ids=None, gym_only=False):
@@ -91,6 +91,10 @@ class EvoVecTaskPythonWrapper(VecTaskPython):
         self.task.reset(env_ids, gym_only)
         return self.task.get_sim_obs()
     
+    @property
+    def stage(self) -> str:
+        return self.task.stage
+
     @property
     def amp_observation_space(self):
         return self._amp_obs_space

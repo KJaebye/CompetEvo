@@ -145,7 +145,14 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         step_time = 0.0
         env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
 
+        tmp = []
+
         for n in range(self.horizon_length):
+            # logging
+            if self.vec_env.stage not in tmp:
+                print("#---------------------------------------------------", self.vec_env.stage, "-------------------------------------------------------#")
+                tmp.append(self.vec_env.stage)
+
             self.obs = self.env_reset(env_done_indices, gym_only=True)
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
@@ -153,9 +160,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             else:
                 res_dict_op = self.get_action_values(self.obs, is_op=True)
                 res_dict = self.get_action_values(self.obs)
-                print(self.obs['ego']['stage'])
-                print(res_dict['actions'])
 
+                # print(self.obs['ego']['stage'])
+                # print(res_dict['actions'])
 
             self.experience_buffer.update_data('obses', n, self.obs['ego']['obses'])
             self.experience_buffer.update_data('dones', n, self.dones)
@@ -200,7 +207,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             env_done_indices = env_done_indices[:, 0]
 
-        last_values = self.get_values(self.obs) # (num_envs, 1)
+        last_values = self.get_values(self.obs['ego']) # (num_envs, 1)
 
         fdones = self.dones.float() # (num_envs, 1)
         # tensor_dict['dones']: List: horizon_length, (num_envs, 1)
@@ -600,7 +607,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 value = self.get_central_value(input_dict)
             else:
                 self.model.eval()
-                processed_obs = self._preproc_obs(obs['ego'])
+                processed_obs = self._preproc_obs(obs)
                 input_dict = {
                     'is_train': False,
                     'prev_actions': None, 

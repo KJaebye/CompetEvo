@@ -236,3 +236,7 @@ class EvoRLGPUEnv(RLGPUEnv):
         if self.use_global_obs:
             self.full_state["states"] = self.env.get_state()
         return self.full_state
+    
+    @property
+    def stage(self):
+        return self.env.stage
