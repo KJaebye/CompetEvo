@@ -23,14 +23,6 @@
         <body name="11" pos="0.4 0.4 0">
           <joint axis="-0.707107 0.707107 0" name="11_joint" pos="0 0 0" range="-30 30" type="hinge"/>
           <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule"/>
-          <body name="111" pos="0.4 0.4 0">
-            <joint axis="-0.707107 0.707107 0" name="111_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule"/>
-          </body>
-        </body>
-        <body name="21" pos="0.4 0.4 0">
-          <joint axis="-0.707107 0.707107 0" name="21_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule"/>
         </body>
       </body>
       <body name="2" pos="0 0 0">
@@ -38,14 +30,6 @@
         <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule"/>
         <body name="12" pos="-0.4 0.4 0">
           <joint axis="-0.707107 -0.707107 0" name="12_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule"/>
-          <body name="112" pos="-0.4 0.4 0">
-            <joint axis="-0.707107 -0.707107 0" name="112_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule"/>
-          </body>
-        </body>
-        <body name="22" pos="-0.4 0.4 0">
-          <joint axis="-0.707107 -0.707107 0" name="22_joint" pos="0 0 0" range="-30 30" type="hinge"/>
           <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule"/>
         </body>
       </body>
@@ -76,10 +60,6 @@
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="12_joint" gear="150" name="12_joint"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="13_joint" gear="150" name="13_joint"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="14_joint" gear="150" name="14_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="21_joint" gear="150" name="21_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="111_joint" gear="150" name="111_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="22_joint" gear="150" name="22_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="112_joint" gear="150" name="112_joint"/>
   </actuator>
   <asset>
     <texture type="skybox" builtin="gradient" rgb1=".4 .5 .6" rgb2="0 0 0" width="100" height="100"/>

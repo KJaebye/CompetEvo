@@ -15,7 +15,7 @@ torch_deterministic: False
 max_iterations: ''
 
 # set minibatch_size
-minibatch_size: 32768
+minibatch_size: 64 #32768
 
 ## Device config
 #  'physx' or 'flex'

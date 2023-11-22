@@ -80,9 +80,10 @@ class EvoVecTaskPythonWrapper(VecTaskPython):
     def step(self, actions):
         if self.clip_actions is not None:
             actions_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
-
+        else:
+            actions_tensor = actions
         self.task.step(actions_tensor)
-
+        
         return self.task.get_sim_obs(), self.task.rew_buf.to(self.rl_device), self.task.reset_buf.to(self.rl_device), self.task.extras
 
     def reset(self, env_ids=None, gym_only=False):

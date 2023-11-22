@@ -1,3 +1,4 @@
+from calendar import c
 from typing import Tuple
 import attr
 import numpy as np
@@ -6,6 +7,7 @@ import math
 from sympy import N
 import torch
 import random
+import torch.nn.functional as F
 
 from isaacgym import gymtorch
 from isaacgym import gymapi
@@ -186,6 +188,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
     def step(self, all_actions: torch.tensor):
         """ all action shape: (num_envs, num_nodes + num_nodes_op, action_dim)
         """
+        print("#--------------------------------------------", self.stage, "-------------------------------------------------#")
+
         assert all_actions.shape[1] == self.num_nodes + self.num_nodes_op
         self.cur_t += 1
         actions = all_actions[:, :self.num_nodes, :]
@@ -194,15 +198,15 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         if self.stage == 'skel_trans':
             # check data in a tensor are definitely equal along the first dimension
             def check_equal(tensor):
-                return (tensor[0] == tensor).all()
-            assert check_equal(actions) and check_equal(actions_op) is True, \
+                return (tensor == tensor[0]).all()
+            assert (check_equal(actions) and check_equal(actions_op)).item() is True, \
                 "Skeleton transform stage needs all agents to have the same actions!"
             # ant
-            skel_a = actions[0][:, :-1]
+            skel_a = actions[0][:, -1:]
             apply_skel_action(self.robot, skel_a)
             self.design_cur_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
             # ant op
-            skel_a_op = actions_op[0][:, :-1]
+            skel_a_op = actions_op[0][:, -1:]
             apply_skel_action(self.robot_op, skel_a_op)
             self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
 
@@ -217,9 +221,17 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         elif self.stage == 'attr_trans':
             # check data in a tensor are definitely equal along the first dimension
             def check_equal(tensor):
-                return (tensor[0] == tensor).all()
-            assert check_equal(actions) and check_equal(actions_op) is True, \
+                return (tensor == tensor[0]).all()
+
+            try:
+                assert (check_equal(actions) and check_equal(actions_op)).item() is True, \
                 "Attribute transform stage needs all agents to have the same actions!"
+            except AssertionError:
+                cosine_similar_per_sample = F.cosine_similarity(actions[0, :, :], actions[1, :, :])
+                average_similar = cosine_similar_per_sample.mean()
+                print("Attribute transform actions maight be slightly different, average cosine similarity between env0 and env1 is: ", \
+                      average_similar.item())
+                assert average_similar == 1.
             
             # ant
             design_a = actions[0][:, self.control_action_dim:-1]
@@ -228,7 +240,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             else:
                 design_params = self.design_cur_params \
                                 + design_a * self.robot_param_scale
-            set_design_params(self.robot, design_params, self.out_dir, "evo_ant")
+            set_design_params(self.robot, design_params.cpu().numpy(), self.out_dir, "evo_ant")
             if self.use_projected_params:
                 self.design_cur_params = torch.from_numpy(get_attr_design(self.robot)).to(device=self.device, dtype=torch.float32)
             else:
@@ -240,7 +252,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             else:
                 design_params_op = self.design_cur_params_op \
                                    + design_a_op * self.robot_param_scale
-            set_design_params(self.robot_op, design_params_op, self.out_dir, "evo_ant_op")
+            set_design_params(self.robot_op, design_params_op.cpu().numpy(), self.out_dir, "evo_ant_op")
             if self.use_projected_params:
                 self.design_cur_params_op = torch.from_numpy(get_attr_design(self.robot_op)).to(device=self.device, dtype=torch.float32)
             else:
@@ -339,7 +351,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.reset_buf[env_ids] = 0
 
     def transit_attribute_transform(self):
-        self.stage = 'attribute_transform'
+        self.stage = 'attr_trans'
 
     def transit_execution(self):
         self.stage = 'execution'
@@ -361,8 +373,14 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
 
+        # reshape actor properties
+        self.dof_limits_lower = self.dof_limits_lower.view(self.num_envs, -1)
+        self.dof_limits_upper = self.dof_limits_upper.view(self.num_envs, -1)
+        self.dof_limits_lower_op = self.dof_limits_lower_op.view(self.num_envs, -1)
+        self.dof_limits_upper_op = self.dof_limits_upper_op.view(self.num_envs, -1)
+
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
-        print(f'root_states:{self.root_states.shape}')
+        print(f'root states:{self.root_states.shape}')
         self.initial_root_states = self.root_states.clone()
         self.initial_root_states[:, 7:13] = 0  # set lin_vel and ang_vel to 0
 
@@ -377,8 +395,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.initial_dof_pos = torch.zeros_like(self.dof_pos, device=self.device, dtype=torch.float)
         zero_tensor = torch.tensor([0.0], device=self.device)
         self.initial_dof_pos = torch.where(self.dof_limits_lower > zero_tensor, self.dof_limits_lower,
-                                           torch.where(self.dof_limits_upper < zero_tensor, self.dof_limits_upper,
-                                                       self.initial_dof_pos))
+                                           torch.where(self.dof_limits_upper < zero_tensor, self.dof_limits_upper, self.initial_dof_pos))
         self.initial_dof_vel = torch.zeros_like(self.dof_vel, device=self.device, dtype=torch.float)
         self.dt = self.cfg["sim"]["dt"]
 
@@ -417,13 +434,13 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                 (self.num_envs, self.num_nodes + self.num_nodes_op), device=self.device, dtype=torch.int64)
         
         self.rew_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.float)
+            self.num_envs, device=self.device, dtype=torch.float)
         self.reset_buf = torch.ones(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+            self.num_envs, device=self.device, dtype=torch.long)
         self.timeout_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
+            self.num_envs, device=self.device, dtype=torch.long)
         self.progress_buf = torch.zeros(
-            self.num_envs * self.num_agents, device=self.device, dtype=torch.long) # progress buffer only for isaacgym simulation, before isaacgym, it is always zero
+            self.num_envs, device=self.device, dtype=torch.long) # progress buffer only for isaacgym simulation, before isaacgym, it is always zero
         self.randomize_buf = torch.zeros(
             self.num_envs * self.num_agents, device=self.device, dtype=torch.long)
         self.extras = {}
@@ -439,6 +456,19 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         # If randomizing, apply once immediately on startup before the fist sim step
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
+    
+    def _add_circle_borderline(self, env):
+        lines = []
+        borderline_height = 0.01
+        for height in range(20):
+            for angle in range(360):
+                begin_point = [np.cos(np.radians(angle)), np.sin(np.radians(angle)), borderline_height * height]
+                end_point = [np.cos(np.radians(angle + 1)), np.sin(np.radians(angle + 1)), borderline_height * height]
+                lines.append(begin_point)
+                lines.append(end_point)
+        lines = np.array(lines, dtype=np.float32) * self.borderline_space
+        colors = np.array([[1, 0, 0]] * int(len(lines) / 2), dtype=np.float32)
+        self.gym.add_lines(self.viewer, env, int(len(lines) / 2), lines, colors)
 
     def _create_ground_plane(self):
         plane_params = gymapi.PlaneParams()
@@ -604,6 +634,10 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             Calculate ant observations.
         """
         if self.stage == "skel_trans" or "attr_trans":
+            if self.stage == 'skel_trans':
+                self.num_nodes = len(list(self.robot.bodies))
+                self.num_nodes_op = len(list(self.robot_op.bodies))
+                self.allocate_buffers()
             #--------------------------- agent -----------------------------#
             attr_fixed_obs = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
             gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float32)
@@ -627,6 +661,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
             #-------------------------- agent opponent -----------------------#
             attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.num_nodes_op = len(list(self.robot_op.bodies))
             gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float32)
             design_obs_op = self.design_cur_params_op.unsqueeze(0).repeat(self.num_envs, 1, 1)
             # obs
@@ -689,9 +724,9 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
     def compute_reward(self):
         if self.stage == "skel_trans" or "attr_trans":
-            self.rew_buf[:self.num_agents] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float)
-            self.rew_buf[self.num_agents:] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.float)
-            self.reset_buf = torch.zeros((self.num_envs * self.num_agents), device=self.device, dtype=torch.long)
+            self.extras['win'] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.int)
+            self.extras['lose'] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.int)
+            self.extras['draw'] = torch.ones((self.num_envs, 1), device=self.device, dtype=torch.int)
         else: # execution stage
             self.rew_buf[:], self.reset_buf[:], self.hp[:], self.hp_op[:], \
             self.extras['win'], self.extras['lose'], self.extras['draw'] = compute_ant_reward(

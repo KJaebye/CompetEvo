@@ -1,3 +1,4 @@
+from tkinter import NO
 from competevo.robot.xml_robot import Robot
 import numpy as np
 
@@ -64,15 +65,15 @@ def allow_remove_body(cfg, body):
             return True
     return False
 
-def apply_skel_action(robot: Robot, skel_action, out_dir, file_name):
+def apply_skel_action(robot: Robot, skel_action, out_dir=None, file_name=None):
     bodies = list(robot.bodies)
     for body, a in zip(bodies, skel_action):
-        if a == 1 and allow_add_body(body):
+        if a == 1 and allow_add_body(robot.cfg, body):
             robot.add_child_to_body(body)
-        if a == 2 and allow_remove_body(body):
+        if a == 2 and allow_remove_body(robot.cfg, body):
             robot.remove_body(body)
-
-    # robot.write_xml(f'{out_dir}/{file_name}.xml')
+    if out_dir is not None and file_name is not None:
+        robot.write_xml(f'{out_dir}/{file_name}.xml')
 
 def set_design_params(robot: Robot, in_design_params, out_dir, file_name):
     design_params = in_design_params

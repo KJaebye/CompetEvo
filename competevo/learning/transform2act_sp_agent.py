@@ -152,8 +152,10 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
                 res_dict_op = self.get_action_values(self.obs, is_op=True)
-
                 res_dict = self.get_action_values(self.obs)
+                print(self.obs['ego']['stage'])
+                print(res_dict['actions'])
+
 
             self.experience_buffer.update_data('obses', n, self.obs['ego']['obses'])
             self.experience_buffer.update_data('dones', n, self.dones)
@@ -571,12 +573,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         }
         with torch.no_grad():
             if is_op:
-                res_dict = {
-                    "actions": torch.zeros((self.num_actors * self.num_opponent_agents, self.actions_num),
-                                           device=self.device),
-                    "values": torch.zeros((self.num_actors * self.num_opponent_agents, 1), device=self.device)
-                }
-                self.player_pool.inference(input_dict, res_dict, processed_obs)
+                res_dict = self.player_pool.inference(input_dict, processed_obs)
             else:
                 res_dict = self.model(input_dict)
             if self.has_central_value:

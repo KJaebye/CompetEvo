@@ -301,16 +301,16 @@ class Transform2ActBuilder():
                 if self.onehot_design_flag:
                     design_flag_onehot = torch.zeros(expanded_stage.shape[0], 3).to(obses.device)
                     design_flag_onehot.scatter_(1, expanded_stage.unsqueeze(1), 1)
-                    x = torch.cat([obses.view(obses.shape[0]*obses.shape[1], -1), design_flag_onehot], dim=-1)
+                    x = torch.cat([obses.reshape(obses.shape[0]*obses.shape[1], -1), design_flag_onehot], dim=-1)
                 else:
-                    x = torch.cat([obses.view(obses.shape[0]*obses.shape[1], -1), expanded_stage.unsqueeze(1)], dim=-1)
+                    x = torch.cat([obses.reshape(obses.shape[0]*obses.shape[1], -1), expanded_stage.unsqueeze(1)], dim=-1)
             else:
                 x = obses.view(obses.shape[0]*obses.shape[1], -1)
             x = self.critic_norm(x)
             if self.critic_pre_mlp is not None:
                 x = self.critic_pre_mlp(x)
             if self.critic_gnn is not None:
-                x = self.critic_gnn(x, edges.view(-1, edges.shape[0]*edges.shape[2]))
+                x = self.critic_gnn(x, edges.reshape(-1, edges.shape[0]*edges.shape[2]))
             if self.critic_mlp is not None:
                 x = self.critic_mlp(x)
             value_nodes = self.value_head(x)

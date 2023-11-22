@@ -1,6 +1,7 @@
 import collections
 
 import random
+import re
 import torch
 import torch.multiprocessing as mp
 import dill
@@ -156,16 +157,30 @@ class PFSPPlayerPool:
                 res_dict[key][player.env_indices] = out_dict[key]
 
 class EvoPFSPPlayerPool(PFSPPlayerPool):
-    def inference(self, input_dict, res_dict, processed_obs: dict):
+    def inference(self, input_dict, processed_obs: dict):
         distr_obs = self.distribute_obs(processed_obs, len(self.players))
+        ma_res = {}
         for i, player in enumerate(self.players):
             if len(player.env_indices[0]) == 0:
                 continue
             input_dict['obs'] = self.dict_obs_slice(distr_obs[i], player.env_indices)
             out_dict = player(input_dict)
-
-            for key in res_dict:
-                res_dict[key][player.env_indices] = out_dict[key]
+            ma_res[i] = out_dict
+        
+        res_dict = self.merge_res(ma_res)
+        return res_dict
+    
+    def merge_res(self, ma_res: dict) -> dict:
+        res_merged = {}
+        for i, res in ma_res.items():
+            if i == 0:
+                for key in res:
+                    res_merged[key] = res[key]
+            else:
+                for key, val in res.items():
+                    res_merged[key] = torch.cat((res_merged[key], val), dim=0)
+        return res_merged
+            
     
     def distribute_obs(self, obs: dict, num_players: int) -> dict:
         res = {}

@@ -33,6 +33,7 @@ class ModelTransform2Act():
             return self.transform2act_network.is_rnn()
             
         def forward(self, input_dict):
+            num_envs = input_dict['obs']['obses'].shape[0]
             control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \
                     total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
@@ -52,6 +53,7 @@ class ModelTransform2Act():
                 actions = self.select_actions(control_dist, attr_dist, skel_dist, node_design_mask, total_num_nodes, device)
                 action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
                                                     num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                actions = actions.view(num_envs, -1, self.action_dim)
                 result = {
                     'neglogpacs' : torch.squeeze(action_log_prob),
                     'values' : values,
@@ -76,12 +78,14 @@ class ModelTransform2Act():
                 control_action = None
 
             if attr_dist is not None:
-                attr_action = attr_dist.mean_sample() if mean_action else attr_dist.sample()
+                # attr_action = attr_dist.mean_sample() if mean_action else attr_dist.sample()
+                attr_action = attr_dist.mean_sample()
             else:
                 attr_action = None
 
             if skel_dist is not None:
-                skel_action = skel_dist.mean_sample() if mean_action else skel_dist.sample()
+                # skel_action = skel_dist.mean_sample() if mean_action else skel_dist.sample()
+                skel_action = skel_dist.mean_sample()
             else:
                 skel_action = None
 
@@ -113,7 +117,7 @@ class ModelTransform2Act():
                 control_action = action[node_design_mask['execution'], :self.control_action_dim]
                 control_action_log_prob_nodes = control_dist.log_prob(control_action)
                 control_action_log_prob_cum = torch.cumsum(control_action_log_prob_nodes, dim=0)
-                control_action_log_prob_cum = control_action_log_prob_cum[torch.LongTensor(num_nodes_cum_control) - 1]
+                control_action_log_prob_cum = control_action_log_prob_cum[num_nodes_cum_control - 1]
                 control_action_log_prob = torch.cat([control_action_log_prob_cum[[0]], control_action_log_prob_cum[1:] - control_action_log_prob_cum[:-1]])
                 action_log_prob[design_mask['execution']] = control_action_log_prob
             # attribute transform log prob
@@ -121,7 +125,7 @@ class ModelTransform2Act():
                 attr_action = action[node_design_mask['attr_trans'], self.control_action_dim:-1]
                 attr_action_log_prob_nodes = attr_dist.log_prob(attr_action)
                 attr_action_log_prob_cum = torch.cumsum(attr_action_log_prob_nodes, dim=0)
-                attr_action_log_prob_cum = attr_action_log_prob_cum[torch.LongTensor(num_nodes_cum_design) - 1]
+                attr_action_log_prob_cum = attr_action_log_prob_cum[num_nodes_cum_design - 1]
                 attr_action_log_prob = torch.cat([attr_action_log_prob_cum[[0]], attr_action_log_prob_cum[1:] - attr_action_log_prob_cum[:-1]])
                 action_log_prob[design_mask['attr_trans']] = attr_action_log_prob
             # skeleton transform log prob
@@ -129,7 +133,7 @@ class ModelTransform2Act():
                 skel_action = action[node_design_mask['skel_trans'], [-1]]
                 skel_action_log_prob_nodes = skel_dist.log_prob(skel_action)
                 skel_action_log_prob_cum = torch.cumsum(skel_action_log_prob_nodes, dim=0)
-                skel_action_log_prob_cum = skel_action_log_prob_cum[torch.LongTensor(num_nodes_cum_skel) - 1]
+                skel_action_log_prob_cum = skel_action_log_prob_cum[num_nodes_cum_skel - 1]
                 skel_action_log_prob = torch.cat([skel_action_log_prob_cum[[0]], skel_action_log_prob_cum[1:] - skel_action_log_prob_cum[:-1]])
                 action_log_prob[design_mask['skel_trans']] = skel_action_log_prob
             return action_log_prob

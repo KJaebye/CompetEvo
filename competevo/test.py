@@ -130,7 +130,7 @@ import yaml
 cfg_path = f'/home/kjaebye/ws/competevo/competevo/robot/evo_ant.yml'
 yml = yaml.safe_load(open(cfg_path, 'r'))
 cfg = yml['robot']
-base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant.xml'
+base_ant_path = f'/home/kjaebye/ws/competevo/assets/mjcf/ant_evo_test.xml'
 xml_robot = Robot(cfg, base_ant_path, is_xml_str=False)
 
 # edit skel
