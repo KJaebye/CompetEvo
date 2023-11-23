@@ -33,6 +33,13 @@ class ModelTransform2Act():
             return self.transform2act_network.is_rnn()
             
         def forward(self, input_dict):
+            """
+                Input dict: {
+                    'is_train' : bool,
+                    'prev_actions' : torch.Tensor / None,
+                    'obs' : dict,
+                }
+            """
             num_envs = input_dict['obs']['obses'].shape[0]
             control_dist, attr_dist, skel_dist, \
                 node_design_mask, design_mask, \

@@ -300,7 +300,13 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # check zero becuase in execution stage, only control action is computated
             assert torch.all(all_actions[:, :, self.control_action_dim:] == 0)
             self.control_nsteps += 1
-            self.gym_step(all_actions)
+            
+            # extract node control action from all actions
+            control_actions = all_actions[:, :, :self.control_action_dim]
+            control_actions = torch.cat(([control_actions[:, i*self.num_nodes+1:(i+1)*self.num_nodes] for i in range(self.num_agents)]), dim=1)
+            control_actions = control_actions.view(-1)
+
+            self.gym_step(control_actions)
             return
 
     def gym_reset(self, env_ids=None) -> torch.Tensor:

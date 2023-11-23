@@ -91,7 +91,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             """
                 This buffer records data including: obses, actions, rewards, dones, values.
             """
-            def __init__(self, batch_size, algo_info, device) -> None:
+            def __init__(self, algo_info, device) -> None:
                 self.num_actors = algo_info['num_actors']
                 self.horizon_length = algo_info['horizon_length']
                 self.has_central_value = algo_info['has_central_value']
@@ -129,7 +129,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 
                 return res_dict
 
-        self.experience_buffer = EvoExperienceBuffer(batch_size, algo_info, self.device)
+        self.experience_buffer = EvoExperienceBuffer(algo_info, self.device)
 
         val_shape = (self.horizon_length, batch_size, self.value_size)
         current_rewards_shape = (batch_size, self.value_size)
@@ -144,14 +144,13 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         update_list = self.update_list
         step_time = 0.0
         env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
-
-        tmp = []
+        flag = []
 
         for n in range(self.horizon_length):
             # logging
-            if self.vec_env.stage not in tmp:
+            if self.vec_env.stage not in flag:
                 print("#---------------------------------------------------", self.vec_env.stage, "-------------------------------------------------------#")
-                tmp.append(self.vec_env.stage)
+                flag.append(self.vec_env.stage)
 
             self.obs = self.env_reset(env_done_indices, gym_only=True)
             if self.use_action_masks:
@@ -207,7 +206,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             env_done_indices = env_done_indices[:, 0]
 
-        last_values = self.get_values(self.obs['ego']) # (num_envs, 1)
+        last_values = self.get_values(self.obs['obs']['ego']) # (num_envs, 1)
 
         fdones = self.dones.float() # (num_envs, 1)
         # tensor_dict['dones']: List: horizon_length, (num_envs, 1)
