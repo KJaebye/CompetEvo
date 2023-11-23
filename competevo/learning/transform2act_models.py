@@ -40,33 +40,77 @@ class ModelTransform2Act():
                     'obs' : dict,
                 }
             """
-            num_envs = input_dict['obs']['obses'].shape[0]
-            control_dist, attr_dist, skel_dist, \
-                node_design_mask, design_mask, \
-                    total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
-                        device, values \
-                =  self.transform2act_network(input_dict)
-            
-            is_train = input_dict.get('is_train', True)
-            if is_train:
-                prev_action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
-                                                    num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
-                result = {
-                    'prev_neglogp' : torch.squeeze(prev_action_log_prob),
-                    'value' : values,
-                }
-                return result
+            if type(input_dict['obs']) is list:
+                input_dict_list = input_dict['obs']
+                assert len(input_dict_list) >= 1
+                res = []
+                for input_dict in input_dict_list:
+                    input_dict = {'obs' : input_dict, 'is_train' : True}
+                    num_envs = input_dict['obs']['obses'].shape[0]
+                    control_dist, attr_dist, skel_dist, \
+                        node_design_mask, design_mask, \
+                            total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
+                                device, values \
+                        =  self.transform2act_network(input_dict)
+                    
+                    is_train = input_dict.get('is_train', True)
+                    if is_train:
+                        prev_action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
+                                                            num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                        result = {
+                            'prev_neglogp' : torch.squeeze(prev_action_log_prob),
+                            'value' : values,
+                        }
+                    else:
+                        actions = self.select_actions(control_dist, attr_dist, skel_dist, node_design_mask, total_num_nodes, device)
+                        action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
+                                                            num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                        actions = actions.view(num_envs, -1, self.action_dim)
+                        result = {
+                            'neglogpacs' : torch.squeeze(action_log_prob),
+                            'values' : values,
+                            'actions' : actions,
+                        }
+                    
+                    print(result['value'].shape)
+                    return 
+
+
+
+
+
+
+
+
+
             else:
-                actions = self.select_actions(control_dist, attr_dist, skel_dist, node_design_mask, total_num_nodes, device)
-                action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
-                                                    num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
-                actions = actions.view(num_envs, -1, self.action_dim)
-                result = {
-                    'neglogpacs' : torch.squeeze(action_log_prob),
-                    'values' : values,
-                    'actions' : actions,
-                }
-                return  result
+                num_envs = input_dict['obs']['obses'].shape[0]
+                control_dist, attr_dist, skel_dist, \
+                    node_design_mask, design_mask, \
+                        total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
+                            device, values \
+                    =  self.transform2act_network(input_dict)
+                
+                is_train = input_dict.get('is_train', True)
+                if is_train:
+                    prev_action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
+                                                        num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                    result = {
+                        'prev_neglogp' : torch.squeeze(prev_action_log_prob),
+                        'value' : values,
+                    }
+                    return result
+                else:
+                    actions = self.select_actions(control_dist, attr_dist, skel_dist, node_design_mask, total_num_nodes, device)
+                    action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
+                                                        num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                    actions = actions.view(num_envs, -1, self.action_dim)
+                    result = {
+                        'neglogpacs' : torch.squeeze(action_log_prob),
+                        'values' : values,
+                        'actions' : actions,
+                    }
+                    return  result
 
         def select_actions(
                 self, 

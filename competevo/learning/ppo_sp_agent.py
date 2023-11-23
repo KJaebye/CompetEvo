@@ -134,10 +134,11 @@ class SPAgent(a2c_continuous.A2CAgent):
         mb_values = self.experience_buffer.tensor_dict['values']
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
         mb_advs = self.discount_values(fdones, last_values, mb_fdones, mb_values, mb_rewards)
-        mb_returns = mb_advs + mb_values # (64, 4096, 1)
+        mb_returns = mb_advs + mb_values
 
         batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, self.tensor_list)
-        batch_dict['returns'] = swap_and_flatten01(mb_returns) # (64*4096, 1)
+
+        batch_dict['returns'] = swap_and_flatten01(mb_returns)
         batch_dict['played_frames'] = self.batch_size
         batch_dict['step_time'] = step_time
         return batch_dict

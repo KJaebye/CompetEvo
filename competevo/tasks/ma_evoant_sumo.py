@@ -100,7 +100,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.action_dim = self.control_action_dim + self.attr_action_dim + 1
         
         # states dim and construction:
-        # {obses, edges, stage, num_nodes, body_index}
+        # {obses, edges, stage, num_nodes, body_ind}
 
         # obses dim (num_nodes, obs_dim)
         ###############################################################
@@ -644,31 +644,31 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
     def get_sim_obs(self):
         # obs:
-        #  {obses, edges, stage, num_nodes, body_index}
+        #  {obses, edges, stage, num_nodes, body_ind}
         #  obses: (:, num_nodes, attr_fixed_dim + gym_obs_dim + attr_design_dim)
         #  edges: (:, 2, num_dof * 2)
         #  stage: (:, 1)
         #  num_nodes: (:, 1)
-        #  body_index: (:, num_nodes)
+        #  body_ind: (:, num_nodes)
         obs = {}
         obs['obses'] = self.obs_buf.to(self.rl_device)
         obs['edges'] = self.edge_buf.to(self.rl_device)
         obs['stage'] = self.stage_buf.to(self.rl_device)
         obs['num_nodes'] = self.num_nodes_buf.to(self.rl_device)
-        obs['body_index'] = self.body_ind_buf.to(self.rl_device)
+        obs['body_ind'] = self.body_ind_buf.to(self.rl_device)
         return obs
 
     def compute_observations(self):
         """
             Calculate ant observations.
         """
-        if self.stage == "skel_trans" or "attr_trans":
+        if self.stage == "skel_trans" or self.stage == "attr_trans":
             #--------------------------- agent -----------------------------#
-            attr_fixed_obs = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.attr_fixed_obs = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
             gym_obs = torch.zeros((self.num_envs, self.num_nodes, self.gym_obs_dim), device=self.device, dtype=torch.float32)
-            design_obs = self.design_cur_params.unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.design_obs = self.design_cur_params.unsqueeze(0).repeat(self.num_envs, 1, 1)
             # obs
-            self.obs_buf[:, :self.num_nodes] = torch.cat((attr_fixed_obs, gym_obs, design_obs), dim=-1)
+            self.obs_buf[:, :self.num_nodes] = torch.cat((self.attr_fixed_obs, gym_obs, self.design_obs), dim=-1)
             # edges
             if self.cfg['robot']['obs_specs'].get('fc_graph', False):
                 self.edges = torch.from_numpy(get_graph_fc_edges(len(self.robot.bodies))).to(device=self.device, dtype=torch.int)
@@ -680,16 +680,16 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
             # body index
             if self.use_body_ind:
-                self.body_index = torch.from_numpy(get_body_index(self.robot, self.index_base)).to(device=self.device, dtype=torch.float32)
-                self.body_ind_buf[:, :self.num_nodes] = self.body_index.unsqueeze(0).repeat(self.num_envs, 1)
+                self.body_ind = torch.from_numpy(get_body_index(self.robot, self.index_base)).to(device=self.device, dtype=torch.float32)
+                self.body_ind_buf[:, :self.num_nodes] = self.body_ind.unsqueeze(0).repeat(self.num_envs, 1)
 
             #-------------------------- agent opponent -----------------------#
-            attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
             self.num_nodes_op = len(list(self.robot_op.bodies))
             gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float32)
-            design_obs_op = self.design_cur_params_op.unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.design_obs_op = self.design_cur_params_op.unsqueeze(0).repeat(self.num_envs, 1, 1)
             # obs
-            self.obs_buf[:, self.num_nodes:] = torch.cat((attr_fixed_obs_op, gym_obs_op, design_obs_op), dim=-1)
+            self.obs_buf[:, self.num_nodes:] = torch.cat((self.attr_fixed_obs_op, gym_obs_op, self.design_obs_op), dim=-1)
             # edges
             if self.cfg['robot']['obs_specs'].get('fc_graph', False):
                 self.edges_op = torch.from_numpy(get_graph_fc_edges(len(self.robot_op.bodies))).to(device=self.device, dtype=torch.int)
@@ -699,8 +699,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # num_nodes
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
             if self.use_body_ind:
-                self.body_index_op = torch.from_numpy(get_body_index(self.robot_op, self.index_base)).to(device=self.device, dtype=torch.float32)
-                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.unsqueeze(0).repeat(self.num_envs, 1)
+                self.body_ind_op = torch.from_numpy(get_body_index(self.robot_op, self.index_base)).to(device=self.device, dtype=torch.float32)
+                self.body_ind_buf[:, self.num_nodes:] = self.body_ind_op.unsqueeze(0).repeat(self.num_envs, 1)
             
         else: # execution stage: isaacgym simulation
             assert self.isaacgym_initialized is True 
@@ -709,9 +709,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.gym.refresh_actor_root_state_tensor(self.sim)
             self.gym.refresh_force_sensor_tensor(self.sim)
             self.gym.refresh_dof_force_tensor(self.sim)
-            # obs
-            self.obs_buf[:, :self.num_nodes] = \
-                compute_ant_observations(
+            # agent
+            gym_obs = compute_ant_observations(
                     self.root_states[0::2], # ant torse states
                     self.root_states[1::2], # ant op torse states
                     self.num_nodes,
@@ -722,7 +721,9 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                     self.dof_vel_scale,
                     self.termination_height
                 )
-            self.obs_buf[:, self.num_nodes:] = compute_ant_observations(
+            self.obs_buf[:, :self.num_nodes] = torch.cat((self.attr_fixed_obs, gym_obs, self.design_obs), dim=-1)
+            # op
+            gym_obs_op = compute_ant_observations(
                 self.root_states[1::2], # ant op torse states
                 self.root_states[0::2], # ant torse states
                 self.num_nodes_op,
@@ -733,19 +734,20 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                 self.dof_vel_scale,
                 self.termination_height
             )
+            self.obs_buf[:, self.num_nodes:] = torch.cat((self.attr_fixed_obs_op, gym_obs_op, self.design_obs_op), dim=-1)
             # edges
-            self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.repeat(self.num_envs, 1)
-            self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.repeat(self.num_envs, 1)
+            self.edge_buf[:, :, :(self.num_nodes-1)*2] = self.edges.unsqueeze(0).repeat(self.num_envs, 1, 1) # create vector of edges
+            self.edge_buf[:, :, (self.num_nodes-1)*2:] = self.edges_op.unsqueeze(0).repeat(self.num_envs, 1, 1) # create vector of edges
             # num_nodes
             self.num_nodes_buf[:, 0] = torch.tensor(self.num_nodes)
             self.num_nodes_buf[:, 1] = torch.tensor(self.num_nodes_op)
             # body index
             if self.use_body_ind:
-                self.body_ind_buf[:, :self.num_nodes] = self.body_index.repeat(self.num_envs, 1)
-                self.body_ind_buf[:, self.num_nodes:] = self.body_index_op.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, :self.num_nodes] = self.body_ind.repeat(self.num_envs, 1)
+                self.body_ind_buf[:, self.num_nodes:] = self.body_ind_op.repeat(self.num_envs, 1)
 
     def compute_reward(self):
-        if self.stage == "skel_trans" or "attr_trans":
+        if self.stage == "skel_trans" or self.stage == "attr_trans":
             self.extras['win'] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.int)
             self.extras['lose'] = torch.zeros((self.num_envs, 1), device=self.device, dtype=torch.int)
             self.extras['draw'] = torch.ones((self.num_envs, 1), device=self.device, dtype=torch.int)
@@ -831,11 +833,10 @@ def compute_ant_reward(
         dt,
 ):
     # type: (Tensor, Tensor, Tensor, Tensor,Tensor,Tensor,Tensor,Tensor,float, float,float, float,float,float,float,float,float,float,float,float,float) -> Tuple[Tensor, Tensor,Tensor,Tensor,Tensor,Tensor,Tensor]
-
-    hp -= (obs_buf[:, 0, 2] < termination_height) * hp_decay_scale # the first node is torso
-    hp_op -= (obs_buf_op[:, 0, 2] < termination_height) * hp_decay_scale # the first node is torso
-    is_out = torch.sum(torch.square(obs_buf[:, 0, 0:2]), dim=-1) >= borderline_space ** 2
-    is_out_op = torch.sum(torch.square(obs_buf_op[:, 0, 0:2]), dim=-1) >= borderline_space ** 2
+    hp -= (obs_buf[:, 0, 6] < termination_height) * hp_decay_scale # the first node is torso
+    hp_op -= (obs_buf_op[:, 0, 6] < termination_height) * hp_decay_scale # the first node is torso
+    is_out = torch.sum(torch.square(obs_buf[:, 0, 4:6]), dim=-1) >= borderline_space ** 2
+    is_out_op = torch.sum(torch.square(obs_buf_op[:, 0, 4:6]), dim=-1) >= borderline_space ** 2
     is_out = is_out | (hp <= 0)
     is_out_op = is_out_op | (hp_op <= 0)
     # reset agents
@@ -851,17 +852,16 @@ def compute_ant_reward(
     lose_penalty = -win_reward_scale * is_out
     draw_penalty = torch.where(progress_buf >= max_episode_length - 1, tmp_ones * draw_penalty_scale,
                                torch.zeros_like(reset, dtype=torch.float))
-    move_reward = compute_move_reward(obs_buf[:, 0, 0:2], pos_before,
-                                      obs_buf_op[:, 0, 0:2], dt,
+    move_reward = compute_move_reward(obs_buf[:, 0, 4:6], pos_before,
+                                      obs_buf_op[:, 0, 4:6], dt,
                                       move_to_op_reward_scale)
     # stay_in_center_reward = stay_in_center_reward_scale * torch.exp(-torch.linalg.norm(obs_buf[:, :2], dim=-1))
-    dof_at_limit_cost = torch.sum(obs_buf[:, 1:, -2] > 0.99, dim=-1) * joints_at_limit_cost_scale
-    push_reward = -push_scale * torch.exp(-torch.linalg.norm(obs_buf_op[:, 0, :2], dim=-1))
+    dof_at_limit_cost = torch.sum(obs_buf[:, 1:, -6] > 0.99, dim=-1) * joints_at_limit_cost_scale
+    push_reward = -push_scale * torch.exp(-torch.linalg.norm(obs_buf_op[:, 0, 4:6], dim=-1))
     action_cost_penalty = torch.sum(torch.square(torques), dim=1) * action_cost_scale
     not_move_penalty = -10 * torch.exp(-torch.sum(torch.abs(torques), dim=1))
     dense_reward = move_reward + dof_at_limit_cost + push_reward + action_cost_penalty + not_move_penalty
     total_reward = win_reward + lose_penalty + draw_penalty + dense_reward * dense_reward_scale
-
     return total_reward, reset, hp, hp_op, is_out_op, is_out, progress_buf >= max_episode_length - 1
 
 
@@ -878,21 +878,21 @@ def compute_ant_observations(
         termination_height
 ):
     # type: (Tensor,Tensor,int,Tensor,Tensor,Tensor,Tensor,float,float)->Tensor
-    dof_pos_scaled = unscale(dof_pos, dof_limits_lower, dof_limits_upper)
-    obs_root = torch.cat((
-        torch.unsqueeze(root_states[:, :13], dim=1), # 13, (num_envs, 1, 13)
-        torch.unsqueeze(root_states_op[:, :7], dim=1), # 7, (num_envs, 1, 7)
-        torch.unsqueeze(root_states[:, :2] - root_states_op[:, :2], dim=1), # 2, (num_envs, 1, 2)
-        torch.unsqueeze(root_states[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
-        torch.unsqueeze(root_states_op[:, 2] < termination_height, dim=1), # 1, (num_envs, 1, 1)
-        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float), # 1, root pos=0
-        torch.zeros((root_states.shape[0], 1, 1), device=root_states.device, dtype=torch.float)), # 1, root vel=0
-        -1
-    ) # shape should be (num_envs, 1, 24)
+    dof_pos_scaled = unscale(dof_pos, dof_limits_lower, dof_limits_upper).unsqueeze(-1) # (num_envs, num_dof, 1)
+    obs_root = torch.hstack((
+        root_states[:, :13], # 13, (num_envs, 13), all states of root
+        root_states_op[:, :7], # 7, (num_envs, 7), (x,y,z,rotation)
+        root_states[:, :2] - root_states_op[:, :2], # 2, (num_envs, 2)
+        root_states[:, 2:3] < termination_height, # 1, (num_envs, 1)
+        root_states_op[:, 2:3] < termination_height, # 1, (num_envs, 1)
+        torch.zeros((root_states.shape[0], 1), device=root_states.device, dtype=torch.float), # 1, root pos=0
+        torch.zeros((root_states.shape[0], 1), device=root_states.device, dtype=torch.float)), # 1, root vel=0
+    )
+    obs_root = obs_root.unsqueeze(1) # shape should be (num_envs, 1, 26)
     obs_nodes = torch.cat((
-        torch.zeros((root_states.shape[0], 1, 22), device=root_states.device, dtype=torch.float), # 22, all 0
-        dof_pos_scaled,
-        dof_vel * dof_vel_scale),
+        torch.zeros((root_states.shape[0], num_nodes-1, 24), device=root_states.device, dtype=torch.float), # 24, all 0
+        dof_pos_scaled, # 1, (num_envs, num_dof, 1)
+        dof_vel.unsqueeze(-1) * dof_vel_scale), # 1, (num_envs, num_dof, 1)
         -1
     ) # shape should be (num_envs, num_dof, 24)
     obs = torch.cat((obs_root, obs_nodes), dim=1) # (num_envs, num_nodes, gym_obs_dim=24)

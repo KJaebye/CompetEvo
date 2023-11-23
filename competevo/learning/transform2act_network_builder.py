@@ -136,7 +136,7 @@ class Transform2ActBuilder():
                 edges: torch.tensor, # edges: (:, 2, num_dof * 2)
                 stage: torch.tensor, # stage: (:, 1)
                 num_nodes: torch.tensor, # num_nodes: (:, 1)
-                body_ind: torch.tensor, # body_index: (:, num_nodes)
+                body_ind: torch.tensor, # body_ind: (:, num_nodes)
             ):
 
             stage = stage.view(-1)
@@ -169,12 +169,12 @@ class Transform2ActBuilder():
             """
                 Input:
                     states_dict: dict of states:
-                    {obses, edges, stage, num_nodes, body_index}
+                    {obses, edges, stage, num_nodes, body_ind}
                     obses: (:, num_nodes, attr_fixed_dim + gym_obs_dim + attr_design_dim)
                     edges: (:, 2, num_dof * 2)
                     stage: (:, 1)
                     num_nodes: (:, 1)
-                    body_index: (:, num_nodes)
+                    body_ind: (:, num_nodes)
             """
             stages = ['skel_trans', 'attr_trans', 'execution']
             states_dict = states_dict['obs']
@@ -183,7 +183,7 @@ class Transform2ActBuilder():
             edges = states_dict['edges']
             stage = states_dict['stage']
             num_nodes = states_dict['num_nodes']
-            body_ind = states_dict['body_index'] if "body_index" in states_dict else None
+            body_ind = states_dict['body_ind'] if "body_ind" in states_dict else None
             
             node_design_mask = defaultdict(torch.tensor)
             design_mask = defaultdict(torch.tensor)

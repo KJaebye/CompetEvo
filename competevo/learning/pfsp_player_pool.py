@@ -193,7 +193,7 @@ class EvoPFSPPlayerPool(PFSPPlayerPool):
             obs_ind['edges'] = obs['edges'][:, :, idx_edge[i]:idx_edge[i+1]]
             obs_ind['stage'] = obs['stage']
             obs_ind['num_nodes'] = obs['num_nodes'][:, i].unsqueeze(-1)
-            obs_ind['body_index'] = obs['body_index'][:, idx[i]:idx[i+1]]
+            obs_ind['body_ind'] = obs['body_ind'][:, idx[i]:idx[i+1]]
             res[i] = obs_ind
         return res
     
@@ -203,7 +203,7 @@ class EvoPFSPPlayerPool(PFSPPlayerPool):
         res['edges'] = obs['edges'][env_indices]
         res['stage'] = obs['stage'][env_indices]
         res['num_nodes'] = obs['num_nodes'][env_indices]
-        res['body_index'] = obs['body_index'][env_indices]
+        res['body_ind'] = obs['body_ind'][env_indices]
         return res
 
 class PFSPPlayerVectorizedPool(PFSPPlayerPool):
