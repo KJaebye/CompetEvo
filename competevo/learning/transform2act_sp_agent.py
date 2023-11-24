@@ -137,6 +137,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         self.current_lengths = torch.zeros(batch_size, dtype=torch.float32, device=self.ppo_device)
         self.dones = torch.ones((batch_size,), dtype=torch.uint8, device=self.ppo_device)
 
+        self.tensor_list = ['rewards', 'dones', 'values', 'neglogpacs']
+
     def play_steps(self):
         step_time = 0.0
         env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
@@ -217,24 +219,27 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             res = []
             for i in range(self.num_actors):
                 for j in range(self.horizon_length):
-                    sub_data = {}
-                    for k,v in data[j].items():
-                        sub_data[k] = v[i]
+                    if isinstance(data[0], dict):
+                        sub_data = {}
+                        for k,v in data[j].items():
+                            sub_data[k] = v[i]
+                    else:
+                        assert isinstance(data[0], torch.Tensor)
+                        sub_data = data[j][i]
                     res.append(sub_data)
             return res
 
-        batch_dict = {}
-        batch_dict['obs'] = process_list_data(self.experience_buffer.tensor_dict['obs'])
-        # print(batch_dict['obs'][:10])
-        batch_dict['actions'] = process_list_data(self.experience_buffer.tensor_dict['actions'])
-        print(batch_dict['actions'][:10])
+        
 
-        batch_dict['rewards'] = self.experience_buffer.tensor_dict['rewards']
-        batch_dict['dones'] = self.experience_buffer.tensor_dict['dones']
-        batch_dict['neglogpacs'] = self.experience_buffer.tensor_dict['neglogpacs']
-        batch_dict['values'] = self.experience_buffer.tensor_dict['values']
-        batch_dict['returns'] = mb_returns
-        batch_dict['advs'] = mb_advs
+        batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, self.tensor_list)
+        batch_dict['returns'] = swap_and_flatten01(mb_returns)
+        batch_dict['advs'] = swap_and_flatten01(mb_advs)
+
+        batch_dict['obs'] = process_list_data(self.experience_buffer.tensor_dict['obs'])
+        batch_dict['actions'] = process_list_data(self.experience_buffer.tensor_dict['actions'])
+
+        print("obs:\n", batch_dict['obs'].__len__())
+        print("actions:\n", batch_dict['actions'].__len__())
 
         print("rewards:\n", batch_dict['rewards'].shape)
         print("dones:\n", batch_dict['dones'].shape)
