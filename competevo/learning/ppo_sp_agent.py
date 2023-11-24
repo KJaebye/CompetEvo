@@ -136,11 +136,14 @@ class SPAgent(a2c_continuous.A2CAgent):
         mb_advs = self.discount_values(fdones, last_values, mb_fdones, mb_values, mb_rewards)
         mb_returns = mb_advs + mb_values
 
+        # print(self.experience_buffer.tensor_dict['obses'].shape) # (horizen, num_envs, obs_dim)
         batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, self.tensor_list)
 
         batch_dict['returns'] = swap_and_flatten01(mb_returns)
         batch_dict['played_frames'] = self.batch_size
         batch_dict['step_time'] = step_time
+
+        # print(batch_dict['obses'].shape) # (num_envs * horizen, obs_dim)
         return batch_dict
 
     def env_step(self, actions):

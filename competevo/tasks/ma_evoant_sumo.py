@@ -895,9 +895,9 @@ def compute_ant_observations(
         dof_vel.unsqueeze(-1) * dof_vel_scale), # 1, (num_envs, num_dof, 1)
         -1
     ) # shape should be (num_envs, num_dof, 24)
-    obs = torch.cat((obs_root, obs_nodes), dim=1) # (num_envs, num_nodes, gym_obs_dim=24)
-    assert obs.shape[1] == num_nodes
-    return obs
+    gym_obs = torch.cat((obs_root, obs_nodes), dim=1) # (num_envs, num_nodes, gym_obs_dim=24)
+    assert gym_obs.shape[1] == num_nodes
+    return gym_obs
 
 
 @torch.jit.script

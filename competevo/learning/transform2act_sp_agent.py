@@ -2,6 +2,7 @@
 
 import copy
 from datetime import datetime
+from multiprocessing import process
 from gym import spaces
 import numpy as np
 import os
@@ -96,7 +97,6 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 self.horizon_length = algo_info['horizon_length']
                 self.has_central_value = algo_info['has_central_value']
                 self.use_action_masks = algo_info['use_action_masks']
-                self.num_agents = 1
 
                 self.tensor_dict = {}
                 self.tensor_dict['obs'] = []
@@ -105,13 +105,13 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 self.tensor_dict['rewards'] = torch.zeros((self.horizon_length, self.num_actors, 1), dtype=torch.float32, device=device)
                 self.tensor_dict['dones'] = torch.zeros((self.horizon_length, self.num_actors,), dtype=torch.uint8, device=device)
                 self.tensor_dict['values'] = torch.zeros((self.horizon_length, self.num_actors, 1), dtype=torch.float32, device=device)
-                self.tensor_dict['neglogpacs'] = torch.zeros((self.horizon_length, self.num_actors,), dtype=torch.float32, device=device)
+                self.tensor_dict['neglogpacs'] = torch.zeros((self.horizon_length, self.num_actors, 1), dtype=torch.float32, device=device)
 
             def update_data(self, key, idx, val):
-                if key in ['obs', 'actions']:
-                    self.tensor_dict[key].append(val)
-                else:
-                    self.tensor_dict[key][idx] = val
+                self.tensor_dict[key][idx] = val
+
+            def update_list_data(self, key, val):
+                self.tensor_dict[key].append(val)
             
             def get_transformed_list(self, transform_op, tensor_list):
                 res_dict = {}
@@ -137,11 +137,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         self.current_lengths = torch.zeros(batch_size, dtype=torch.float32, device=self.ppo_device)
         self.dones = torch.ones((batch_size,), dtype=torch.uint8, device=self.ppo_device)
 
-        self.update_list = ['actions', 'values', 'neglogpacs']
-        self.tensor_list = ['obs', 'dones', 'values'] + self.update_list
-
     def play_steps(self):
-        update_list = self.update_list
         step_time = 0.0
         env_done_indices = torch.tensor([], device=self.device, dtype=torch.long)
         flag = []
@@ -163,9 +159,11 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                 # print(self.obs['ego']['stage'])
                 # print(res_dict['actions'])
             
-            self.experience_buffer.update_data('obs', n, self.obs['ego'])
+            self.experience_buffer.update_list_data('obs', self.obs['ego'])
+            self.experience_buffer.update_list_data('actions', res_dict['actions'])
+
             self.experience_buffer.update_data('dones', n, self.dones)
-            for k in update_list:
+            for k in ["values", "neglogpacs"]:
                 self.experience_buffer.update_data(k, n, res_dict[k])
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
@@ -209,26 +207,41 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         last_values = self.get_values(self.obs['obs']['ego']) # (num_envs, 1)
 
         fdones = self.dones.float() # (num_envs, 1)
-        # tensor_dict['dones']: List: horizon_length, (num_envs, 1)
-        # tensor_dict['values']: List: horizon_length, (num_envs, 1)
-        # tensor_dict['rewards']: List: horizon_length, (num_envs, 1)
-        # tensor_dict['actions']: List: horizon_length, (total_num_nodes, action_dim)
-        # tensor_dict['obses']: List: horizon_length, (total_num_nodes, obs_dim)
         mb_fdones = self.experience_buffer.tensor_dict['dones'].float() # (horizon_length, num_envs, 1)
         mb_values = self.experience_buffer.tensor_dict['values']
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
         mb_advs = self.discount_values(fdones, last_values, mb_fdones, mb_values, mb_rewards)
         mb_returns = mb_advs + mb_values
 
-        # tensor_list = ["dones", "values", "rewards"]
-        # batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, tensor_list)
-        # batch_dict['returns'] = swap_and_flatten01(mb_returns)
-        
-        def return_itself(x):
-            return x
+        def process_list_data(data: list):
+            res = []
+            for i in range(self.num_actors):
+                for j in range(self.horizon_length):
+                    sub_data = {}
+                    for k,v in data[j].items():
+                        sub_data[k] = v[i]
+                    res.append(sub_data)
+            return res
 
-        batch_dict = self.experience_buffer.get_transformed_list(return_itself, self.tensor_list)
+        batch_dict = {}
+        batch_dict['obs'] = process_list_data(self.experience_buffer.tensor_dict['obs'])
+        # print(batch_dict['obs'][:10])
+        batch_dict['actions'] = process_list_data(self.experience_buffer.tensor_dict['actions'])
+        print(batch_dict['actions'][:10])
+
+        batch_dict['rewards'] = self.experience_buffer.tensor_dict['rewards']
+        batch_dict['dones'] = self.experience_buffer.tensor_dict['dones']
+        batch_dict['neglogpacs'] = self.experience_buffer.tensor_dict['neglogpacs']
+        batch_dict['values'] = self.experience_buffer.tensor_dict['values']
         batch_dict['returns'] = mb_returns
+        batch_dict['advs'] = mb_advs
+
+        print("rewards:\n", batch_dict['rewards'].shape)
+        print("dones:\n", batch_dict['dones'].shape)
+        print("neglogpacs:\n", batch_dict['neglogpacs'].shape)
+        print("values:\n", batch_dict['values'].shape)
+        print("returns:\n", batch_dict['returns'].shape)
+        print("advs:\n", batch_dict['advs'].shape)
 
         batch_dict['played_frames'] = self.batch_size
         batch_dict['step_time'] = step_time
@@ -276,70 +289,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         splited_obs['op'] = op
 
         return splited_obs
-    
-    def prepare_dataset(self, batch_dict):
-        # [ t0_[env0_[] ,  env1_[] , ...],
-        #  t1_[env0_[] ,  env1_[] , ...],
-        #  t2_[env0_[] ,  env1_[] , ...]，
-        # ...
-        #                                ]
-        obses = batch_dict['obs']
-        actions = batch_dict['actions']
 
-        returns = batch_dict['returns'] # (horizon_length*num_envs, 1)
-        dones = batch_dict['dones'] # (horizon_length*num_envs, 1)
-        values = batch_dict['values'] # (horizon_length*num_envs, 1)
-        neglogpacs = batch_dict['neglogpacs'] # (horizon_length*num_envs, 1)
 
-        rnn_states = batch_dict.get('rnn_states', None)
-        rnn_masks = batch_dict.get('rnn_masks', None)
-
-        advantages = returns - values
-
-        advantages = torch.sum(advantages, axis=1)
-
-        if self.normalize_advantage:
-            if self.is_rnn:
-                if self.normalize_rms_advantage:
-                    advantages = self.advantage_mean_std(advantages, mask=rnn_masks)
-                else:
-                    advantages = torch_ext.normalization_with_masks(advantages, rnn_masks)
-            else:
-                if self.normalize_rms_advantage:
-                    advantages = self.advantage_mean_std(advantages)
-                else:
-                    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
-        dataset_dict = {}
-        dataset_dict['old_values'] = values # (horizon_length*num_envs, 1)
-        dataset_dict['old_logp_actions'] = neglogpacs # (horizon_length*num_envs, 1)
-        dataset_dict['advantages'] = advantages # (horizon, 1)
-        dataset_dict['returns'] = returns # (horizon_length*num_envs, 1)
-        dataset_dict['dones'] = dones # (horizon_length*num_envs, 1)
-
-        dataset_dict['actions'] = actions
-        dataset_dict['obs'] = obses
-        # [ t0_[env0_[] ,  env1_[] , ...],
-        #  t1_[env0_[] ,  env1_[] , ...],
-        #  t2_[env0_[] ,  env1_[] , ...]，
-        # ...
-        #                                ]
-
-        dataset_dict['rnn_states'] = rnn_states
-        dataset_dict['rnn_masks'] = rnn_masks
-
-        self.dataset.update_values_dict(dataset_dict)
-
-        if self.has_central_value:
-            dataset_dict = {}
-            dataset_dict['old_values'] = values
-            dataset_dict['advantages'] = advantages
-            dataset_dict['returns'] = returns
-            dataset_dict['actions'] = actions
-            dataset_dict['obs'] = batch_dict['states']
-            dataset_dict['dones'] = dones
-            dataset_dict['rnn_masks'] = rnn_masks
-            self.central_value_net.update_dataset(dataset_dict)
     
     def calc_gradients(self, input_dict):
         value_preds_batch = input_dict['old_values'] # (64, 4, 1)
