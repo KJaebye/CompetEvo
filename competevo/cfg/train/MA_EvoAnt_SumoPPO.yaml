@@ -87,7 +87,7 @@ params:
     tau: 0.95
     learning_rate: 3e-4
     lr_schedule: adaptive
-    schedule_type: standard
+    schedule_type: '' # standard
     kl_threshold: 0.008
     score_to_win: 20000
     max_epochs: ${resolve_default:100000,${....max_iterations}}
@@ -97,7 +97,7 @@ params:
     entropy_coef: 0.0
     truncate_grads: True
     e_clip: 0.2
-    horizon_length: 64
+    horizon_length: 16
     minibatch_size: ${resolve_default:32768,${....minibatch_size}}
     mini_epochs: 4
     critic_coef: 2

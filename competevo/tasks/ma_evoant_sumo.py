@@ -170,8 +170,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         if not gym_only:
             # destroy last sim
             if self.sim is not None:
+                self.gym.destroy_viewer(self.viewer)
                 self.gym.destroy_sim(self.sim)
-                self.viewer.close()
             
             self.isaacgym_initialized = False
             self.stage = "skel_trans"

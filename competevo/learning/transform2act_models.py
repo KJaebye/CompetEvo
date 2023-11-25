@@ -36,27 +36,45 @@ class ModelTransform2Act():
             """
                 Input dict: {
                     'is_train' : bool,
-                    'prev_actions' : torch.Tensor / None,
-                    'obs' : dict,
+                    'prev_actions' : torch.Tensor / None / list[Tensor, Tensor, ...]
+                    'obs' : dict / list[dict, dict, ...]
                 }
             """
-            num_envs = input_dict['obs']['obses'].shape[0]
-            control_dist, attr_dist, skel_dist, \
-                node_design_mask, design_mask, \
-                    total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
-                        device, values \
-                =  self.transform2act_network(input_dict)
-            
             is_train = input_dict.get('is_train', True)
             if is_train:
-                prev_action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
-                                                    num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)
+                assert isinstance(input_dict['obs'], list)
+                prev_action_log_prob = []
+                values = []
+                for obs, action in zip(input_dict['obs'], input_dict['prev_actions']):
+                    tmp_dict = {
+                        'is_train': is_train,
+                        'prev_actions': action,
+                        'obs': obs
+                    }
+                    control_dist, attr_dist, skel_dist, \
+                        node_design_mask, design_mask, \
+                            total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
+                                device, value \
+                        =  self.transform2act_network(tmp_dict)
+                
+                    action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
+                                                        num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, action)
+                    values.append(value)
+                    prev_action_log_prob.append(action_log_prob)
+                
                 result = {
-                    'prev_neglogp' : torch.squeeze(prev_action_log_prob),
-                    'value' : values,
+                    'prev_neglogp' : torch.cat(prev_action_log_prob),
+                    'values' : torch.cat(values),
                 }
                 return result
             else:
+                num_envs = input_dict['obs']['obses'].shape[0]
+                control_dist, attr_dist, skel_dist, \
+                    node_design_mask, design_mask, \
+                        total_num_nodes, num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, \
+                            device, values \
+                    =  self.transform2act_network(input_dict)
+                
                 actions = self.select_actions(control_dist, attr_dist, skel_dist, node_design_mask, total_num_nodes, device)
                 action_log_prob = self.get_log_prob(control_dist, attr_dist, skel_dist, node_design_mask, design_mask, \
                                                     num_nodes_cum_control, num_nodes_cum_design, num_nodes_cum_skel, device, actions)

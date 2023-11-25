@@ -15,6 +15,7 @@ from rl_games.common.a2c_common import swap_and_flatten01
 from rl_games.algos_torch import torch_ext
 from rl_games.algos_torch import central_value
 from rl_games.common import common_losses
+from rl_games.common.a2c_common import A2CBase
 
 import torch
 from torch import optim
@@ -222,14 +223,12 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
                     if isinstance(data[0], dict):
                         sub_data = {}
                         for k,v in data[j].items():
-                            sub_data[k] = v[i]
+                            sub_data[k] = v[i].unsqueeze(0)
                     else:
                         assert isinstance(data[0], torch.Tensor)
                         sub_data = data[j][i]
                     res.append(sub_data)
             return res
-
-        
 
         batch_dict = self.experience_buffer.get_transformed_list(swap_and_flatten01, self.tensor_list)
         batch_dict['returns'] = swap_and_flatten01(mb_returns)
@@ -237,6 +236,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
         batch_dict['obs'] = process_list_data(self.experience_buffer.tensor_dict['obs'])
         batch_dict['actions'] = process_list_data(self.experience_buffer.tensor_dict['actions'])
+
+        batch_dict['played_frames'] = self.batch_size
+        batch_dict['step_time'] = step_time
 
         print("obs:\n", batch_dict['obs'].__len__())
         print("actions:\n", batch_dict['actions'].__len__())
@@ -248,8 +250,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         print("returns:\n", batch_dict['returns'].shape)
         print("advs:\n", batch_dict['advs'].shape)
 
-        batch_dict['played_frames'] = self.batch_size
-        batch_dict['step_time'] = step_time
+        print('played frames:\n', batch_dict['played_frames'])
+        print('step time:\n', batch_dict['step_time'])
+        
         return batch_dict
 
     def env_step(self, actions):
@@ -295,16 +298,69 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
         return splited_obs
 
+    def prepare_dataset(self, batch_dict):
+        obses = batch_dict['obs']
+        returns = batch_dict['returns']
+        dones = batch_dict['dones']
+        values = batch_dict['values']
+        advantages = batch_dict['advs']
+        actions = batch_dict['actions']
+        neglogpacs = batch_dict['neglogpacs']
+        rnn_states = batch_dict.get('rnn_states', None)
+        rnn_masks = batch_dict.get('rnn_masks', None)
 
-    
+        if self.normalize_value:
+            self.value_mean_std.train()
+            values = self.value_mean_std(values)
+            returns = self.value_mean_std(returns)
+            self.value_mean_std.eval()
+
+        advantages = torch.sum(advantages, axis=1)
+
+        if self.normalize_advantage:
+            if self.is_rnn:
+                if self.normalize_rms_advantage:
+                    advantages = self.advantage_mean_std(advantages, mask=rnn_masks)
+                else:
+                    advantages = torch_ext.normalization_with_masks(advantages, rnn_masks)
+            else:
+                if self.normalize_rms_advantage:
+                    advantages = self.advantage_mean_std(advantages)
+                else:
+                    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+        dataset_dict = {}
+        dataset_dict['old_values'] = values
+        dataset_dict['old_logp_actions'] = neglogpacs
+        dataset_dict['advantages'] = advantages
+        dataset_dict['returns'] = returns
+        dataset_dict['actions'] = actions
+        dataset_dict['obs'] = obses
+        dataset_dict['dones'] = dones
+        dataset_dict['rnn_states'] = rnn_states
+        dataset_dict['rnn_masks'] = rnn_masks
+
+        self.dataset.update_values_dict(dataset_dict)
+
+        if self.has_central_value:
+            dataset_dict = {}
+            dataset_dict['old_values'] = values
+            dataset_dict['advantages'] = advantages
+            dataset_dict['returns'] = returns
+            dataset_dict['actions'] = actions
+            dataset_dict['obs'] = batch_dict['states']
+            dataset_dict['dones'] = dones
+            dataset_dict['rnn_masks'] = rnn_masks
+            self.central_value_net.update_dataset(dataset_dict)
+
     def calc_gradients(self, input_dict):
-        value_preds_batch = input_dict['old_values'] # (64, 4, 1)
-        old_action_log_probs_batch = input_dict['old_logp_actions'] # (64, 4)
-        advantage = input_dict['advantages'] # (64, 1)
-        return_batch = input_dict['returns'] # (64, 4, 1)
+        value_preds_batch = input_dict['old_values'] # (256 1)
+        old_action_log_probs_batch = input_dict['old_logp_actions'] # (256, 1)
+        advantage = input_dict['advantages'] # (256)
+        return_batch = input_dict['returns'] # (256, 1)
 
-        actions_batch = input_dict['actions']
-        obs_batch = input_dict['obs']
+        actions_batch = input_dict['actions'] # len: 256
+        obs_batch = input_dict['obs'] # len: 256
 
         # obs_batch = self._preproc_obs(obs_batch)
 
@@ -367,7 +423,6 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         self.train_result = (a_loss, c_loss, self.last_lr, lr_mul, b_loss)
 
     def train_epoch(self):
-        super().train_epoch()
 
         self.set_eval()
         play_time_start = time.time()
@@ -420,7 +475,6 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         total_time = 0
         rep_count = 0
         # self.frame = 0  # loading from checkpoint
-        self.obs = self.env_reset()
 
         if self.multi_gpu:
             torch.cuda.set_device(self.rank)
@@ -430,6 +484,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
             self.model.load_state_dict(model_params[0])
 
         while True:
+            self.obs = self.env_reset()
+            
             epoch_num = self.update_epoch()
             step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, last_lr, lr_mul = self.train_epoch()
             # cleaning memory to optimize space
