@@ -342,7 +342,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         positions_op = torch_rand_float(-0.2, 0.2, (len(env_ids), self.num_dof_op), device=self.device)
         velocities_op = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof_op), device=self.device)
 
-        self.dof_pos_op[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions_op, self.dof_limits_lower_op[env_ids],
+        self.dof_pos_op[env_ids] = tensor_clamp(self.initial_dof_pos_op[env_ids] + positions_op, self.dof_limits_lower_op[env_ids],
                                                 self.dof_limits_upper_op[env_ids])
         self.dof_vel_op[env_ids] = velocities_op
 
@@ -428,6 +428,12 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.initial_dof_pos = torch.where(self.dof_limits_lower > zero_tensor, self.dof_limits_lower,
                                            torch.where(self.dof_limits_upper < zero_tensor, self.dof_limits_upper, self.initial_dof_pos))
         self.initial_dof_vel = torch.zeros_like(self.dof_vel, device=self.device, dtype=torch.float)
+
+        self.initial_dof_pos_op = torch.zeros_like(self.dof_pos_op, device=self.device, dtype=torch.float)
+        self.initial_dof_pos_op = torch.where(self.dof_limits_lower_op > zero_tensor, self.dof_limits_lower_op,
+                                           torch.where(self.dof_limits_upper_op < zero_tensor, self.dof_limits_upper_op, self.initial_dof_pos_op))
+        self.initial_dof_vel_op = torch.zeros_like(self.dof_vel_op, device=self.device, dtype=torch.float)
+
         self.dt = self.cfg["sim"]["dt"]
 
         torques = self.gym.acquire_dof_force_tensor(self.sim)
