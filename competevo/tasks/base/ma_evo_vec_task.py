@@ -93,19 +93,7 @@ class MA_Evo_VecTask(EvoEnv):
         self.sim = None
         
     def reset(self):
-        """
-            Reset the environment.
-        """
-        # destroy last sim
-        if self.sim is not None:
-            self.gym.destroy_sim(self.sim)
-            self.viewer.close()
-        
-        self.isaacgym_initialized = False
-        self.stage = "skel_trans"
-        self.cur_t = 0
-        # reset buffer
-        self.allocate_buffers()
+        return NotImplementedError
 
     def step(self, actions):
         return NotImplementedError
@@ -266,7 +254,7 @@ class MA_Evo_VecTask(EvoEnv):
             env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
             self.reset_idx(env_ids)
             self.compute_observations()
-            self.pos_before = self.obs_buf[:, 0, :2].clone()
+            self.pos_before = self.obs_buf[:, 0, 4:6].clone()
         else:
             self._reset_envs(env_ids=env_ids)
         return
@@ -275,7 +263,7 @@ class MA_Evo_VecTask(EvoEnv):
         if (len(env_ids) > 0):
             self.reset_idx(env_ids)
             self.compute_observations()
-            self.pos_before = self.obs_buf[:, 0, :2].clone()
+            self.pos_before = self.obs_buf[:, 0, 4:6].clone()
         return
 
     def reset_done(self):

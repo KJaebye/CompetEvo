@@ -172,15 +172,17 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             if self.sim is not None:
                 self.gym.destroy_viewer(self.viewer)
                 self.gym.destroy_sim(self.sim)
+                self.sim = None
             
             self.isaacgym_initialized = False
             self.stage = "skel_trans"
 
             self.cur_t = 0
-            # reset buffer
-            self.allocate_buffers()
+            
             # reset robots
             self.reset_robot(self.cfg['robot'])
+            # reset buffer
+            self.allocate_buffers()
             self.compute_observations()
         else:
             if self.sim is not None: # reset only isaacgym sim is running
@@ -274,8 +276,8 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             # logging
             body_ind = get_body_index(self.robot, self.index_base)
             print("Current body index:", body_ind)
-            print("Attribute design params:\n", get_attr_design(self.robot))
-            print("Attribute fixed params:\n", get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot))
+            # print("Attribute design params:\n", get_attr_design(self.robot))
+            # print("Attribute fixed params:\n", get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot))
 
             ###############################################################################
             ######## Create IsaacGym sim and envs for Execution ####################
@@ -318,7 +320,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
             self.reset_idx(env_ids)
             self.compute_observations()
-            self.pos_before = self.obs_buf[:, 0, :2].clone()
+            self.pos_before = self.obs_buf[:, 0, 4:6].clone()
         else:
             self._reset_envs(env_ids=env_ids)
         return
@@ -332,15 +334,16 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         positions = torch_rand_float(-0.2, 0.2, (len(env_ids), self.num_dof), device=self.device)
         velocities = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof), device=self.device)
 
-        self.dof_pos[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions, self.dof_limits_lower,
-                                             self.dof_limits_upper)
+        # print(self.initial_dof_pos[env_ids].shape, positions.shape, self.dof_limits_lower.shape)
+        self.dof_pos[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions, self.dof_limits_lower[env_ids],
+                                             self.dof_limits_upper[env_ids])
         self.dof_vel[env_ids] = velocities
         # ant op
         positions_op = torch_rand_float(-0.2, 0.2, (len(env_ids), self.num_dof_op), device=self.device)
         velocities_op = torch_rand_float(-0.1, 0.1, (len(env_ids), self.num_dof_op), device=self.device)
 
-        self.dof_pos_op[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions_op, self.dof_limits_lower_op,
-                                                self.dof_limits_upper_op)
+        self.dof_pos_op[env_ids] = tensor_clamp(self.initial_dof_pos[env_ids] + positions_op, self.dof_limits_lower_op[env_ids],
+                                                self.dof_limits_upper_op[env_ids])
         self.dof_vel_op[env_ids] = velocities_op
 
         env_ids_int32 = (torch.cat((self.actor_indices[env_ids], self.actor_indices_op[env_ids]))).to(dtype=torch.int32)
@@ -474,7 +477,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.extras = {}
 
     def create_sim(self):
-        print("#------------------------------------------------", "isaacgym creating", "----------------------------------------------------#")
+        print("#---------- isaacgym creating --------------------------")
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
 
@@ -542,7 +545,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.actor_indices_op = []
 
         self.envs = []
-        self.pos_before = torch.zeros(2, device=self.device)
+        self.pos_before = torch.zeros((self.num_envs, 2), device=self.device)
 
         self.dof_limits_lower = []
         self.dof_limits_upper = []
@@ -640,7 +643,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
         self.compute_observations()
         self.compute_reward()
-        self.pos_before = self.obs_buf[:, 0, :2].clone() # first node is ant torso
+        self.pos_before = self.obs_buf[:, 0, 4:6].clone() # first node is ant torso
 
     def get_sim_obs(self):
         # obs:
@@ -684,7 +687,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
                 self.body_ind_buf[:, :self.num_nodes] = self.body_ind.unsqueeze(0).repeat(self.num_envs, 1)
 
             #-------------------------- agent opponent -----------------------#
-            self.attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
+            self.attr_fixed_obs_op = torch.from_numpy(get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot_op)).to(device=self.device, dtype=torch.float32).unsqueeze(0).repeat(self.num_envs, 1, 1)
             self.num_nodes_op = len(list(self.robot_op.bodies))
             gym_obs_op = torch.zeros((self.num_envs, self.num_nodes_op, self.gym_obs_dim), device=self.device, dtype=torch.float32)
             self.design_obs_op = self.design_cur_params_op.unsqueeze(0).repeat(self.num_envs, 1, 1)

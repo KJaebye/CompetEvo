@@ -148,9 +148,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         for n in range(self.horizon_length):
             # logging
             if self.vec_env.stage not in flag:
-                print("#---------------------------------------------------", self.vec_env.stage, "-------------------------------------------------------#")
+                print("#---------- ", self.vec_env.stage, "--------------------------")
                 flag.append(self.vec_env.stage)
-
+            
             self.obs = self.env_reset(env_done_indices, gym_only=True)
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
@@ -173,6 +173,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
             if self.player_pool_type == 'multi_thread':
                 self.player_pool.thread_pool.shutdown()
+
             step_time_start = time.time()
             self.obs, rewards, self.dones, infos = self.env_step(
                 torch.cat((res_dict['actions'], res_dict_op['actions']), dim=1))
@@ -240,18 +241,18 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         batch_dict['played_frames'] = self.batch_size
         batch_dict['step_time'] = step_time
 
-        print("obs:\n", batch_dict['obs'].__len__())
-        print("actions:\n", batch_dict['actions'].__len__())
+        # print("obs:\n", batch_dict['obs'].__len__())
+        # print("actions:\n", batch_dict['actions'].__len__())
 
-        print("rewards:\n", batch_dict['rewards'].shape)
-        print("dones:\n", batch_dict['dones'].shape)
-        print("neglogpacs:\n", batch_dict['neglogpacs'].shape)
-        print("values:\n", batch_dict['values'].shape)
-        print("returns:\n", batch_dict['returns'].shape)
-        print("advs:\n", batch_dict['advs'].shape)
+        # print("rewards:\n", batch_dict['rewards'].shape)
+        # print("dones:\n", batch_dict['dones'].shape)
+        # print("neglogpacs:\n", batch_dict['neglogpacs'].shape)
+        # print("values:\n", batch_dict['values'].shape)
+        # print("returns:\n", batch_dict['returns'].shape)
+        # print("advs:\n", batch_dict['advs'].shape)
 
-        print('played frames:\n', batch_dict['played_frames'])
-        print('step time:\n', batch_dict['step_time'])
+        # print('played frames:\n', batch_dict['played_frames'])
+        # print('step time:\n', batch_dict['step_time'])
         
         return batch_dict
 
@@ -485,8 +486,9 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
 
         while True:
             self.obs = self.env_reset()
-            
             epoch_num = self.update_epoch()
+            print("####################################################################################################")
+            print("#############################################", f"epoch {epoch_num}", "#############################################")
             step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, last_lr, lr_mul = self.train_epoch()
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)
