@@ -219,7 +219,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
             # logging
             body_ind = get_body_index(self.robot, self.index_base)
-            print("Current body index:", body_ind)
+            # print("Current body index:", body_ind)
 
             self.compute_observations()
             self.compute_reward()
@@ -275,7 +275,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
 
             # logging
             body_ind = get_body_index(self.robot, self.index_base)
-            print("Current body index:", body_ind)
+            # print("Current body index:", body_ind)
             # print("Attribute design params:\n", get_attr_design(self.robot))
             # print("Attribute fixed params:\n", get_attr_fixed(self.cfg['robot']['obs_specs'], self.robot))
 
@@ -304,8 +304,12 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
             self.control_nsteps += 1
             
             # extract node control action from all actions
-            control_actions = all_actions[:, :, :self.control_action_dim]
-            control_actions = torch.cat(([control_actions[:, i*self.num_nodes+1:(i+1)*self.num_nodes] for i in range(self.num_agents)]), dim=1)
+            all_actions = all_actions[:, :, :self.control_action_dim]
+            # ant
+            control_actions = all_actions[:, 1:self.num_nodes, :]
+            # op
+            control_actions_op = all_actions[:, self.num_nodes+1:(self.num_nodes+self.num_nodes_op)]
+            control_actions = torch.cat((control_actions, control_actions_op), dim=1)
             control_actions = control_actions.view(-1)
 
             self.gym_step(control_actions)
@@ -483,7 +487,7 @@ class MA_EvoAnt_Sumo(MA_Evo_VecTask):
         self.extras = {}
 
     def create_sim(self):
-        print("#---------- isaacgym creating --------------------------")
+        # print("#---------- isaacgym creating --------------------------")
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
 

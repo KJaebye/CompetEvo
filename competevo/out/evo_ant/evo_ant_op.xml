@@ -19,87 +19,92 @@
       <freejoint name="root"/>
       <body name="1" pos="0 0 0">
         <joint axis="-0.707107 0.707107 0" name="1_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-        <geom fromto="0 0 0 0.399962 0.399979 0" size="0.08001" type="capsule"/>
+        <geom fromto="-0.000308 -0.00028 0 0.381454 0.347019 0" size="0.071746" type="capsule"/>
+        <body name="11" pos="0.381454 0.347019 0">
+          <joint axis="-0.707107 0.707107 0" name="11_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+          <geom fromto="-0.001152 -0.001474 0 0.314509 0.402582 0" size="0.081842" type="capsule"/>
+          <body name="111" pos="0.314509 0.402582 0">
+            <joint axis="-0.707107 0.707107 0" name="111_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="-0.001958 -0.002315 0 0.376857 0.44559 0" size="0.090577" type="capsule"/>
+          </body>
+        </body>
+        <body name="21" pos="0.381454 0.347019 0">
+          <joint axis="-0.707107 0.707107 0" name="21_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+          <geom fromto="-0 -0 0 0.364361 0.348275 0" size="0.080258" type="capsule"/>
+          <body name="121" pos="0.364361 0.348275 0">
+            <joint axis="-0.707107 0.707107 0" name="121_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="-0.007067 -0.006555 0 0.420655 0.390163 0" size="0.083208" type="capsule"/>
+          </body>
+        </body>
       </body>
       <body name="2" pos="0 0 0">
         <joint axis="-0.707107 -0.707107 0" name="2_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-        <geom fromto="0 0 0 -0.400006 0.399926 0" size="0.08" type="capsule"/>
-        <body name="12" pos="-0.400006 0.399926 0">
+        <geom fromto="0.001794 -0.001594 0 -0.408438 0.363042 0" size="0.080233" type="capsule"/>
+        <body name="12" pos="-0.408438 0.363042 0">
           <joint axis="-0.707107 -0.707107 0" name="12_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 -0.399927 0.399964 0" size="0.080002" type="capsule"/>
-        </body>
-        <body name="22" pos="-0.400006 0.399926 0">
-          <joint axis="-0.707107 -0.707107 0" name="22_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 -0.399983 0.4 0" size="0.079999" type="capsule"/>
-          <body name="122" pos="-0.399983 0.4 0">
-            <joint axis="-0.707107 -0.707107 0" name="122_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 -0.399957 0.400015 0" size="0.080001" type="capsule"/>
+          <geom fromto="0.001116 -0.001079 0 -0.458713 0.443322 0" size="0.078994" type="capsule"/>
+          <body name="112" pos="-0.458713 0.443322 0">
+            <joint axis="-0.707107 -0.707107 0" name="112_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="0.001192 -0.001021 0 -0.475596 0.407329 0" size="0.06565" type="capsule"/>
           </body>
-          <body name="222" pos="-0.399983 0.4 0">
-            <joint axis="-0.707107 -0.707107 0" name="222_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 -0.399995 0.400021 0" size="0.07999" type="capsule"/>
+          <body name="212" pos="-0.458713 0.443322 0">
+            <joint axis="-0.707107 -0.707107 0" name="212_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="0.000296 -0.000333 0 -0.435666 0.49004 0" size="0.084085" type="capsule"/>
+          </body>
+        </body>
+        <body name="22" pos="-0.408438 0.363042 0">
+          <joint axis="-0.707107 -0.707107 0" name="22_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+          <geom fromto="0.000131 -0.000131 0 -0.444215 0.442871 0" size="0.078142" type="capsule"/>
+          <body name="122" pos="-0.444215 0.442871 0">
+            <joint axis="-0.707107 -0.707107 0" name="122_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="0.000364 -0.000344 0 -0.397491 0.375405 0" size="0.079321" type="capsule"/>
           </body>
         </body>
       </body>
       <body name="3" pos="0 0 0">
         <joint axis="0.707107 -0.707107 0" name="3_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-        <geom fromto="0 0 0 -0.400057 -0.400022 0" size="0.080003" type="capsule"/>
-        <body name="13" pos="-0.400057 -0.400022 0">
+        <geom fromto="0.001744 0.001715 0 -0.346741 -0.340952 0" size="0.072964" type="capsule"/>
+        <body name="13" pos="-0.346741 -0.340952 0">
           <joint axis="0.707107 -0.707107 0" name="13_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 -0.400077 -0.399903 0" size="0.079987" type="capsule"/>
-          <body name="113" pos="-0.400077 -0.399903 0">
-            <joint axis="0.707107 -0.707107 0" name="113_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 -0.399871 -0.399994 0" size="0.079999" type="capsule"/>
-          </body>
-          <body name="213" pos="-0.400077 -0.399903 0">
-            <joint axis="0.707107 -0.707107 0" name="213_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="0 0 0 -0.400009 -0.399893 0" size="0.079993" type="capsule"/>
-          </body>
-        </body>
-        <body name="23" pos="-0.400057 -0.400022 0">
-          <joint axis="0.707107 -0.707107 0" name="23_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 -0.400077 -0.399962 0" size="0.080005" type="capsule"/>
+          <geom fromto="0.001 0.001136 0 -0.331557 -0.376495 0" size="0.087522" type="capsule"/>
         </body>
       </body>
       <body name="4" pos="0 0 0">
         <joint axis="0.707107 0.707107 0" name="4_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-        <geom fromto="0 0 0 0.399977 -0.400009 0" size="0.080005" type="capsule"/>
-        <body name="14" pos="0.399977 -0.400009 0">
+        <geom fromto="-0.001041 0.000743 0 0.463555 -0.330985 0" size="0.081574" type="capsule"/>
+        <body name="14" pos="0.463555 -0.330985 0">
           <joint axis="0.707107 0.707107 0" name="14_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 0.399954 -0.400026 0" size="0.079996" type="capsule"/>
-          <body name="114" pos="0.399954 -0.400026 0">
-            <joint axis="0.707107 0.707107 0" name="114_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="-0 0 0 0.399968 -0.400014 0" size="0.079995" type="capsule"/>
-          </body>
-          <body name="214" pos="0.399954 -0.400026 0">
-            <joint axis="0.707107 0.707107 0" name="214_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-            <geom fromto="-0 0 0 0.399948 -0.400066 0" size="0.080002" type="capsule"/>
-          </body>
+          <geom fromto="-0.003345 0.002733 0 0.454391 -0.371342 0" size="0.090174" type="capsule"/>
         </body>
-        <body name="24" pos="0.399977 -0.400009 0">
+        <body name="24" pos="0.463555 -0.330985 0">
           <joint axis="0.707107 0.707107 0" name="24_joint" pos="0 0 0" range="-30 30" type="hinge"/>
-          <geom fromto="0 0 0 0.4 -0.400051 0" size="0.08" type="capsule"/>
+          <geom fromto="-0.000002 0.000002 0 0.467556 -0.437659 0" size="0.065697" type="capsule"/>
+          <body name="124" pos="0.467556 -0.437659 0">
+            <joint axis="0.707107 0.707107 0" name="124_joint" pos="0 0 0" range="-30 30" type="hinge"/>
+            <geom fromto="-0.004619 0.003972 0 0.385261 -0.331315 0" size="0.086946" type="capsule"/>
+          </body>
         </body>
       </body>
     </body>
   </worldbody>
   <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="1_joint" gear="150.001888" name="1_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="2_joint" gear="149.936674" name="2_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="3_joint" gear="149.998281" name="3_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="4_joint" gear="149.918752" name="4_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="12_joint" gear="149.982619" name="12_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="13_joint" gear="149.954697" name="13_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="14_joint" gear="149.994442" name="14_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="22_joint" gear="149.993292" name="22_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="23_joint" gear="150.060528" name="23_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="24_joint" gear="150.006565" name="24_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="113_joint" gear="149.955699" name="113_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="114_joint" gear="150.04986" name="114_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="213_joint" gear="150.013411" name="213_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="214_joint" gear="150.022845" name="214_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="122_joint" gear="150.036984" name="122_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="222_joint" gear="149.977245" name="222_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="1_joint" gear="145.507767" name="1_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="2_joint" gear="114.7763" name="2_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="3_joint" gear="138.10891" name="3_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="4_joint" gear="167.826407" name="4_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="12_joint" gear="158.415489" name="12_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="14_joint" gear="177.251917" name="14_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="11_joint" gear="129.54" name="11_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="13_joint" gear="209.498335" name="13_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="112_joint" gear="135.885966" name="112_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="21_joint" gear="131.186105" name="21_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="22_joint" gear="163.101496" name="22_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="24_joint" gear="126.070633" name="24_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="212_joint" gear="72.7482" name="212_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="111_joint" gear="174.102954" name="111_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="121_joint" gear="114.423858" name="121_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="122_joint" gear="149.60285" name="122_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="124_joint" gear="134.039698" name="124_joint"/>
   </actuator>
   <asset>
     <texture type="skybox" builtin="gradient" rgb1=".4 .5 .6" rgb2="0 0 0" width="100" height="100"/>

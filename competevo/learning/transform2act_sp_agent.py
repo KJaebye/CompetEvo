@@ -148,7 +148,7 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         for n in range(self.horizon_length):
             # logging
             if self.vec_env.stage not in flag:
-                print("#---------- ", self.vec_env.stage, "--------------------------")
+                # print("#---------- ", self.vec_env.stage, "--------------------------")
                 flag.append(self.vec_env.stage)
             
             self.obs = self.env_reset(env_done_indices, gym_only=True)
@@ -487,8 +487,8 @@ class T2A_SPAgent(a2c_continuous.A2CAgent):
         while True:
             self.obs = self.env_reset()
             epoch_num = self.update_epoch()
-            print("####################################################################################################")
-            print("#############################################", f"epoch {epoch_num}", "#############################################")
+            print("###################################################################################################")
+            print("######################", f"epoch {epoch_num}", "####################################################################")
             step_time, play_time, update_time, sum_time, a_losses, c_losses, b_losses, last_lr, lr_mul = self.train_epoch()
             # cleaning memory to optimize space
             self.dataset.update_values_dict(None)

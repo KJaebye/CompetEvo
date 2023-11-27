@@ -65,7 +65,7 @@ params:
   num_agents: ${...num_agents}
 
   update_win_rate: 0.7
-  player_pool_length: 2
+  player_pool_length: 1 #2
   games_to_check: 400
   max_update_steps: 5000
   device: ${...rl_device}

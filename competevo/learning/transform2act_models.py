@@ -103,14 +103,12 @@ class ModelTransform2Act():
                 control_action = None
 
             if attr_dist is not None:
-                # attr_action = attr_dist.mean_sample() if mean_action else attr_dist.sample()
-                attr_action = attr_dist.mean_sample()
+                attr_action = attr_dist.mean_sample() if mean_action else attr_dist.sample()
             else:
                 attr_action = None
 
             if skel_dist is not None:
-                # skel_action = skel_dist.mean_sample() if mean_action else skel_dist.sample()
-                skel_action = skel_dist.mean_sample()
+                skel_action = skel_dist.mean_sample() if mean_action else skel_dist.sample()
             else:
                 skel_action = None
 
