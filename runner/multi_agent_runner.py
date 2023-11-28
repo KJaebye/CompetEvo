@@ -44,15 +44,8 @@ class MultiAgentRunner(BaseRunner):
     def setup_learner(self):
         """ Learners are corresponding to agents. """
         self.learners = {}
-        if self.cfg.use_shadow_sample:
-            """ If use opponent sampling strategy, one should fight with its old self which we call it shadow. """
-            # Shadow agent owns unique policy that is loaded before every epoch but needn't an optimizer.
-            # Always set idx '0' learner to shadow agent.
-            self.learners[0] = Learner(self.cfg, self.dtype, self.device, self.env, is_shadow=True)
-            self.learners[1] = Learner(self.cfg, self.dtype, self.device, self.env)
-        else:
-            for i, agent in self.env.agents.items():
-                self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env)
+        for i, agent in self.env.agents.items():
+            self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env)
 
     def optimize_policy(self):
         epoch = self.epoch
@@ -75,7 +68,7 @@ class MultiAgentRunner(BaseRunner):
         self.logger.info("Policy update, spending: {:.2f} s.".format(t2-t1))
 
         """evaluate policy"""
-        _, log_evals, win_rate = self.sample(self.cfg.eval_batch_size, mean_action=True)
+        _, log_evals, win_rate = self.sample(self.cfg.eval_batch_size, mean_action=True, nthreads=10)
         t3 = time.time()
         self.logger.info("Evaluation time: {:.2f} s.".format(t3-t2))
 
@@ -91,9 +84,10 @@ class MultiAgentRunner(BaseRunner):
         cfg = self.cfg
         logs, log_evals, win_rate = info['logs'], info['log_evals'], info['win_rate']
         logger, writer = self.logger, self.writer
-
+            
         for i, learner in self.learners.items():
             logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
+            logger.info("Agent_{} gets win rate: {:.2f}.".format(i, win_rate[i]))
             if log_evals[i].avg_episode_reward > learner.best_reward or win_rate[i] > learner.best_win_rate:
                 learner.best_reward = log_evals[i].avg_episode_reward
                 learner.best_win_rate = win_rate[i]
@@ -110,9 +104,6 @@ class MultiAgentRunner(BaseRunner):
     
     def optimize(self, epoch):
         self.epoch = epoch
-        # load shadow agent model
-        if self.cfg.use_shadow_sample and epoch > 0:
-            self.load_agent_params(delta=self.cfg.delta, idx=1)
         # set annealing params
         for i in self.learners:
             self.learners[i].pre_epoch_update(epoch)

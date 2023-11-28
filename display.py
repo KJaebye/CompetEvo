@@ -14,6 +14,8 @@ sys.path.append(".")
 
 from runner.multi_evo_agent_runner import MultiEvoAgentRunner
 from runner.multi_agent_runner import MultiAgentRunner
+from runner.selfplay_agent_runner import SPAgentRunner
+
 
 def main():
     # ----------------------------------------------------------------------------#
@@ -67,7 +69,11 @@ def main():
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=False)
     
-    runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
+    if cfg.env_name == "run-to-goal-ants-v0":
+        runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
+    elif cfg.env_name == "sumo-ants-v0":
+        runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
+    
     runner.display(num_episode=5, mean_action=True)
 
 if __name__ == "__main__":

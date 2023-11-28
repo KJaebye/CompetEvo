@@ -13,8 +13,11 @@ import time
 import sys, os
 sys.path.append(".")
 
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 from runner.multi_evo_agent_runner import MultiEvoAgentRunner
 from runner.multi_agent_runner import MultiAgentRunner
+from runner.selfplay_agent_runner import SPAgentRunner
 
 def main():
     # ----------------------------------------------------------------------------#
@@ -72,8 +75,13 @@ def main():
     #                              num_threads=args.num_threads, training=True)
     
     start_epoch = int(args.epoch) if args.epoch.isnumeric() else args.epoch
-    runner = MultiAgentRunner(cfg, logger, dtype, device, 
-                                 num_threads=args.num_threads, training=True, ckpt=start_epoch)
+
+    if cfg.env_name == "run-to-goal-ants-v0":
+        runner = MultiAgentRunner(cfg, logger, dtype, device, 
+                                    num_threads=args.num_threads, training=True, ckpt=start_epoch)
+    elif cfg.env_name == "sumo-ants-v0":
+        runner = SPAgentRunner(cfg, logger, dtype, device, 
+                                    num_threads=args.num_threads, training=True, ckpt=start_epoch)
     
     # main loop
     for epoch in range(start_epoch, cfg.max_epoch_num):          

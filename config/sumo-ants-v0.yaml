@@ -1,5 +1,5 @@
 env_name: sumo-ants-v0
-  
+
 # training parameters
 gamma: 0.995
 tau: 0.95
@@ -25,8 +25,8 @@ value_lr: 0.001 #3.e-4
 value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
-min_batch_size: 409600 #50000
-mini_batch_size: 51200 #2048
+min_batch_size: 500 #50000
+mini_batch_size: 64 #2048
 num_optim_epoch: 6 #10
 max_epoch_num: 2000
 seed: 1
@@ -36,8 +36,4 @@ done_condition:
   max_ang: 60
 
 use_reward_scaling: False
-use_opponent_sample: False
-use_shadow_sample: False
 delta: 1.
-use_exploration_curriculum: True
-termination_epoch: 200
