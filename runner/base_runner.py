@@ -6,7 +6,7 @@ import competevo
 import gym_compete
 
 class BaseRunner:
-    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt=0) -> None:
+    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
         self.cfg = cfg
         self.logger = logger
         self.dtype = dtype
@@ -29,7 +29,7 @@ class BaseRunner:
         self.setup_learner()
 
         if ckpt != 0 or not training:
-            self.load_checkpoint(ckpt)
+            self.load_checkpoint(ckpt_dir, ckpt)
 
     def setup_env(self, env_name):
         if self.training:
@@ -50,7 +50,7 @@ class BaseRunner:
     def sample(self):
         raise NotImplementedError
     
-    def load_checkpoint(self, ckpt):
+    def load_checkpoint(self, ckpt_dir, ckpt):
         raise NotImplementedError
     
     def seed_worker(self, pid):

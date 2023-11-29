@@ -1,3 +1,6 @@
 tmp
 *.pyc
-__pycache__
+/*.egg-info
+/*.egg
+/*.db
+/__pycache__

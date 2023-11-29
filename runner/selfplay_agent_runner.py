@@ -31,8 +31,8 @@ def tensorfy(np_list, device=torch.device('cpu')):
         return [torch.tensor(y).to(device) for y in np_list]
 
 class SPAgentRunner(BaseRunner):
-    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt=0) -> None:
-        super().__init__(cfg, logger, dtype, device, num_threads=num_threads, training=training, ckpt=ckpt)
+    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
+        super().__init__(cfg, logger, dtype, device, num_threads=num_threads, training=training, ckpt_dir=ckpt_dir, ckpt=ckpt)
         self.agent_num = self.learners.__len__()
 
         self.logger_cls = LoggerRL
@@ -89,6 +89,7 @@ class SPAgentRunner(BaseRunner):
         logger, writer = self.logger, self.writer
 
         logger.info("Agent gets eval reward: {:.2f}.".format(log_eval.avg_episode_reward))
+        logger.info("Agent gets win rate: {:.2f}.".format(win_rate))
         if log_eval.avg_episode_reward > self.learners[0].best_reward or win_rate > self.learners[0].best_win_rate:
             self.learners[0].best_reward = log_eval.avg_episode_reward
             self.learners[0].best_win_rate = win_rate
@@ -102,6 +103,8 @@ class SPAgentRunner(BaseRunner):
         # writer.add_scalar('eval_R_avg_{}'.format(i), log_evals[i].avg_reward, epoch)
         # logging win rate
         writer.add_scalar("eval_win_rate", win_rate, epoch)
+        # eps len
+        writer.add_scalar("episode_length", log_eval.avg_episode_len, epoch)
     
     def optimize(self, epoch):
         self.epoch = epoch
@@ -133,7 +136,7 @@ class SPAgentRunner(BaseRunner):
             c_rew.append(rew)
         return tuple(c_rew), infos
 
-    def sample_worker(self, pid, queue, min_batch_size, mean_action, render):
+    def sample_worker(self, pid, queue, min_batch_size, mean_action, render, randomstate):
         self.seed_worker(pid)
         
         # define logger
@@ -148,17 +151,18 @@ class SPAgentRunner(BaseRunner):
             # shadows load random historical policies before every rollout
             # the first learner is always ego agent
             """set sampling policy for shadows"""
-            if self.epoch == 0:
+            if mean_action or self.epoch == 0:
                 pass
             else:
-                for i in range(1, self.agent_num):
-                    start = math.floor(self.epoch * self.cfg.delta)
-                    end = self.epoch
-                    ckpt = np.random.randint(start, end) if start!=end else end
-                    # get ckpt modeal
-                    cp_path = '%s/epoch_%04d.p' % (self.model_dir, ckpt)
-                    model_cp = pickle.load(open(cp_path, "rb"))
-                    self.learners[i].load_ckpt(model_cp)
+                """set sampling policy for opponent"""
+                start = math.floor(self.epoch * self.cfg.delta)
+                end = self.epoch
+                ckpt = randomstate.randint(start, end) if start!=end else end
+                ckpt = 1 if ckpt==0 else ckpt # avoid first data
+                # get ckpt modeal
+                cp_path = '%s/epoch_%04d.p' % (self.model_dir, ckpt)
+                model_cp = pickle.load(open(cp_path, "rb"))
+                self.learners[1].load_ckpt(model_cp)
 
             states, info = self.env.reset()
             # normalize states
@@ -174,7 +178,7 @@ class SPAgentRunner(BaseRunner):
                 actions = []
                 
                 for i, learner in self.learners.items():
-                    use_mean_action = mean_action or torch.bernoulli(torch.tensor([1 - self.noise_rate])).item() or learner.is_shadow
+                    use_mean_action = mean_action or torch.bernoulli(torch.tensor([1 - self.noise_rate])).item() or i == 1
                     actions.append(learner.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
                 
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
@@ -185,8 +189,14 @@ class SPAgentRunner(BaseRunner):
                         next_states[i] = learner.running_state(next_states[i])
 
                 # use custom or env reward
-                c_rewards, c_infos = [0.0 for _ in self.learners], [np.array([0.0]) for _ in self.learners]
-                rewards = env_rewards
+                if self.cfg.use_exploration_curriculum:
+                    assert hasattr(self, 'custom_reward')
+                    c_rewards, c_infos = self.custom_reward(infos)
+                    rewards = c_rewards
+                else:
+                    c_rewards, c_infos = [0.0 for _ in self.learners], [np.array([0.0]) for _ in self.learners]
+                    rewards = env_rewards
+
                 # add end reward
                 if self.end_reward and infos.get('end', False):
                     rewards += self.env.end_rewards
@@ -246,10 +256,10 @@ class SPAgentRunner(BaseRunner):
                 loggers = [None] * nthreads
                 total_scores = [None] * nthreads
                 for i in range(nthreads-1):
-                    worker_args = (i+1, queue, thread_batch_size, mean_action, render)
+                    worker_args = (i+1, queue, thread_batch_size, mean_action, render, np.random.RandomState())
                     worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
                     worker.start()
-                memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render)
+                memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
 
                 for i in range(nthreads - 1):
                     pid, worker_memory, worker_logger, total_score = queue.get()
@@ -269,17 +279,18 @@ class SPAgentRunner(BaseRunner):
             logger.sample_time = time.time() - t_start
             return traj_batch, logger, win_rate
     
-    def load_checkpoint(self, checkpoint):
+    def load_checkpoint(self, ckpt_dir, checkpoint):
         assert isinstance(checkpoint, list) or isinstance(checkpoint, tuple)
         for i, learner in self.learners.items():
-            self.load_agent_checkpoint(checkpoint[i], i)
+            self.load_agent_checkpoint(checkpoint[i], i, ckpt_dir)
     
-    def load_agent_checkpoint(self, ckpt, idx):
+    def load_agent_checkpoint(self, ckpt, idx, ckpt_dir=None):
+        ckpt_dir = self.model_dir if not ckpt_dir else ckpt_dir
         if isinstance(ckpt, int):
-            cp_path = '%s/epoch_%04d.p' % (self.model_dir, ckpt)
+            cp_path = '%s/epoch_%04d.p' % (ckpt_dir, ckpt)
         else:
             assert isinstance(ckpt, str)
-            cp_path = '%s/%s.p' % (self.model_dir, ckpt)
+            cp_path = '%s/%s.p' % (ckpt_dir, ckpt)
         self.logger.info('loading agent model from checkpoint: %s' % (cp_path))
         model_cp = pickle.load(open(cp_path, "rb"))
 

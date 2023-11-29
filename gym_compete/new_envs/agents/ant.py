@@ -51,15 +51,17 @@ class Ant(Agent):
         Return agent's observations
         '''
         my_pos = self.get_qpos()
-        # other_pos = self.get_other_qpos()
-        other_pos = self.get_other_qpos()[:2] # only use op xy pos
+        other_pos = self.get_other_qpos()
+        
         my_vel = self.get_qvel()
         cfrc_ext = np.clip(self.get_cfrc_ext(), -1, 1)
-
+        
+        # for multiagent play
         obs = np.concatenate(
             [my_pos.flat, my_vel.flat, cfrc_ext.flat,
              other_pos.flat]
         )
+
         return obs
 
     def set_observation_space(self):

@@ -28,10 +28,10 @@ register(
                 "new_envs", "assets",
                 "world_body.ant_body.xml"
             ),
-            # 'init_pos': [(-1, 0, 0.75)],
-            # 'ini_euler': [(0, 0, 0)],
-            'init_pos': [(1, 0, 0.75)],
-            'ini_euler': [(0, 0, 180)],
+            'init_pos': [(-1, 0, 0.75)],
+            'ini_euler': [(0, 0, 0)],
+            # 'init_pos': [(1, 0, 0.75)],
+            # 'ini_euler': [(0, 0, 180)],
             'max_episode_steps': 500,
             },
 )
@@ -120,10 +120,10 @@ register(
                 "assets", 'world_body_arena.xml'
             ),
             'init_pos': [(-1, 0, 2.5), (1, 0, 2.5)],
-            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            # 'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'max_episode_steps': 500,
-            'min_radius': 4,
-            'max_radius': 4
+            'min_radius': 2.5,
+            'max_radius': 4.5
             },
 )
 

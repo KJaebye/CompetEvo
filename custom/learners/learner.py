@@ -3,7 +3,6 @@ from custom.models.normal_critic import NormalValue
 from lib.utils.torch import *
 from lib.utils.tools import *
 from lib.rl.core import estimate_advantages
-from lib.rl.core.running_norm import RunningNorm
 import math
 
 def tensorfy(np_list, device=torch.device('cpu')):

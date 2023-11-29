@@ -1,0 +1,302 @@
+task:
+  name: MA_EvoAnt_Sumo
+  physics_engine: ${..physics_engine}
+  env:
+    numEnvs: ${resolve_default:1,${...num_envs}}
+    numAgents: ${...num_agents}
+    envSpacing: 6
+    borderlineSpace: 3
+    episodeLength: 1000
+    enableDebugVis: false
+    controlFrequencyInv: 1
+    clipActions: 1.0
+    clipObservations: 5.0
+    actionScale: 0.5
+    control:
+      stiffness: 85.0
+      damping: 2.0
+      actionScale: 0.5
+      controlFrequencyInv: 1
+    headingWeight: 0.5
+    upWeight: 0.1
+    terminationHeight: 0.31
+    dofVelocityScale: 0.2
+    jointsAtLimitCost: -0.1
+    plane:
+      staticFriction: 1.0
+      dynamicFriction: 1.0
+      restitution: 0.0
+    asset:
+      assetFileName: mjcf/nv_ant.xml
+  robot:
+    robot_param_scale: 1
+    skel_transform_nsteps: 5
+    enable_remove: false
+    max_body_depth: 4
+    add_body_condition:
+      max_nchild: 2
+    param_mapping: sin
+    no_root_offset: true
+    obs_specs:
+      attr:
+      - depth
+      sim: []
+      design: true
+      clip_qvel: true
+      use_projected_params: true
+      use_body_ind: true
+    body_params:
+      offset:
+        type: xy
+        lb:
+        - -0.5
+        - -0.5
+        ub:
+        - 0.5
+        - 0.5
+    joint_params: {}
+    geom_params:
+      size:
+        lb: 0.03
+        ub: 0.1
+      ext_start:
+        lb: 0.0
+        ub: 0.2
+    actuator_params:
+      gear:
+        lb: 20
+        ub: 400
+  enableCameraSensors: false
+  sim:
+    dt: 0.0166
+    substeps: 2
+    up_axis: z
+    use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
+    gravity:
+    - 0.0
+    - 0.0
+    - -9.81
+    physx:
+      num_threads: ${....num_threads}
+      solver_type: ${....solver_type}
+      use_gpu: ${contains:"cuda",${....sim_device}}
+      num_position_iterations: 4
+      num_velocity_iterations: 0
+      contact_offset: 0.02
+      rest_offset: 0.0
+      bounce_threshold_velocity: 0.2
+      max_depenetration_velocity: 10.0
+      default_buffer_size_multiplier: 5.0
+      max_gpu_contact_pairs: 8388608
+      num_subscenes: ${....num_subscenes}
+      contact_collection: 0
+  task:
+    randomize: false
+    randomization_params:
+      frequency: 600
+      observations:
+        range:
+        - 0
+        - 0.002
+        operation: additive
+        distribution: gaussian
+      actions:
+        range:
+        - 0.0
+        - 0.02
+        operation: additive
+        distribution: gaussian
+      actor_params:
+        ant:
+          color: true
+          rigid_body_properties:
+            mass:
+              range:
+              - 0.5
+              - 1.5
+              operation: scaling
+              distribution: uniform
+              setup_only: true
+          dof_properties:
+            damping:
+              range:
+              - 0.5
+              - 1.5
+              operation: scaling
+              distribution: uniform
+            stiffness:
+              range:
+              - 0.5
+              - 1.5
+              operation: scaling
+              distribution: uniform
+            lower:
+              range:
+              - 0
+              - 0.01
+              operation: additive
+              distribution: gaussian
+            upper:
+              range:
+              - 0
+              - 0.01
+              operation: additive
+              distribution: gaussian
+train:
+  params:
+    seed: ${...seed}
+    algo:
+      name: self_play_transform2act
+    model:
+      name: transform2act
+    network:
+      name: transform2act
+      attr_fixed_dim: 4
+      attr_design_dim: 5
+      gym_obs_dim: 26
+      enable_remove: ${....task.robot.enable_remove}
+      control_action_dim: 1
+      policy_specs:
+        htype: tanh
+        skel_gnn_specs:
+          layer_type: graph_conv
+          hdims:
+          - 64
+          - 64
+          - 64
+          aggr: add
+          bias: true
+        skel_index_mlp:
+          hdims:
+          - 128
+          - 128
+          rescale_linear: true
+        control_gnn_specs:
+          layer_type: graph_conv
+          hdims:
+          - 64
+          - 64
+          - 64
+          aggr: add
+          bias: true
+        control_index_mlp:
+          hdims:
+          - 128
+          - 128
+          rescale_linear: true
+        attr_gnn_specs:
+          layer_type: graph_conv
+          hdims:
+          - 64
+          - 64
+          - 64
+          aggr: add
+          bias: true
+        attr_index_mlp:
+          hdims:
+          - 128
+          - 128
+          rescale_linear: true
+        control_log_std: 0
+        attr_log_std: -2.3
+        fix_control_std: false
+        fix_attr_std: false
+      value_specs:
+        htype: tanh
+        design_flag_in_state: true
+        onehot_design_flag: true
+        mlp:
+        - 512
+        - 256
+        gnn_specs:
+          layer_type: graph_conv
+          hdims:
+          - 64
+          - 64
+          - 64
+          aggr: add
+          bias: true
+    player_pool_type: ${resolve_default:evo,${...player_pool_type}}
+    load_checkpoint: ${if:${...checkpoint},True,False}
+    load_path: ${...checkpoint}
+    op_load_path: ${if:${...op_checkpoint},${...op_checkpoint},${...checkpoint}}
+    num_agents: ${...num_agents}
+    update_win_rate: 0.7
+    player_pool_length: 1
+    games_to_check: 400
+    max_update_steps: 5000
+    device: ${...rl_device}
+    config:
+      name: ${resolve_default:MA_EvoAnt_1v1,${....experiment}}
+      env_name: evo_rlgpu
+      multi_gpu: ${....multi_gpu}
+      ppo: true
+      mixed_precision: false
+      normalize_input: false
+      normalize_value: false
+      value_bootstrap: true
+      clip_actions: false
+      num_actors: ${....task.env.numEnvs}
+      reward_shaper:
+        scale_value: 0.01
+      normalize_advantage: true
+      gamma: 0.99
+      tau: 0.95
+      learning_rate: 0.0003
+      lr_schedule: adaptive
+      schedule_type: ''
+      kl_threshold: 0.008
+      score_to_win: 20000
+      max_epochs: ${resolve_default:100000,${....max_iterations}}
+      save_best_after: 200
+      save_frequency: 500
+      grad_norm: 1.0
+      entropy_coef: 0.0
+      truncate_grads: true
+      e_clip: 0.2
+      horizon_length: 1024
+      minibatch_size: ${resolve_default:32768,${....minibatch_size}}
+      mini_epochs: 4
+      critic_coef: 2
+      clip_value: true
+      use_smooth_clamp: true
+      bounds_loss_coef: 0.0
+      player:
+        games_num: 4000
+        record_elo: true
+        init_elo: 400
+task_name: ${task.name}
+experiment: ''
+num_envs: ''
+seed: 42
+torch_deterministic: false
+max_iterations: ''
+minibatch_size: 64
+physics_engine: physx
+pipeline: gpu
+use_gpu: true
+use_gpu_pipeline: true
+sim_device: cuda:0
+rl_device: cuda:0
+graphics_device_id: 0
+device_type: cuda
+num_threads: 4
+solver_type: 1
+num_subscenes: 4
+test: false
+checkpoint: ''
+op_checkpoint: ''
+player_pool_type: ''
+num_agents: 2
+motion_file: tasks/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy
+multi_gpu: false
+wandb_activate: false
+wandb_group: ''
+wandb_name: ${train.params.config.name}
+wandb_entity: ''
+wandb_project: competoevo
+capture_video: false
+capture_video_freq: 1464
+capture_video_len: 100
+force_render: true
+headless: false

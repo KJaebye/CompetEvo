@@ -12,11 +12,13 @@ def tensorfy(np_list, device=torch.device('cpu')):
         return [torch.tensor(y).to(device) for y in np_list]
 
 class EvoLearner:
-    def __init__(self, cfg, dtype, device, agent) -> None:
+    def __init__(self, cfg, dtype, device, agent, is_shadow=False) -> None:
         self.cfg = cfg
         self.device = device
         self.dtype = dtype
         self.agent = agent
+        self.is_shadow = is_shadow
+        
         self.setup_policy()
         self.setup_value()
         self.setup_optimizer()
@@ -50,6 +52,21 @@ class EvoLearner:
         self.value_net = Transform2ActValue(self.cfg.value_specs, self.agent)
         to_device(self.device, self.value_net)
     
+    def load_ckpt(self, model):
+        self.policy_net.load_state_dict(model['policy_dict'])
+        self.value_net.load_state_dict(model['value_dict'])
+        self.running_state = model['running_state']
+        self.loss_iter = model['loss_iter']
+
+        if 'epoch' in model:
+            epoch = model['epoch']
+        
+        if self.is_shadow:
+            # should not input averaged reward because the shadow 
+            # agent's averaged reward is always less than best_reward
+            return
+        self.best_reward = model.get('best_reward', self.best_reward)
+
     def setup_optimizer(self):
         cfg = self.cfg
         # policy optimizer

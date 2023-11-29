@@ -32,7 +32,8 @@ def main():
     parser.add_argument('--use_cuda', type=str2bool, default=True)
     parser.add_argument('--gpu_index', type=int, default=0)
     parser.add_argument('--num_threads', type=int, default=1)
-    parser.add_argument('--epoch', type=str, default='0')
+    parser.add_argument('--ckpt_dir', type=str, default=None)
+    parser.add_argument('--ckpt', type=str, default='0')
     args = parser.parse_args()
     # Load config file
     cfg = Config(args.cfg_file)
@@ -74,14 +75,18 @@ def main():
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=True)
     
-    start_epoch = int(args.epoch) if args.epoch.isnumeric() else args.epoch
+    if args.ckpt_dir: assert ckpt is not None
+    ckpt = int(args.ckpt) if args.ckpt.isnumeric() else args.ckpt
+    start_epoch = ckpt if args.ckpt.isnumeric() else 0
 
-    if cfg.env_name == "run-to-goal-ants-v0":
+    ma_runner = ["run-to-goal-ants-v0"]
+    # ma_runner = ["sumo-ants-v0"]
+    if cfg.env_name in ma_runner:
         runner = MultiAgentRunner(cfg, logger, dtype, device, 
-                                    num_threads=args.num_threads, training=True, ckpt=start_epoch)
-    elif cfg.env_name == "sumo-ants-v0":
+                                    num_threads=args.num_threads, training=True, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
+    else:
         runner = SPAgentRunner(cfg, logger, dtype, device, 
-                                    num_threads=args.num_threads, training=True, ckpt=start_epoch)
+                                    num_threads=args.num_threads, training=True, ckpt=ckpt)
     
     # main loop
     for epoch in range(start_epoch, cfg.max_epoch_num):          

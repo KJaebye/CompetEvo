@@ -68,13 +68,14 @@ def main():
     # runner definition
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=False)
+    ma_runner = ["run-to-goal-ants-v0"]
+    # ma_runner = ["sumo-ants-v0"]
+    if cfg.env_name in ma_runner:
+        runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
+    else:
+        runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
     
-    if cfg.env_name == "run-to-goal-ants-v0":
-        runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
-    elif cfg.env_name == "sumo-ants-v0":
-        runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt=ckpt)
-    
-    runner.display(num_episode=5, mean_action=True)
+    runner.display(num_episode=50, mean_action=True)
 
 if __name__ == "__main__":
     main()

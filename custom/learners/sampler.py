@@ -1,8 +1,6 @@
 from custom.models.normal_actor import NormalPolicy
 from lib.utils.torch import *
 from lib.utils.tools import *
-from lib.rl.core import estimate_advantages
-from lib.rl.core.running_norm import RunningNorm
     
 class Sampler:
     """

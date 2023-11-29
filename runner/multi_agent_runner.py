@@ -31,8 +31,8 @@ def tensorfy(np_list, device=torch.device('cpu')):
         return [torch.tensor(y).to(device) for y in np_list]
 
 class MultiAgentRunner(BaseRunner):
-    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt=0) -> None:
-        super().__init__(cfg, logger, dtype, device, num_threads=num_threads, training=training, ckpt=ckpt)
+    def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
+        super().__init__(cfg, logger, dtype, device, num_threads=num_threads, training=training, ckpt_dir=ckpt_dir, ckpt=ckpt)
         self.agent_num = self.learners.__len__()
 
         self.logger_cls = MaLoggerRL
@@ -133,7 +133,7 @@ class MultiAgentRunner(BaseRunner):
             c_rew.append(rew)
         return tuple(c_rew), infos
 
-    def sample_worker(self, pid, queue, min_batch_size, mean_action, render, idx=None):
+    def sample_worker(self, pid, queue, min_batch_size, mean_action, render, randomstate, idx=None):
         self.seed_worker(pid)
         
         # define multi-agent logger
@@ -148,17 +148,17 @@ class MultiAgentRunner(BaseRunner):
         while ma_logger[0].num_steps < min_batch_size:
             # sample random opponent old policies before every rollout
             samplers = {}
-            if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0 or self.epoch <= self.cfg.termination_epoch:
+            if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0 or \
+                (self.cfg.use_exploration_curriculum and self.epoch <= self.cfg.termination_epoch):
                 samplers = self.learners
             else:
                 assert idx is not None
                 """set sampling policy for opponent"""
-                start = max(math.floor(
-                    (self.epoch-self.cfg.termination_epoch) * self.cfg.delta + self.cfg.termination_epoch), 
-                    self.cfg.termination_epoch)
+                start = math.floor(self.epoch * self.cfg.delta)
                 end = self.epoch
                 samplers[1-idx] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
-                ckpt = np.random.randint(start, end) if start!=end else end
+                ckpt = randomstate.randint(start, end) if start!=end else end
+                ckpt = 1 if ckpt==0 else ckpt # avoid first data
                 # get ckpt modeal
                 cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
                 model_cp = pickle.load(open(cp_path, "rb"))
@@ -258,10 +258,10 @@ class MultiAgentRunner(BaseRunner):
                     loggers = [None] * nthreads
                     total_scores = [None] * nthreads
                     for i in range(nthreads-1):
-                        worker_args = (i+1, queue, thread_batch_size, mean_action, render)
+                        worker_args = (i+1, queue, thread_batch_size, mean_action, render, np.random.RandomState())
                         worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
                         worker.start()
-                    memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render)
+                    memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
 
                     for i in range(nthreads - 1):
                         pid, worker_memory, worker_logger, total_score = queue.get()
@@ -298,14 +298,14 @@ class MultiAgentRunner(BaseRunner):
                     total_scores_1 = [None] * nthreads
 
                     for i in range(nthreads-1):
-                        worker_args_0 = (i+1, queue_0, thread_batch_size, mean_action, render, 0)
+                        worker_args_0 = (i+1, queue_0, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
                         worker_0 = multiprocessing.Process(target=self.sample_worker, args=worker_args_0)
                         worker_0.start()
-                        worker_args_1 = (i+1, queue_1, thread_batch_size, mean_action, render, 1)
+                        worker_args_1 = (i+1, queue_1, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
                         worker_1 = multiprocessing.Process(target=self.sample_worker, args=worker_args_1)
                         worker_1.start()
-                    memories_0[0], loggers_0[0], total_scores_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, 0)
-                    memories_1[0], loggers_1[0], total_scores_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, 1)
+                    memories_0[0], loggers_0[0], total_scores_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
+                    memories_1[0], loggers_1[0], total_scores_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
 
                     for i in range(nthreads - 1):
                         pid_0, worker_memory_0, worker_logger_0, total_score_0 = queue_0.get()
@@ -340,17 +340,19 @@ class MultiAgentRunner(BaseRunner):
             for _ in l: _.sample_time = time.time() - t_start
             return b, l, win_rate
     
-    def load_checkpoint(self, checkpoint):
+    def load_checkpoint(self, ckpt_dir, checkpoint):
         assert isinstance(checkpoint, list) or isinstance(checkpoint, tuple)
         for i, learner in self.learners.items():
-            self.load_agent_checkpoint(checkpoint[i], i)
+            self.load_agent_checkpoint(checkpoint[i], i, ckpt_dir)
     
-    def load_agent_checkpoint(self, ckpt, idx):
+    def load_agent_checkpoint(self, ckpt, idx, ckpt_dir=None):
+        ckpt_dir = self.model_dir if not ckpt_dir else ckpt_dir
+
         if isinstance(ckpt, int):
-            cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), ckpt)
+            cp_path = '%s/%s/epoch_%04d.p' % (ckpt_dir, "agent_"+str(idx), ckpt)
         else:
             assert isinstance(ckpt, str)
-            cp_path = '%s/%s/%s.p' % (self.model_dir, "agent_"+str(idx), ckpt)
+            cp_path = '%s/%s/%s.p' % (ckpt_dir, "agent_"+str(idx), ckpt)
         self.logger.info('loading agent_%s model from checkpoint: %s' % (str(idx), cp_path))
         model_cp = pickle.load(open(cp_path, "rb"))
 
