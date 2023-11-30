@@ -37,6 +37,10 @@ class MultiAgentEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
             AntFighter
         ),
+        'robo_ant_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
+            RoboAntFighter
+        ),
         'humanoid_kicker': (
             os.path.join(os.path.dirname(__file__), "assets", "humanoid_body.xml"),
             HumanoidKicker
@@ -163,7 +167,7 @@ class MultiAgentEnv(MujocoEnv):
         goal_rews, game_done = self.goal_rewards(infos=infos, agent_dones=dones)
         rews = []
         for i, info in enumerate(infos):
-            info['reward_remaining'] = float(goal_rews[i])
+            info['reward_parse'] = float(goal_rews[i])
             rews.append(float(goal_rews[i] + self.move_reward_weight * move_rews[i]))
         rews = tuple(rews)
         terminateds = self._get_done(dones, game_done)

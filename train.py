@@ -75,16 +75,14 @@ def main():
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=True)
     
-    if args.ckpt_dir: assert ckpt is not None
     ckpt = int(args.ckpt) if args.ckpt.isnumeric() else args.ckpt
     start_epoch = ckpt if args.ckpt.isnumeric() else 0
 
-    ma_runner = ["run-to-goal-ants-v0"]
-    # ma_runner = ["sumo-ants-v0"]
-    if cfg.env_name in ma_runner:
+    if cfg.runner_type == "multi-agent-runner":
+        ckpt = [ckpt] * 2
         runner = MultiAgentRunner(cfg, logger, dtype, device, 
                                     num_threads=args.num_threads, training=True, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
-    else:
+    elif cfg.runner_type == "selfplay-agent-runner":
         runner = SPAgentRunner(cfg, logger, dtype, device, 
                                     num_threads=args.num_threads, training=True, ckpt=ckpt)
     

@@ -84,6 +84,9 @@ class MultiAgentRunner(BaseRunner):
         cfg = self.cfg
         logs, log_evals, win_rate = info['logs'], info['log_evals'], info['win_rate']
         logger, writer = self.logger, self.writer
+
+        # print("0:", log_evals[0].total_reward, log_evals[0].num_episodes, log_evals[0].avg_episode_reward)
+        # print("1:", log_evals[1].total_reward, log_evals[1].num_episodes, log_evals[1].avg_episode_reward)
             
         for i, learner in self.learners.items():
             logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
@@ -101,6 +104,8 @@ class MultiAgentRunner(BaseRunner):
             # writer.add_scalar('eval_R_avg_{}'.format(i), log_evals[i].avg_reward, epoch)
             # logging win rate
             writer.add_scalar("eval_win_rate_{}".format(i), win_rate[i], epoch)
+            # eps len
+            writer.add_scalar("episode_length", log_evals[i].avg_episode_len, epoch)
     
     def optimize(self, epoch):
         self.epoch = epoch
@@ -127,9 +132,9 @@ class MultiAgentRunner(BaseRunner):
         alpha = max((termination_epoch - epoch) / termination_epoch, 0)
         c_rew = []
         for i, info in enumerate(infos):
-            goal_rew = info['reward_remaining'] # goal_rew is parse rewarding
-            move_rew = info['reward_move'] # move_rew is dense rewarding
-            rew = alpha * move_rew + (1-alpha) * goal_rew
+            parse_rew = info['reward_parse'] # goal_rew is parse rewarding
+            dense_rew = info['reward_dense'] # move_rew is dense rewarding
+            rew = alpha * dense_rew + (1-alpha) * parse_rew
             c_rew.append(rew)
         return tuple(c_rew), infos
 

@@ -23,6 +23,8 @@ class AntFighter(Ant):
         self.arena_id = self.env.geom_names.index('arena')
         self.arena_height = self.env.model.geom_size[self.arena_id][1] * 2
 
+
+    # old gym_compete design
     def after_step(self, action):
         ctrl_cost = .1 * np.square(action).sum()
         cfrc_ext = self.get_cfrc_ext()
@@ -47,6 +49,7 @@ class AntFighter(Ant):
 
         return reward, done, reward_info
 
+    
     # def after_step(self, action):
     #     ctrl_cost = .1 * np.square(action).sum()
     #     cfrc_ext = self.get_cfrc_ext()

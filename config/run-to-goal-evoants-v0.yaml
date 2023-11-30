@@ -1,30 +1,63 @@
-env_name: you-shall-not-pass-humans-v0
-  
+env_name: run-to-goal-evoants-v0
+runner_type: multi-agent-runner
+
+agent_specs:
+  batch_design: true
+
 # training parameters
 gamma: 0.995
 tau: 0.95
 policy_specs:
   name: v5
   htype: tanh
-  control_mlp:
+  skel_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  skel_index_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  control_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  control_index_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  attr_gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
+  attr_index_mlp:
     hdims: [128, 128]
     rescale_linear: true
   control_log_std: 0
+  attr_log_std: -2.3
   fix_control_std: false
-
+  fix_attr_std: false
 policy_optimizer: 'Adam'
 policy_lr: 5.e-5
 policy_momentum: 0.0
 policy_weightdecay: 0.0
 value_specs:
   htype: tanh
+  design_flag_in_state: true
+  onehot_design_flag: true
   mlp: [512, 256]
+  gnn_specs:
+    layer_type: graph_conv
+    hdims: [64, 64, 64]
+    aggr: add
+    bias: true
 value_optimizer: 'Adam'
 value_lr: 3.e-4
 value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
-min_batch_size: 50000 #50000
+min_batch_size: 50000
 mini_batch_size: 2048
 num_optim_epoch: 10
 max_epoch_num: 1000
@@ -73,3 +106,10 @@ robot:
     gear:
       lb: 20
       ub: 400
+
+use_reward_scaling: False
+use_opponent_sample: False
+delta: 0.
+
+use_exploration_curriculum: True
+termination_epoch: 150

@@ -54,6 +54,7 @@ def create_multiagent_xml(
         outdir=os.path.join(os.path.dirname(__file__), "assets"),
         outpath=None,
         ini_pos=None, 
+        ini_euler=None,
         rgb=None
     ):
     world = ET.parse(world_xml)
@@ -81,6 +82,7 @@ def create_multiagent_xml(
         )
         rgba = RGB_tuples[i] + " 1"
         agent_xml = ET.parse(all_agent_xmls[i])
+        # print(ET.tostring(agent_xml.getroot(), encoding='utf-8', method='xml').decode('utf-8'))
         default = agent_xml.find('default')
         color_set = False
         for child in list(default):
@@ -103,6 +105,14 @@ def create_multiagent_xml(
             # pos[2] = oripos[2]
             # print(tuple_to_str(pos))
             agent_body.set('pos', tuple_to_str(pos))
+        if agent_body.get('euler'):
+            orieuler = list(map(float, agent_body.get('euler').strip().split(" ")))
+            # keep original y and z coordinates
+            euler = list(ini_euler[i])
+            # euler[1] = orieuler[1]
+            # euler[2] = orieuler[2]
+            # print(tuple_to_str(euler))
+            agent_body.set('euler', tuple_to_str(euler))
         # add class to all geoms
         set_geom_class(agent_body, agent_scopes[i])
         # add prefix to all names, important to map joints

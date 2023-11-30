@@ -10,24 +10,24 @@ policy_specs:
     hdims: [128, 128]
     rescale_linear: true
   control_log_std: 0
-  attr_log_std: -2.3
   fix_control_std: false
-  fix_attr_std: false
+
 policy_optimizer: 'Adam'
-policy_lr: 0.001 #5.e-5
+policy_lr: 5.e-5
 policy_momentum: 0.0
 policy_weightdecay: 0.0
 value_specs:
   htype: tanh
   mlp: [512, 256]
+
 value_optimizer: 'Adam'
-value_lr: 0.001 #3.e-4
+value_lr: 3.e-4
 value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
 min_batch_size: 50000 #50000
 mini_batch_size: 2048 #2048
-num_optim_epoch: 6 #10
+num_optim_epoch: 10 #10
 max_epoch_num: 2000
 seed: 1
 save_model_interval: 1

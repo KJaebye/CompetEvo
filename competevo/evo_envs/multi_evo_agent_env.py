@@ -7,6 +7,8 @@ from competevo.evo_envs.evo_utils import create_multiagent_xml
 from competevo.evo_envs.agents import *
 import os
 import six
+from config.config import Config
+
 
 class MultiEvoAgentEnv(MujocoEnv):
     '''
@@ -14,16 +16,10 @@ class MultiEvoAgentEnv(MujocoEnv):
     a MultiAgentScene
     '''
     AGENT_MAP = {
-        'ant': (
-            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
-            Ant
+        'evo_ant': (
+            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
+            EvoAnt
         ),
-
-        'ant_fighter': (
-            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
-            AntFighter
-        ),
-
         'evo_ant_fighter': (
             os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
             EvoAntFighter
@@ -37,13 +33,17 @@ class MultiEvoAgentEnv(MujocoEnv):
         agent_names, 
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP, move_reward_weight=1.0,
-        init_pos=None, rgb=None, agent_args=None, cfg=None,
+        init_pos=None, ini_euler=None, rgb=None, agent_args=None,
+        max_episode_steps=500, cfg_path=None,
         **kwargs,
     ):
         '''
             agent_args is a list of kwargs for each agent
         '''
-        self.cfg = cfg
+        self._max_episode_steps = max_episode_steps
+        self._elapsed_steps = 0
+
+        self.cfg = cfg = Config(cfg_path)
         self.n_agents = len(agent_names)
         self.agents = {}
         all_agent_xml_paths = []
@@ -64,7 +64,7 @@ class MultiEvoAgentEnv(MujocoEnv):
         # the xml file will be saved at "scene_xml_path"
         _, self._env_xml_path = create_multiagent_xml(
             world_xml_path, all_agent_xml_paths, agent_scopes, outdir=rundir,
-            ini_pos=init_pos, rgb=rgb
+            ini_pos=init_pos, ini_euler=ini_euler, rgb=rgb
         )
         print("Scene XML path:", self._env_xml_path)
         self.env_scene = MultiAgentScene(self._env_xml_path, self.n_agents, **kwargs,)
@@ -84,11 +84,15 @@ class MultiEvoAgentEnv(MujocoEnv):
                 self.agents[i].set_goal(self.LEFT_GOAL)
             else:
                 self.agents[i].set_goal(self.RIGHT_GOAL)
+        print(self.env_scene.model)
+
+    def _past_limit(self):
+        if self._max_episode_steps <= self._elapsed_steps:
+            return True
+        return False
 
     def _set_observation_space(self):
-        self.observation_space = spaces.Tuple(
-            [self.agents[i].observation_space for i in range(self.n_agents)]
-        )
+        pass
 
     def _set_action_space(self):
         self.action_space = spaces.Tuple(
@@ -145,6 +149,13 @@ class MultiEvoAgentEnv(MujocoEnv):
             
         return obses, rews, terminateds, False, infos
 
+    def step(self, actions):
+        obses, rews, terminateds, truncated, infos = self._step(actions)
+        if self._past_limit():
+            return obses, rews, terminateds, True, infos
+        
+        return obses, rews, terminateds, truncated, infos
+
     def _get_obs(self):
         return tuple([self.agents[i]._get_obs() for i in range(self.n_agents)])
 
@@ -155,9 +166,17 @@ class MultiEvoAgentEnv(MujocoEnv):
         return self.env_scene._seed(seed)
 
     def _reset(self):
-        # _ = self.env_scene._reset()
-        ob = self.reset_model()
+        self._elapsed_steps = 0
+        self.env_scene.reset()
+        self.reset_model()
+        # reset agent position
+        for i in range(self.n_agents):
+            self.agents[i].set_xyz((None,None,None))
+        ob = self._get_obs()
         return ob
+    
+    def reset(self):
+        return self._reset()
 
     def set_state(self, qpos, qvel):
         self.env_scene.set_state(qpos, qvel)
@@ -168,10 +187,9 @@ class MultiEvoAgentEnv(MujocoEnv):
 
     def state_vector(self):
         return self.env_scene.state_vector()
-
+    
     def reset_model(self):
-        # self.env_scene.reset_model()
         _ = self.env_scene.reset()
         for i in range(self.n_agents):
             self.agents[i].reset_agent()
-        return self._get_obs()
+        return self._get_obs(), {}

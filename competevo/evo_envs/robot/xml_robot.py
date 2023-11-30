@@ -60,7 +60,8 @@ class Joint:
         assert(np.all(self.pos == body.pos))
     
     def __repr__(self):
-        return 'joint_' + self.name
+        # return 'joint_' + self.name
+        return self.name
 
     def parse_param_specs(self):
         self.param_specs =  deepcopy(self.cfg['joint_params'])
@@ -142,7 +143,8 @@ class Geom:
             self.ext_start = np.linalg.norm(self.bone_start - self.start)
     
     def __repr__(self):
-        return 'geom_' + self.name
+        # return 'geom_' + self.name
+        return self.name
 
     def parse_param_specs(self):
         self.param_specs = deepcopy(self.cfg['geom_params'])
@@ -299,7 +301,8 @@ class Body:
         self.bone_offset = None
 
     def __repr__(self):
-        return 'body_' + self.name
+        # return  'body_' + self.name
+        return  self.name
 
     def parse_param_specs(self):
         self.param_specs = deepcopy(self.cfg['body_params'])
@@ -314,11 +317,11 @@ class Body:
 
     def reindex(self):
         if self.parent is None:
-            self.name = '0'
+            self.name = self.robot.scope + "/" + '0'
         else:
             ind = self.parent.child.index(self) + 1
-            pname = '' if self.parent.name == '0' else self.parent.name
-            self.name = str(ind) + pname
+            pname = '' if self.parent.name.split("/")[-1] == '0' else self.parent.name.split("/")[-1]
+            self.name = self.robot.scope + "/" + str(ind) + pname
 
     def init(self):
         if len(self.child) > 0:
@@ -482,9 +485,10 @@ class Body:
 
 class Robot:
 
-    def __init__(self, cfg, xml, is_xml_str=False):
+    def __init__(self, cfg, xml, scope, is_xml_str=False):
         self.bodies = []
         self.cfg = cfg
+        self.scope = scope
         self.param_mapping = cfg.get('param_mapping', 'clip')
         self.tree = None    # xml tree
         self.load_from_xml(xml, is_xml_str)

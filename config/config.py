@@ -21,6 +21,8 @@ class Config:
         self.device = cfg.get('device', str)
         self.cuda_deterministic = cfg.get('cuda_deterministic', bool)
 
+        self.runner_type = cfg.get('runner_type', "multi-agent-runner")
+
         # training config
         self.gamma = cfg.get('gamma', 0.99)
         self.tau = cfg.get('tau', 0.95)

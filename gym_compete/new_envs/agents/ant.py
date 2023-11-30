@@ -39,7 +39,7 @@ class Ant(Agent):
         reward_info['reward_ctrl'] = ctrl_cost
         reward_info['reward_contact'] = contact_cost
         reward_info['reward_survive'] = survive
-        reward_info['reward_move'] = reward
+        reward_info['reward_dense'] = reward
 
         terminated = not agent_standing
 

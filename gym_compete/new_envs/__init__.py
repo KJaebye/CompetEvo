@@ -9,6 +9,7 @@ from .agents import Agent
 # from .humans_blocking import HumansBlockingEnv
 from .you_shall_not_pass import HumansBlockingEnv
 from .sumo import SumoEnv
+from .robo_sumo import RoboSumoEnv
 from .kick_and_defend import KickAndDefend
 # from .humanoid_kicker import HumanoidKicker
 # from .humanoid_goalkeeper import HumanoidGoalKeeper

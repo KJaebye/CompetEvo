@@ -10,9 +10,7 @@ policy_specs:
     hdims: [128, 128]
     rescale_linear: true
   control_log_std: 0
-  attr_log_std: -2.3
   fix_control_std: false
-  fix_attr_std: false
 policy_optimizer: 'Adam'
 policy_lr: 5.e-5 #5.e-5
 policy_momentum: 0.0

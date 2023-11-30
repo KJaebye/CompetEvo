@@ -19,6 +19,7 @@ class Agent(object):
                 2: 1,
                 3: 1,
                 }
+    
 
     def __init__(self, agent_id, xml_path, nagents=2):
         self.id = agent_id
@@ -93,24 +94,35 @@ class Agent(object):
             lambda x: self.in_scope(x),
             self.env.body_names
         )
+        # print("body_names:", self.body_names)
         self.body_ids = [self.env.model.body(body).id
                          for body in self.body_names]
+        
         self.body_dofnum = self.env.model.body_dofnum[self.body_ids]
         self.nv = self.body_dofnum.sum()
         self.body_dofadr = self.env.model.body_dofadr[self.body_ids]
         dof = list_filter(lambda x: x >= 0, self.body_dofadr)
         self.qvel_start_idx = int(dof[0])
         last_dof_body_id = self.body_dofnum.shape[0] - 1
+        
         while self.body_dofnum[last_dof_body_id] == 0:
             last_dof_body_id -= 1
+        # print("nv:", self.nv)
+        # print("dof:", dof)
+        # print("last_dof_body_id:", last_dof_body_id)
+        # print("body_dofnum:", self.body_dofnum)
         self.qvel_end_idx = int(dof[-1] + self.body_dofnum[last_dof_body_id])
+        # print("qvel_start_idx:", self.qvel_start_idx)
+        # print("qvel_end_idx:", self.qvel_end_idx)
+
 
     def _set_joint(self):
-        self.join_names = list_filter(
+        self.joint_names = list_filter(
             lambda x: self.in_scope(x), self.env.joint_names
         )
-        self.joint_ids = [self.env.model.jnt(body).id
-                          for body in self.join_names]
+        # print("joint_names:", self.joint_names)
+        self.joint_ids = [self.env.model.jnt(joint).id
+                          for joint in self.joint_names]
         self.jnt_qposadr = self.env.model.jnt_qposadr[self.joint_ids]
         self.jnt_type = self.env.model.jnt_type[self.joint_ids]
         self.jnt_nqpos = [self.JNT_NPOS[int(j)] for j in self.jnt_type]
@@ -118,23 +130,30 @@ class Agent(object):
         self.qpos_start_idx = int(self.jnt_qposadr[0])
         self.qpos_end_idx = int(self.jnt_qposadr[-1] + self.jnt_nqpos[-1])
 
-        # self.jnt_dofadr = self.env.model.jnt_dofadr[self.joint_ids]
-        # dof = list_filter(lambda x: x >= 0, self.jnt_dofadr)
-        # self.qvel_start_idx = int(dof[0])
-        # last_dof_body_id = self.body_dofnum.shape[0] - 1
-        # while self.body_dofnum[last_dof_body_id] == 0:
-        #     last_dof_body_id -= 1
-        # self.qvel_end_idx = int(dof[-1] + self.body_dofnum[last_dof_body_id])
+        # print("nq:", self.nq)
+        # print("jnt_nq:", self.jnt_nqpos)
+        # print("jnt_qposadr:", self.jnt_qposadr)
+        # print("qpos_start_idx:", self.qpos_start_idx)
+        # print("qpos_end_idx:", self.qpos_end_idx)
+
+        self.jnt_dofadr = self.env.model.jnt_dofadr[self.joint_ids]
+        dof = list_filter(lambda x: x >= 0, self.jnt_dofadr)
+        self.qvel_start_idx = int(dof[0])
+        last_dof_body_id = self.body_dofnum.shape[0] - 1
+        while self.body_dofnum[last_dof_body_id] == 0:
+            last_dof_body_id -= 1
+        self.qvel_end_idx = int(dof[-1] + self.body_dofnum[last_dof_body_id])
 
     def _set_other_joint(self):
         self._other_qpos_idx = {}
         for i in range(self.n_agents):
             if i == self.id: continue
-            other_join_names = list_filter(
+            other_joint_names = list_filter(
                 lambda x: self.in_agent_scope(x, i), self.env.joint_names
             )
-            other_joint_ids = [self.env.model.jnt(body).id
-                               for body in other_join_names]
+            # print(other_joint_names)
+            other_joint_ids = [self.env.model.jnt(joint).id
+                               for joint in other_joint_names]
             other_jnt_qposadr = self.env.model.jnt_qposadr[other_joint_ids]
             jnt_type = self.env.model.jnt_type[other_joint_ids]
             jnt_nqpos = [self.JNT_NPOS[int(j)] for j in jnt_type]
@@ -143,6 +162,10 @@ class Agent(object):
             qpos_end_idx = int(other_jnt_qposadr[-1] + jnt_nqpos[-1])
             assert nq == qpos_end_idx - qpos_start_idx, (i, nq, qpos_start_idx, qpos_end_idx)
             self._other_qpos_idx[i] = (qpos_start_idx, qpos_end_idx)
+
+            # print("other_joint_ids:", other_joint_ids)
+            # print("other_jnt_qposadr:", other_jnt_qposadr)
+
 
     def get_other_agent_qpos(self):
         other_qpos = {}

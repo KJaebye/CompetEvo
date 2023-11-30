@@ -1,6 +1,6 @@
-env_name: run-to-goal-ants-v0
+env_name: robo-sumo-ants-v0
 
-runner_type: multi-agent-runner 
+runner_type: multi-agent-runner # multi-agent-runner # selfplay-agent-runner
 
 # training parameters
 gamma: 0.995
@@ -14,30 +14,31 @@ policy_specs:
   control_log_std: 0
   fix_control_std: false
 policy_optimizer: 'Adam'
-policy_lr: 5.e-5 #5.e-5
+policy_lr: 5.e-5
 policy_momentum: 0.0
 policy_weightdecay: 0.0
 value_specs:
   htype: tanh
   mlp: [512, 256]
 value_optimizer: 'Adam'
-value_lr: 3.e-4 #3.e-4
+value_lr: 3.e-4
 value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
 min_batch_size: 50000 #50000
 mini_batch_size: 2048 #2048
 num_optim_epoch: 10 #10
-max_epoch_num: 1000
-seed: 42
+max_epoch_num: 2000
+seed: 1
 save_model_interval: 1
 
 done_condition:
   max_ang: 60
 
 use_reward_scaling: False
-use_opponent_sample: False
-delta: 0.
+use_opponent_sample: True # for multiagent runner
+
+delta: 1.
 
 use_exploration_curriculum: True
-termination_epoch: 150
+termination_epoch: 2000

@@ -28,7 +28,7 @@ class BaseRunner:
         self.setup_writer()
         self.setup_learner()
 
-        if ckpt != 0 or not training:
+        if (ckpt != 0 and ckpt[0] != 0) or not training:
             self.load_checkpoint(ckpt_dir, ckpt)
 
     def setup_env(self, env_name):

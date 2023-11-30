@@ -7,6 +7,9 @@
   <default class="agent0"><joint armature="1" damping="1" limited="true" />
     <geom conaffinity="1" condim="1" contype="1" margin="0.001" material="geom" rgba="0.5 0.25 0.25 1" />
     <motor ctrllimited="true" ctrlrange="-.4 .4" />
+</default><default class="agent1"><joint armature="1" damping="1" limited="true" />
+    <geom conaffinity="1" condim="1" contype="1" margin="0.001" material="geom" rgba="0.25 0.5 0.5 1" />
+    <motor ctrllimited="true" ctrlrange="-.4 .4" />
 </default></default>
   <asset>
     <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100" />
@@ -68,7 +71,7 @@
             <joint armature="0.0028" axis="0 -1 1" name="agent0/right_elbow" pos="0 0 0" range="-90 50" stiffness="0" type="hinge" />
             <geom fromto="0.01 0.01 0.01 .17 .17 .17" name="agent0/right_larm" size="0.031" type="capsule" class="agent0" />
             <geom name="agent0/right_hand" pos=".18 .18 .18" size="0.04" type="sphere" class="agent0" />
-            <camera pos="0 0 0" name="agent0/anon1770967326" />
+            <camera pos="0 0 0" name="agent0/anon607289205" />
         </body>
     </body>
     <body name="agent0/left_upper_arm" pos="0 0.17 0.06">
@@ -79,6 +82,69 @@
             <joint armature="0.0028" axis="0 -1 -1" name="agent0/left_elbow" pos="0 0 0" range="-90 50" stiffness="0" type="hinge" />
             <geom fromto="0.01 -0.01 0.01 .17 -.17 .17" name="agent0/left_larm" size="0.031" type="capsule" class="agent0" />
             <geom name="agent0/left_hand" pos=".18 -.18 .18" size="0.04" type="sphere" class="agent0" />
+        </body>
+    </body>
+</body>
+
+<body name="agent1/torso" pos="1 0 1.4" euler="0 0 180">
+    <joint armature="0" damping="0" limited="false" name="agent1/root" pos="0 0 0" stiffness="0" type="free" />
+    <geom fromto="0 -.07 0 0 .07 0" name="agent1/torso1" size="0.07" type="capsule" class="agent1" />
+    <geom name="agent1/head" pos="0 0 .19" size=".09" type="sphere" user="258" class="agent1" />
+    <geom fromto="-.01 -.06 -.12 -.01 .06 -.12" name="agent1/uwaist" size="0.06" type="capsule" class="agent1" />
+    <body name="agent1/lwaist" pos="-.01 0 -0.260" quat="1.000 0 -0.002 0">
+        <geom fromto="0 -.06 0 0 .06 0" name="agent1/lwaist" size="0.06" type="capsule" class="agent1" />
+        <joint armature="0.02" axis="0 0 1" damping="5" name="agent1/abdomen_z" pos="0 0 0.065" range="-45 45" stiffness="20" type="hinge" />
+        <joint armature="0.02" axis="0 1 0" damping="5" name="agent1/abdomen_y" pos="0 0 0.065" range="-75 30" stiffness="10" type="hinge" />
+        <body name="agent1/pelvis" pos="0 0 -0.165" quat="1.000 0 -0.002 0">
+            <joint armature="0.02" axis="1 0 0" damping="5" name="agent1/abdomen_x" pos="0 0 0.1" range="-35 35" stiffness="10" type="hinge" />
+            <geom fromto="-.02 -.07 0 -.02 .07 0" name="agent1/butt" size="0.09" type="capsule" class="agent1" />
+            <body name="agent1/right_thigh" pos="0 -0.1 -0.04">
+                <joint armature="0.01" axis="1 0 0" damping="5" name="agent1/right_hip_x" pos="0 0 0" range="-25 5" stiffness="10" type="hinge" />
+                <joint armature="0.01" axis="0 0 1" damping="5" name="agent1/right_hip_z" pos="0 0 0" range="-60 35" stiffness="10" type="hinge" />
+                <joint armature="0.0080" axis="0 1 0" damping="5" name="agent1/right_hip_y" pos="0 0 0" range="-110 20" stiffness="20" type="hinge" />
+                <geom fromto="0 0 0 0 0.01 -.34" name="agent1/right_thigh1" size="0.06" type="capsule" class="agent1" />
+                <body name="agent1/right_shin" pos="0 0.01 -0.403">
+                    <joint armature="0.0060" axis="0 -1 0" name="agent1/right_knee" pos="0 0 .02" range="-160 -2" type="hinge" />
+                    <geom fromto="0 0 0 0 0 -.3" name="agent1/right_shin1" size="0.049" type="capsule" class="agent1" />
+                    <body name="agent1/right_foot" pos="0 0 -0.45">
+                        <geom name="agent1/right_foot" pos="0 0 0.1" size="0.075" type="sphere" user="0" class="agent1" />
+                    </body>
+                </body>
+            </body>
+            <body name="agent1/left_thigh" pos="0 0.1 -0.04">
+                <joint armature="0.01" axis="-1 0 0" damping="5" name="agent1/left_hip_x" pos="0 0 0" range="-25 5" stiffness="10" type="hinge" />
+                <joint armature="0.01" axis="0 0 -1" damping="5" name="agent1/left_hip_z" pos="0 0 0" range="-60 35" stiffness="10" type="hinge" />
+                <joint armature="0.01" axis="0 1 0" damping="5" name="agent1/left_hip_y" pos="0 0 0" range="-120 20" stiffness="20" type="hinge" />
+                <geom fromto="0 0 0 0 -0.01 -.34" name="agent1/left_thigh1" size="0.06" type="capsule" class="agent1" />
+                <body name="agent1/left_shin" pos="0 -0.01 -0.403">
+                    <joint armature="0.0060" axis="0 -1 0" name="agent1/left_knee" pos="0 0 .02" range="-160 -2" stiffness="1" type="hinge" />
+                    <geom fromto="0 0 0 0 0 -.3" name="agent1/left_shin1" size="0.049" type="capsule" class="agent1" />
+                    <body name="agent1/left_foot" pos="0 0 -0.45">
+                        <geom name="agent1/left_foot" type="sphere" size="0.075" pos="0 0 0.1" user="0" class="agent1" />
+                    </body>
+                </body>
+            </body>
+        </body>
+    </body>
+    <body name="agent1/right_upper_arm" pos="0 -0.17 0.06">
+        <joint armature="0.0068" axis="2 1 1" name="agent1/right_shoulder1" pos="0 0 0" range="-85 60" stiffness="1" type="hinge" />
+        <joint armature="0.0051" axis="0 -1 1" name="agent1/right_shoulder2" pos="0 0 0" range="-85 60" stiffness="1" type="hinge" />
+        <geom fromto="0 0 0 .16 -.16 -.16" name="agent1/right_uarm1" size="0.04 0.16" type="capsule" class="agent1" />
+        <body name="agent1/right_lower_arm" pos=".18 -.18 -.18">
+            <joint armature="0.0028" axis="0 -1 1" name="agent1/right_elbow" pos="0 0 0" range="-90 50" stiffness="0" type="hinge" />
+            <geom fromto="0.01 0.01 0.01 .17 .17 .17" name="agent1/right_larm" size="0.031" type="capsule" class="agent1" />
+            <geom name="agent1/right_hand" pos=".18 .18 .18" size="0.04" type="sphere" class="agent1" />
+            <camera pos="0 0 0" name="agent1/anon8617938886" />
+        </body>
+    </body>
+    <body name="agent1/left_upper_arm" pos="0 0.17 0.06">
+        <joint armature="0.0068" axis="2 -1 1" name="agent1/left_shoulder1" pos="0 0 0" range="-60 85" stiffness="1" type="hinge" />
+        <joint armature="0.0051" axis="0 1 1" name="agent1/left_shoulder2" pos="0 0 0" range="-60 85" stiffness="1" type="hinge" />
+        <geom fromto="0 0 0 .16 .16 -.16" name="agent1/left_uarm1" size="0.04 0.16" type="capsule" class="agent1" />
+        <body name="agent1/left_lower_arm" pos=".18 .18 -.18">
+            <joint armature="0.0028" axis="0 -1 -1" name="agent1/left_elbow" pos="0 0 0" range="-90 50" stiffness="0" type="hinge" />
+            <geom fromto="0.01 -0.01 0.01 .17 -.17 .17" name="agent1/left_larm" size="0.031" type="capsule" class="agent1" />
+            <geom name="agent1/left_hand" pos=".18 -.18 .18" size="0.04" type="sphere" class="agent1" />
         </body>
     </body>
 </body>
@@ -102,6 +168,23 @@
     <motor gear="25" joint="agent0/left_shoulder1" name="agent0/left_shoulder1" class="agent0" />
     <motor gear="25" joint="agent0/left_shoulder2" name="agent0/left_shoulder2" class="agent0" />
     <motor gear="25" joint="agent0/left_elbow" name="agent0/left_elbow" class="agent0" />
+<motor gear="100" joint="agent1/abdomen_y" name="agent1/abdomen_y" class="agent1" />
+    <motor gear="100" joint="agent1/abdomen_z" name="agent1/abdomen_z" class="agent1" />
+    <motor gear="100" joint="agent1/abdomen_x" name="agent1/abdomen_x" class="agent1" />
+    <motor gear="100" joint="agent1/right_hip_x" name="agent1/right_hip_x" class="agent1" />
+    <motor gear="100" joint="agent1/right_hip_z" name="agent1/right_hip_z" class="agent1" />
+    <motor gear="300" joint="agent1/right_hip_y" name="agent1/right_hip_y" class="agent1" />
+    <motor gear="200" joint="agent1/right_knee" name="agent1/right_knee" class="agent1" />
+    <motor gear="100" joint="agent1/left_hip_x" name="agent1/left_hip_x" class="agent1" />
+    <motor gear="100" joint="agent1/left_hip_z" name="agent1/left_hip_z" class="agent1" />
+    <motor gear="300" joint="agent1/left_hip_y" name="agent1/left_hip_y" class="agent1" />
+    <motor gear="200" joint="agent1/left_knee" name="agent1/left_knee" class="agent1" />
+    <motor gear="25" joint="agent1/right_shoulder1" name="agent1/right_shoulder1" class="agent1" />
+    <motor gear="25" joint="agent1/right_shoulder2" name="agent1/right_shoulder2" class="agent1" />
+    <motor gear="25" joint="agent1/right_elbow" name="agent1/right_elbow" class="agent1" />
+    <motor gear="25" joint="agent1/left_shoulder1" name="agent1/left_shoulder1" class="agent1" />
+    <motor gear="25" joint="agent1/left_shoulder2" name="agent1/left_shoulder2" class="agent1" />
+    <motor gear="25" joint="agent1/left_elbow" name="agent1/left_elbow" class="agent1" />
 </actuator>
 
 <tendon>
@@ -112,6 +195,14 @@
     <fixed name="agent0/right_hipknee">
         <joint coef="-1" joint="agent0/right_hip_y" />
         <joint coef="1" joint="agent0/right_knee" />
+    </fixed>
+<fixed name="agent1/left_hipknee">
+        <joint coef="-1" joint="agent1/left_hip_y" />
+        <joint coef="1" joint="agent1/left_knee" />
+    </fixed>
+    <fixed name="agent1/right_hipknee">
+        <joint coef="-1" joint="agent1/right_hip_y" />
+        <joint coef="1" joint="agent1/right_knee" />
     </fixed>
 </tendon>
 

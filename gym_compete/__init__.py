@@ -127,6 +127,29 @@ register(
             },
 )
 
+register(
+    id='robo-sumo-ants-v0',
+    entry_point='gym_compete.new_envs:RoboSumoEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['robo_ant_fighter', 'robo_ant_fighter'],
+            'scene_xml_path': os.path.join(
+                os.path.dirname(__file__), "new_envs",
+                "assets",
+                "world_body_arena.ant_body.ant_body.xml"
+            ),
+            'world_xml_path': os.path.join(
+                os.path.dirname(__file__), "new_envs",
+                "assets", 'world_body_arena.xml'
+            ),
+            'init_pos': [(-1, 0, 2.5), (1, 0, 2.5)],
+            # 'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'max_episode_steps': 500,
+            'min_radius': 2.5,
+            'max_radius': 4.5
+            },
+)
+
+
 # register(
 #     id='HumanAntArena-v0',
 #     entry_point='gym_compete.new_envs:HumansKnockoutEnv',

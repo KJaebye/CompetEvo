@@ -68,11 +68,10 @@ def main():
     # runner definition
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=False)
-    ma_runner = ["run-to-goal-ants-v0"]
-    # ma_runner = ["sumo-ants-v0"]
-    if cfg.env_name in ma_runner:
+
+    if cfg.runner_type == "multi-agent-runner":
         runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
-    else:
+    elif cfg.runner_type == "selfplay-agent-runner":
         runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
     
     runner.display(num_episode=50, mean_action=True)

@@ -130,9 +130,9 @@ class SPAgentRunner(BaseRunner):
         alpha = max((termination_epoch - epoch) / termination_epoch, 0)
         c_rew = []
         for i, info in enumerate(infos):
-            goal_rew = info['reward_remaining'] # goal_rew is parse rewarding
-            move_rew = info['reward_move'] # move_rew is dense rewarding
-            rew = alpha * move_rew + (1-alpha) * goal_rew
+            parse_rew = info['reward_parse'] # goal_rew is parse rewarding
+            dense_rew = info['reward_dense'] # move_rew is dense rewarding
+            rew = alpha * dense_rew + (1-alpha) * parse_rew
             c_rew.append(rew)
         return tuple(c_rew), infos
 
@@ -151,8 +151,14 @@ class SPAgentRunner(BaseRunner):
             # shadows load random historical policies before every rollout
             # the first learner is always ego agent
             """set sampling policy for shadows"""
-            if mean_action or self.epoch == 0:
+            if self.epoch == 0 or self.agent_num == 1:
                 pass
+            elif mean_action:
+                ckpt = self.epoch
+                # get ckpt modeal
+                cp_path = '%s/epoch_%04d.p' % (self.model_dir, ckpt)
+                model_cp = pickle.load(open(cp_path, "rb"))
+                self.learners[1].load_ckpt(model_cp)
             else:
                 """set sampling policy for opponent"""
                 start = math.floor(self.epoch * self.cfg.delta)
@@ -223,8 +229,11 @@ class SPAgentRunner(BaseRunner):
 
                 exps = [0 for _ in self.learners]
                 exps[0] = 1
-                # only push ego memory
+
+                # push ego memory
                 self.push_memory(memory, states[0], actions[0], masks[0], next_states[0], rewards[0], exps[0])
+                # use opp experience
+                self.push_memory(memory, states[1], actions[1], masks[1], next_states[1], rewards[1], exps[1])
 
                 if terminateds[0] or truncated:
                     total_score[-1] += 1
