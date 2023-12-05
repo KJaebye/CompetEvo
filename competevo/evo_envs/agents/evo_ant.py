@@ -12,15 +12,17 @@ else:
 
 from competevo.evo_envs.robot.xml_robot import Robot
 from lib.utils import get_single_body_qposaddr, get_graph_fc_edges
+from custom.utils.transformation import quaternion_matrix
 
 class EvoAnt(Ant):
 
     def __init__(self, agent_id, cfg, xml_path=None, n_agents=2):
         super(EvoAnt, self).__init__(agent_id, xml_path, n_agents)
         self.cfg = cfg
+        self.xml_folder = os.path.dirname(xml_path)
 
         # robot xml
-        self.robot = Robot(cfg.robot_cfg, xml=xml_path, scope=self.scope)
+        self.robot = Robot(cfg.robot_cfg, xml=xml_path)
         self.init_xml_str = self.robot.export_xml_string()
         self.cur_xml_str = self.init_xml_str.decode('utf-8')
         # design options
@@ -39,8 +41,11 @@ class EvoAnt(Ant):
         self.attr_specs = set(cfg.obs_specs.get('attr', []))
         self.control_action_dim = 1
         self.skel_num_action = 3 if cfg.enable_remove else 2
-        # self.sim_obs_dim = self.get_sim_obs().shape[-1]
+        self.sim_obs_dim = 13
         self.attr_fixed_dim = self.get_attr_fixed().shape[-1]
+
+        self.state_dim = self.attr_fixed_dim + self.sim_obs_dim + self.attr_design_dim
+        self.action_dim = self.control_action_dim + self.attr_design_dim
 
     def set_goal(self, goal):
         self.GOAL = goal
@@ -51,19 +56,49 @@ class EvoAnt(Ant):
     def before_step(self):
         self._xposbefore = self.get_body_com("0")[0]
 
+    # def after_step(self, action):
+    #     xposafter = self.get_body_com("0")[0]
+    #     forward_reward = (xposafter - self._xposbefore) / self.env.dt
+    #     if self.move_left:
+    #         forward_reward *= -1
+    #     ctrl_cost = .5 * np.square(action).sum()
+    #     cfrc_ext = self.get_cfrc_ext()
+    #     contact_cost = 0.5 * 1e-3 * np.sum(
+    #         np.square(np.clip(cfrc_ext, -1, 1))
+    #     )
+    #     qpos = self.get_qpos()
+    #     agent_standing = qpos[2] >= 0.28
+    #     survive = 1.0
+    #     reward = forward_reward - ctrl_cost - contact_cost + survive
+
+    #     reward_info = dict()
+    #     reward_info['reward_forward'] = forward_reward
+    #     reward_info['reward_ctrl'] = ctrl_cost
+    #     reward_info['reward_contact'] = contact_cost
+    #     reward_info['reward_survive'] = survive
+    #     reward_info['reward_dense'] = reward
+
+    #     terminated = not agent_standing
+
+    #     return reward, terminated, reward_info
+
     def after_step(self, action):
         xposafter = self.get_body_com("0")[0]
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
-        ctrl_cost = .5 * np.square(action).sum()
-        cfrc_ext = self.get_cfrc_ext()
-        contact_cost = 0.5 * 1e-3 * np.sum(
-            np.square(np.clip(cfrc_ext, -1, 1))
-        )
-        qpos = self.get_qpos()
-        agent_standing = qpos[2] >= 0.28
-        survive = 1.0
+
+        
+        # ctrl_cost = .5 * np.square(action).sum()
+        # cfrc_ext = self.get_cfrc_ext()
+        # contact_cost = 0.5 * 1e-3 * np.sum(
+        #     np.square(np.clip(cfrc_ext, -1, 1))
+        # )
+    
+        ctrl_cost = 1e-4 * np.square(action).mean()
+        contact_cost = 0
+
+        survive = 0.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
         reward_info = dict()
@@ -73,9 +108,24 @@ class EvoAnt(Ant):
         reward_info['reward_survive'] = survive
         reward_info['reward_dense'] = reward
 
-        terminated = not agent_standing
+        info = reward_info
+        info['use_transform_action'] = False
+        info['stage'] = 'execution'
 
-        return reward, terminated, reward_info
+        # terminate condition
+        qpos = self.get_qpos()
+        height = qpos[2]
+        zdir = quaternion_matrix(qpos[3:7])[:3, 2]
+        ang = np.arccos(zdir[2])
+        done_condition = self.cfg.done_condition
+        min_height = done_condition.get('min_height', 0.0)
+        max_height = done_condition.get('max_height', 2.0)
+        max_ang = done_condition.get('max_ang', 3600)
+
+        terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height) and (abs(ang) < np.deg2rad(max_ang)))
+        # terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height))
+        
+        return reward, terminated, info
 
 
     # def _get_obs(self):
@@ -103,7 +153,7 @@ class EvoAnt(Ant):
         self._set_joint()
         if self.n_agents > 1:
             self._set_other_joint()
-        self.set_action_space() # testing only
+        # self.set_action_space() # testing only
 
 
     def reached_goal(self):
@@ -124,10 +174,9 @@ class EvoAnt(Ant):
         else:
             self.move_left = False
 
-
-
     ############################################################################
     ############################# robot xml ####################################
+
     def allow_add_body(self, body):
         add_body_condition = self.cfg.add_body_condition
         max_nchild = add_body_condition.get('max_nchild', 3)
@@ -154,13 +203,8 @@ class EvoAnt(Ant):
 
         xml_str = self.robot.export_xml_string()
         self.cur_xml_str = xml_str.decode('utf-8')
-        try:
-            self.reload_sim_model(xml_str.decode('utf-8'))
-        except:
-            print(self.cur_xml_str)
-            return False
         self.design_cur_params = self.get_attr_design()
-        return True
+
     
     def set_design_params(self, in_design_params):
         design_params = in_design_params
@@ -170,16 +214,11 @@ class EvoAnt(Ant):
 
         xml_str = self.robot.export_xml_string()
         self.cur_xml_str = xml_str.decode('utf-8')
-        try:
-            self.reload_sim_model(xml_str.decode('utf-8'))
-        except:
-            print(self.cur_xml_str)
-            return False
+        
         if self.use_projected_params:
             self.design_cur_params = self.get_attr_design()
         else:
             self.design_cur_params = in_design_params.copy()
-        return True
 
     def action_to_control(self, a):
         ctrl = np.zeros_like(self.data.ctrl)
@@ -191,19 +230,6 @@ class EvoAnt(Ant):
                 ctrl[aind] = body_a
         return ctrl
     
-    def transit_attribute_transform(self):
-        self.stage = 'attribute_transform'
-
-    def transit_execution(self):
-        self.stage = 'execution'
-        self.control_nsteps = 0
-        try:
-            self.reset_state(True)
-        except:
-            print(self.cur_xml_str)
-            return False
-        return True
-    
     def if_use_transform_action(self):
         return ['skeleton_transform', 'attribute_transform', 'execution'].index(self.stage)
     
@@ -211,10 +237,11 @@ class EvoAnt(Ant):
         obs = []
         if 'root_offset' in self.sim_specs:
             root_pos = self.env.data.body_xpos[self.env.model._body_name2id[self.robot.bodies[0].name]]
-        
-        # import xml.etree.ElementTree as ET
-        # print(ET.tostring(self.robot.tree.getroot(), encoding='utf-8', method='xml').decode('utf-8'))
-        # print(mujoco.mj_name2id(self.env.model, 1, self.robot.bodies[0].name))
+
+        # body_names = []
+        # for body in self.robot.bodies:
+        #     body_names.append(body.name)
+        # print(body_names)
 
         for i, body in enumerate(self.robot.bodies):
             qpos = self.get_qpos()
@@ -227,7 +254,7 @@ class EvoAnt(Ant):
                 obs_i = [qpos[2:7], qvel[:6], np.zeros(2)]
             else:
                 # print(self.id, i, body.name)
-                qs, qe = get_single_body_qposaddr(self.env.model, body.name)
+                qs, qe = get_single_body_qposaddr(self.env.model, self.scope + "/" + body.name)
                 # if self.id == 1:
                 #     print(qs-1-self.id, qe-1-self.id)
                 #     print(self.id, i, qvel[:])
@@ -288,7 +315,9 @@ class EvoAnt(Ant):
         index = np.array(index)
         return index
 
-    def _get_obs(self):
+    def _get_obs(self, stage):
+        # update stage tag from env
+        self.stage = stage
         obs = []
         attr_fixed_obs = self.get_attr_fixed()
         sim_obs = self.get_sim_obs()

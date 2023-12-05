@@ -1147,3 +1147,6 @@ WARNING: Nan, Inf or huge value in QVEL at DOF 0. The simulation is unstable. Ti
 Thu Jul 13 12:26:33 2023
 WARNING: Nan, Inf or huge value in QVEL at DOF 1. The simulation is unstable. Time = 0.4200.
 
+Mon Dec  4 10:39:18 2023
+WARNING: Insufficient arena memory for the number of constraints generated. Increase arena memory allocation above 15M bytes. Time = 0.0000.
+

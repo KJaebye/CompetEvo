@@ -25,3 +25,15 @@ register(
             'cfg_path': "config/run-to-goal-evoants-v0.yaml",
             },
 )
+
+register(
+    id='run-to-goal-evoant-v0',
+    entry_point='competevo.evo_envs:MultiEvoAgentEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['evo_ant'],
+            'init_pos': [(-1, 0, 0.75)],
+            'ini_euler': [(0, 0, 0)],
+            'max_episode_steps': 500,
+            'cfg_path': "config/run-to-goal-evoant-v0.yaml",
+            },
+)

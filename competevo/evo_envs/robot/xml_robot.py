@@ -315,13 +315,21 @@ class Body:
                 specs['lb'] = np.deg2rad(specs['lb'])
                 specs['ub'] = np.deg2rad(specs['ub'])
 
+    # def reindex(self):
+    #     if self.parent is None:
+    #         self.name = self.robot.scope + "/" + '0'
+    #     else:
+    #         ind = self.parent.child.index(self) + 1
+    #         pname = '' if self.parent.name.split("/")[-1] == '0' else self.parent.name.split("/")[-1]
+    #         self.name = self.robot.scope + "/" + str(ind) + pname
+
     def reindex(self):
         if self.parent is None:
-            self.name = self.robot.scope + "/" + '0'
+            self.name = '0'
         else:
             ind = self.parent.child.index(self) + 1
-            pname = '' if self.parent.name.split("/")[-1] == '0' else self.parent.name.split("/")[-1]
-            self.name = self.robot.scope + "/" + str(ind) + pname
+            pname = '' if self.parent.name == '0' else self.parent.name
+            self.name = str(ind) + pname
 
     def init(self):
         if len(self.child) > 0:
@@ -485,10 +493,9 @@ class Body:
 
 class Robot:
 
-    def __init__(self, cfg, xml, scope, is_xml_str=False):
+    def __init__(self, cfg, xml, is_xml_str=False):
         self.bodies = []
         self.cfg = cfg
-        self.scope = scope
         self.param_mapping = cfg.get('param_mapping', 'clip')
         self.tree = None    # xml tree
         self.load_from_xml(xml, is_xml_str)
@@ -497,16 +504,25 @@ class Robot:
         self.init_params = self.get_params()
 
     def load_from_xml(self, xml, is_xml_str=False):
+        """
+            Important: The coordination in transform2act is "global" by default. However, attribute "global" has been removed
+            since mujoco 2.3.3. Although class Robot has option "local_coord" to choose coordinition, euler might get errors when
+            using "local" option (limbs confliction and abnormal contact at joints). 
+            
+            To avoid this error, I highly recommend to use mujoco-2.3.3 and keep "global" settings in any evo agents.
+            
+            12.05.2023 by @kjaebye
+        """
         parser = XMLParser(remove_blank_text=True)
         self.tree = parse(BytesIO(xml) if is_xml_str else xml, parser=parser)
+
         try:
-            """ Original settings in Transform2Act. """
             self.local_coord = self.tree.getroot().find('.//compiler').attrib['coordinate'] == 'local'
             root = self.tree.getroot().find('worldbody').find('body')
         except:
-            """ By default, we use local coordination in all environment which is defined in world_body_arena.xml or world.xml """
-            self.local_coord = True
+            self.local_coord = self.tree.getroot().find('.//compiler').attrib['coordinate'] == 'local'
             root = self.tree.getroot().find('body')
+
         self.add_body(root, None)
 
     def add_body(self, body_node, parent_body):

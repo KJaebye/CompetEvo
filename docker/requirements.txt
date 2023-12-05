@@ -3,7 +3,7 @@ lxml
 gymnasium==0.28.1
 box2d-py
 networkx
-mujoco==2.3.5
+mujoco==2.3.5 #2.3.3
 tensorboard
 tensorboardx
 imageio[ffmpeg]

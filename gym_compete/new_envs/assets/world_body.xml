@@ -1,5 +1,6 @@
 <mujoco model="mutiagent_world">
   <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
+  <!-- <compiler angle="degree" coordinate="global" inertiafromgeom="true"/> -->
   <option integrator="RK4" timestep="0.003" solver="PGS" iterations="1000"/>
   <!-- <option integrator="RK4" timestep="0.01" iterations="1000"/> -->
   <default>

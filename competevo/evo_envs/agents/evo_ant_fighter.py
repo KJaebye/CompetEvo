@@ -119,27 +119,41 @@ class EvoAntFighter(AntFighter):
     def get_sim_obs(self):
         obs = []
         if 'root_offset' in self.sim_specs:
-            root_pos = self.data.body_xpos[self.model._body_name2id[self.robot.bodies[0].name]]
-            
+            root_pos = self.env.data.body_xpos[self.env.model._body_name2id[self.robot.bodies[0].name]]
+        
+        # import xml.etree.ElementTree as ET
+        # print(ET.tostring(self.robot.tree.getroot(), encoding='utf-8', method='xml').decode('utf-8'))
+        # print(mujoco.mj_name2id(self.env.model, 1, self.robot.bodies[0].name))
+
         for i, body in enumerate(self.robot.bodies):
-            qvel = self.data.qvel.copy()
+            qpos = self.get_qpos()
+            qvel = self.get_qvel()
             if self.clip_qvel:
                 qvel = np.clip(qvel, -10, 10)
+            # print(self.id, self.joint_names[i])
+            # print(self.id, self.qvel_start_idx, self.qvel_end_idx)
             if i == 0:
-                obs_i = [self.data.qpos[2:7], qvel[:6], np.zeros(2)]
+                obs_i = [qpos[2:7], qvel[:6], np.zeros(2)]
             else:
-                qs, qe = get_single_body_qposaddr(self.model, body.name)
+                # print(self.id, i, body.name)
+                qs, qe = get_single_body_qposaddr(self.env.model, body.name)
+                # if self.id == 1:
+                #     print(qs-1-self.id, qe-1-self.id)
+                #     print(self.id, i, qvel[:])
+                #     print(self.id, i, self.env.data.qvel[10:])
                 if qe - qs >= 1:
                     assert qe - qs == 1
-                    obs_i = [np.zeros(11), self.data.qpos[qs:qe], qvel[qs-1:qe-1]]
-                    # print(qs)
+                    # print(qs, qe)
+                    obs_i = [np.zeros(11), self.env.data.qpos[qs:qe], self.env.data.qvel[qs-1-self.id:qe-1-self.id]]
                 else:
                     obs_i = [np.zeros(13)]
             if 'root_offset' in self.sim_specs:
                 offset = self.data.body_xpos[self.model._body_name2id[body.name]][[0, 2]] - root_pos[[0, 2]]
                 obs_i.append(offset)
+            
             obs_i = np.concatenate(obs_i)
             obs.append(obs_i)
+            # print(i, obs_i.shape)
         obs = np.stack(obs)
         return obs
 

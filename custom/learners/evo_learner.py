@@ -17,6 +17,7 @@ class EvoLearner:
         self.device = device
         self.dtype = dtype
         self.agent = agent
+        self.loss_iter = 0
         self.is_shadow = is_shadow
         
         self.setup_policy()
@@ -41,7 +42,8 @@ class EvoLearner:
         self.policy_grad_clip = [(self.policy_net.parameters(), 40)]
 
         # initialize reward and save flag
-        self.best_rewards = -1000.0
+        self.best_reward = -1000.0
+        self.best_win_rate = 0.
         self.save_best_flag = False
 
     def setup_policy(self):
@@ -51,6 +53,16 @@ class EvoLearner:
     def setup_value(self):
         self.value_net = Transform2ActValue(self.cfg.value_specs, self.agent)
         to_device(self.device, self.value_net)
+    
+    def save_ckpt(self, epoch):
+        with to_cpu(self.policy_net, self.value_net):
+            model = {'policy_dict': self.policy_net.state_dict(),
+                    'value_dict': self.value_net.state_dict(),
+                    'running_state': self.running_state,
+                    'loss_iter': self.loss_iter,
+                    'best_reward': self.best_reward,
+                    'epoch': epoch}
+        return model
     
     def load_ckpt(self, model):
         self.policy_net.load_state_dict(model['policy_dict'])

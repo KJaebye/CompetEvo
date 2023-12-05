@@ -13,7 +13,9 @@
             "justMyCode": true,
             "args": [
                 "--cfg",
-                "config/run-to-goal-ants-v0.yaml",
+                "config/run-to-goal-evoants-v0.yaml",
+                "--num_threads",
+                "2"
             ]
         }
     ]

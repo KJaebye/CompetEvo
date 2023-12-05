@@ -7,3 +7,6 @@ from .robo_ant_fighter import RoboAntFighter
 from .humanoid_fighter import HumanoidFighter
 from .humanoid_kicker import HumanoidKicker
 from .humanoid_goalkeeper import HumanoidGoalKeeper
+
+from .bug import Bug
+from .spider import Spider

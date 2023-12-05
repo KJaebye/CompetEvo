@@ -49,6 +49,14 @@ class MultiAgentEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "humanoid_body.xml"),
             HumanoidGoalKeeper
         ),
+        'bug': (
+            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            Bug
+        ),
+        'spider': (
+            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            Spider
+        ),
     }
     WORLD_XML = os.path.join(os.path.dirname(__file__), "assets", "world_body.xml")
     GOAL_REWARD = 1000
@@ -79,18 +87,26 @@ class MultiAgentEnv(MujocoEnv):
             self.agents[i] = agent_class(i, agent_xml_path, self.n_agents, **agent_args[i])
             all_agent_xml_paths.append(agent_xml_path)
         agent_scopes = ['agent' + str(i) for i in range(self.n_agents)]
+
         # print(scene_xml_path)
-        if scene_xml_path is not None and os.path.exists(scene_xml_path):
-            self._env_xml_path = scene_xml_path
-        else:
-            print("Creating Scene XML")
-            print(init_pos)
-            _, self._env_xml_path = create_multiagent_xml(
-                world_xml_path, all_agent_xml_paths, agent_scopes,
-                # outdir=os.path.join(os.path.dirname(__file__), "assets"), 
-                outpath=scene_xml_path,
-                ini_pos=init_pos, ini_euler=ini_euler, rgb=rgb
-            )
+        # if scene_xml_path is not None and os.path.exists(scene_xml_path):
+        #     self._env_xml_path = scene_xml_path
+        # else:
+        #     print("Creating Scene XML")
+        #     print(init_pos)
+        #     _, self._env_xml_path = create_multiagent_xml(
+        #         world_xml_path, all_agent_xml_paths, agent_scopes,
+        #         # outdir=os.path.join(os.path.dirname(__file__), "assets"), 
+        #         outpath=scene_xml_path,
+        #         ini_pos=init_pos, ini_euler=ini_euler, rgb=rgb
+        #     )
+        print("Creating Scene XML")
+        _, self._env_xml_path = create_multiagent_xml(
+            world_xml_path, all_agent_xml_paths, agent_scopes,
+            # outdir=os.path.join(os.path.dirname(__file__), "assets"), 
+            outpath=scene_xml_path,
+            ini_pos=init_pos, ini_euler=ini_euler, rgb=rgb
+        )
         print("Scene XML path:", self._env_xml_path)
         self.env_scene = MultiAgentScene(self._env_xml_path, self.n_agents, **kwargs,)
         print("Created Scene with agents")

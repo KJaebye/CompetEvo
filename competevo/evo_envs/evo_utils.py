@@ -47,6 +47,104 @@ def tuple_to_str(tp):
     return " ".join(map(str, tp))
 
 
+def create_multiagent_xml_str(
+        world_xml, 
+        all_agent_xml_strs, 
+        agent_scopes=None,
+        ini_pos=None, 
+        ini_euler=None,
+        rgb=None,
+    ):
+    world = ET.parse(world_xml)
+    world_root = world.getroot()
+    world_default = world_root.find('default')
+    world_body = world_root.find('worldbody')
+    world_actuator = None
+    world_tendons = None
+    n_agents = len(all_agent_xml_strs)
+    if rgb is None:
+        rgb = get_distinct_colors(n_agents)
+    RGB_tuples = list(
+        map(lambda x: tuple_to_str(x), rgb)
+    )
+    if agent_scopes is None:
+        agent_scopes = ['agent' + str(i) for i in range(n_agents)]
+
+    if ini_pos is None:
+        ini_pos = [(-i, 0, 0.75) for i in np.linspace(-n_agents, n_agents, n_agents)]
+    # ini_pos = list(map(lambda x: tuple_to_str(x), ini_pos))
+
+    for i in range(n_agents):
+        agent_default = ET.SubElement(
+            world_default, 'default', attrib={'class': agent_scopes[i]}
+        )
+        rgba = RGB_tuples[i] + " 1"
+        agent_xml = ET.fromstring(all_agent_xml_strs[i])
+        # print(ET.tostring(agent_xml.getroot(), encoding='utf-8', method='xml').decode('utf-8'))
+        default = agent_xml.find('default')
+        for child in list(default):
+            if child.tag == 'geom':
+                child.set('rgba', rgba)
+                child.set("conaffinity", str(i))
+                child.set("contype", str(1-i))
+            agent_default.append(child)
+
+        agent_body = agent_xml.find('body')
+        if agent_body.get('pos'):
+            oripos = list(map(float, agent_body.get('pos').strip().split(" ")))
+            # keep original y and z coordinates
+            pos = list(ini_pos[i])
+            # pos[1] = oripos[1]
+            # pos[2] = oripos[2]
+            # print(tuple_to_str(pos))
+            agent_body.set('pos', tuple_to_str(pos))
+        if agent_body.get('euler'):
+            orieuler = list(map(float, agent_body.get('euler').strip().split(" ")))
+            # keep original y and z coordinates
+            euler = list(ini_euler[i])
+            # euler[1] = orieuler[1]
+            # euler[2] = orieuler[2]
+            # print(tuple_to_str(euler))
+            agent_body.set('euler', tuple_to_str(euler))
+        # add class to all geoms
+        set_geom_class(agent_body, agent_scopes[i])
+        # add prefix to all names, important to map joints
+        add_prefix(agent_body, 'name', agent_scopes[i], force_set=True)
+        # add aggent body to xml
+        world_body.append(agent_body)
+        # get agent actuators
+        agent_actuator = agent_xml.find('actuator')
+        # add same prefix to all motor joints
+        add_prefix(agent_actuator, 'joint', agent_scopes[i])
+        add_prefix(agent_actuator, 'name', agent_scopes[i])
+        # add actuator
+        set_motor_class(agent_actuator, agent_scopes[i])
+        if world_actuator is None:
+            world_root.append(agent_actuator)
+            world_actuator = world_root.find('actuator')
+            # print(world_actuator)
+            # print(ET.tostring(world_root))
+        else:
+            for motor in list(agent_actuator):
+                world_actuator.append(motor)
+        # get agent tendons if exists
+        agent_tendon = agent_xml.find('tendon')
+        if agent_tendon:
+            # add same prefix to all motor joints
+            add_prefix(agent_tendon, 'joint', agent_scopes[i])
+            add_prefix(agent_tendon, 'name', agent_scopes[i])
+            # add tendon
+            if world_tendons is None:
+                world_root.append(agent_tendon)
+                world_tendons = world_root.find('tendon')
+                # print(world_actuator)
+                # print(ET.tostring(world_root))
+            else:
+                for tendon in list(agent_tendon):
+                    world_tendons.append(tendon)
+
+    return ET.tostring(world_root, encoding='utf-8', method='xml').decode('utf-8')
+
 def create_multiagent_xml(
         world_xml, 
         all_agent_xmls, 
@@ -84,17 +182,12 @@ def create_multiagent_xml(
         agent_xml = ET.parse(all_agent_xmls[i])
         # print(ET.tostring(agent_xml.getroot(), encoding='utf-8', method='xml').decode('utf-8'))
         default = agent_xml.find('default')
-        color_set = False
         for child in list(default):
             if child.tag == 'geom':
                 child.set('rgba', rgba)
-                color_set = True
+                child.set("conaffinity", str(i))
+                child.set("contype", str(1-i))
             agent_default.append(child)
-        if not color_set:
-            agent_geom = ET.SubElement(
-                agent_default, 'geom',
-                attrib={'contype': '1', 'conaffinity': '1', 'rgba': rgba}
-            )
 
         agent_body = agent_xml.find('body')
         if agent_body.get('pos'):

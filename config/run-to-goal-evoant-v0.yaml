@@ -1,4 +1,4 @@
-env_name: run-to-goal-evoants-v0
+env_name: run-to-goal-evoant-v0
 runner_type: multi-evo-agent-runner
 
 agent_specs:
@@ -61,7 +61,7 @@ min_batch_size: 50000
 mini_batch_size: 2000
 num_optim_epoch: 10
 max_epoch_num: 1000
-seed: 42
+seed: 1
 save_model_interval: 1
 
 robot_param_scale: 1
@@ -111,5 +111,5 @@ use_reward_scaling: False
 use_opponent_sample: False
 delta: 0.
 
-use_exploration_curriculum: True
-termination_epoch: 300
+use_exploration_curriculum: False
+termination_epoch: 150

@@ -3,7 +3,7 @@ from custom.learners.learner import Learner
 from custom.learners.sampler import Sampler
 from custom.learners.evo_learner import EvoLearner
 from custom.utils.logger import MaLoggerRL
-from lib.rl.core.trajbatch import MaTrajBatch
+from lib.rl.core.trajbatch import MaTrajBatch, MaTrajBatchDisc
 from lib.utils.torch import *
 from lib.utils.memory import Memory
 
@@ -29,6 +29,7 @@ def tensorfy(np_list, device=torch.device('cpu')):
         return [[torch.tensor(x).to(device) if i < 2 else x for i, x in enumerate(y)] for y in np_list]
     else:
         return [torch.tensor(y).to(device) for y in np_list]
+    
 
 class MultiEvoAgentRunner(BaseRunner):
     def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
@@ -36,7 +37,8 @@ class MultiEvoAgentRunner(BaseRunner):
         self.agent_num = self.learners.__len__()
 
         self.logger_cls = MaLoggerRL
-        self.traj_cls = MaTrajBatch
+        self.traj_cls = MaTrajBatchDisc
+
         self.logger_kwargs = dict()
 
         self.end_reward = False
@@ -45,7 +47,7 @@ class MultiEvoAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env)
+            self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
     def optimize_policy(self):
         epoch = self.epoch
@@ -85,8 +87,8 @@ class MultiEvoAgentRunner(BaseRunner):
         logs, log_evals, win_rate = info['logs'], info['log_evals'], info['win_rate']
         logger, writer = self.logger, self.writer
 
-        print("0:", logs[0].total_reward, logs[0].num_episodes, logs[0].avg_episode_reward)
-        print("1:", logs[1].total_reward, logs[1].num_episodes, logs[1].avg_episode_reward)
+        # print("0:", logs[0].total_reward, logs[0].num_episodes, logs[0].avg_episode_reward)
+        # print("1:", logs[1].total_reward, logs[1].num_episodes, logs[1].avg_episode_reward)
             
         for i, learner in self.learners.items():
             logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
@@ -104,6 +106,8 @@ class MultiEvoAgentRunner(BaseRunner):
             # writer.add_scalar('eval_R_avg_{}'.format(i), log_evals[i].avg_reward, epoch)
             # logging win rate
             writer.add_scalar("eval_win_rate_{}".format(i), win_rate[i], epoch)
+            # eps len
+            writer.add_scalar("episode_length", log_evals[i].avg_episode_len, epoch)
     
     def optimize(self, epoch):
         self.epoch = epoch
@@ -184,7 +188,7 @@ class MultiEvoAgentRunner(BaseRunner):
                 actions = []
                 
                 for i, sampler in samplers.items():
-                    actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
+                    actions.append(sampler.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
                 
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
                 
@@ -404,7 +408,7 @@ class MultiEvoAgentRunner(BaseRunner):
                 with torch.no_grad():
                     actions = []
                     for i, learner in self.learners.items():
-                        actions.append(learner.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
+                        actions.append(learner.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
 
                 # normalize states

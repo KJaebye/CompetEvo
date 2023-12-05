@@ -25,7 +25,7 @@ class Agent(object):
         self.id = agent_id
         self.scope = 'agent' + str(self.id)
         self._xml_path = xml_path
-        print("Reading agent XML from:", xml_path)
+        # print("Reading agent XML from:", xml_path)
         self.xml = ET.parse(xml_path)
         self.env = None
         self._env_init = False

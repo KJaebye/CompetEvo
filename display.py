@@ -73,6 +73,8 @@ def main():
         runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
     elif cfg.runner_type == "selfplay-agent-runner":
         runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
+    elif cfg.runner_type == "multi-evo-agent-runner":
+        runner = MultiEvoAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
     
     runner.display(num_episode=50, mean_action=True)
 

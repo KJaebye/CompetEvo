@@ -60,6 +60,9 @@ class MultiAgentScene(MujocoEnv, utils.EzPickle):
         self.set_state(qpos, qvel)
         return None
     
+    ##########################################
+    # for deepmind mujoco use
+
     @property
     def body_names(self):
         body_names = []

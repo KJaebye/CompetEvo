@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import colorsys
 import numpy as np
+import os
 
 def list_filter(lambda_fn, iterable):
     return list(filter(lambda_fn, iterable))
@@ -85,7 +86,7 @@ def create_multiagent_xml(
         if not color_set:
             agent_geom = ET.SubElement(
                 agent_default, 'geom',
-                attrib={'contype': '1', 'conaffinity': '1', 'rgba': rgba}
+                attrib={'contype': str(i), 'conaffinity': '1', 'rgba': rgba}
             )
 
         agent_body = agent_xml.find('body')
@@ -145,6 +146,6 @@ def create_multiagent_xml(
     if outpath is None:
         outname = world_xml.split("/")[-1].split(".xml")[0]  + '.' + ".".join(map(lambda x: x.split("/")[-1].split(".xml")[0], all_agent_xmls)) + ".xml"
         outpath = outdir + '/' + outname
-
+    
     world.write(outpath)
     return ET.tostring(world_root), outpath
