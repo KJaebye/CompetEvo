@@ -108,8 +108,8 @@ robot:
       ub: 400
 
 use_reward_scaling: False
-use_opponent_sample: False
-delta: 0.
+use_opponent_sample: True
+delta: 0.8
 
 use_exploration_curriculum: True
-termination_epoch: 300
+termination_epoch: 150

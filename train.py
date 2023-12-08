@@ -86,6 +86,7 @@ def main():
         runner = SPAgentRunner(cfg, logger, dtype, device, 
                                     num_threads=args.num_threads, training=True, ckpt=ckpt)
     elif cfg.runner_type == "multi-evo-agent-runner":
+        ckpt = [ckpt] * 2
         runner = MultiEvoAgentRunner(cfg, logger, dtype, device,
                                      num_threads=args.num_threads, training=True, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     

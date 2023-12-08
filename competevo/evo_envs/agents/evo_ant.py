@@ -56,38 +56,11 @@ class EvoAnt(Ant):
     def before_step(self):
         self._xposbefore = self.get_body_com("0")[0]
 
-    # def after_step(self, action):
-    #     xposafter = self.get_body_com("0")[0]
-    #     forward_reward = (xposafter - self._xposbefore) / self.env.dt
-    #     if self.move_left:
-    #         forward_reward *= -1
-    #     ctrl_cost = .5 * np.square(action).sum()
-    #     cfrc_ext = self.get_cfrc_ext()
-    #     contact_cost = 0.5 * 1e-3 * np.sum(
-    #         np.square(np.clip(cfrc_ext, -1, 1))
-    #     )
-    #     qpos = self.get_qpos()
-    #     agent_standing = qpos[2] >= 0.28
-    #     survive = 1.0
-    #     reward = forward_reward - ctrl_cost - contact_cost + survive
-
-    #     reward_info = dict()
-    #     reward_info['reward_forward'] = forward_reward
-    #     reward_info['reward_ctrl'] = ctrl_cost
-    #     reward_info['reward_contact'] = contact_cost
-    #     reward_info['reward_survive'] = survive
-    #     reward_info['reward_dense'] = reward
-
-    #     terminated = not agent_standing
-
-    #     return reward, terminated, reward_info
-
     def after_step(self, action):
         xposafter = self.get_body_com("0")[0]
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
-
         
         # ctrl_cost = .5 * np.square(action).sum()
         # cfrc_ext = self.get_cfrc_ext()

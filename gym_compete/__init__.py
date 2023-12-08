@@ -172,7 +172,7 @@ register(
                 "assets", 'world_body_arena.xml'
             ),
             'init_pos': [(-1, 0, 2.5), (1, 0, 2.5)],
-            # 'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'max_episode_steps': 500,
             'min_radius': 2.5,
             'max_radius': 4.5
