@@ -155,8 +155,7 @@ class MultiEvoAgentRunner(BaseRunner):
         while ma_logger[0].num_steps < min_batch_size:
             # sample random opponent old policies before every rollout
             samplers = {}
-            if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0 or \
-                (self.cfg.use_exploration_curriculum and self.epoch <= self.cfg.termination_epoch):
+            if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
                 samplers = self.learners
             else:
                 assert idx is not None
