@@ -52,13 +52,14 @@ class Bug(Agent):
         '''
         my_pos = self.get_qpos()
         other_pos = self.get_other_qpos()
+        if other_pos.shape == (0,):
+            other_pos = np.zeros(2) # x and y
         
         my_vel = self.get_qvel()
-        cfrc_ext = np.clip(self.get_cfrc_ext(), -1, 1)
-        
+
         # for multiagent play
         obs = np.concatenate(
-            [my_pos.flat, my_vel.flat, cfrc_ext.flat,
+            [my_pos.flat, my_vel.flat,
              other_pos.flat]
         )
 

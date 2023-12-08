@@ -91,7 +91,7 @@ def main():
                                      num_threads=args.num_threads, training=True, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     
     # main loop
-    for epoch in range(start_epoch, cfg.max_epoch_num):          
+    for epoch in range(start_epoch, cfg.max_epoch_num):
         runner.optimize(epoch)
         runner.save_checkpoint(epoch)
 

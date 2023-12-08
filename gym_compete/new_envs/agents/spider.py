@@ -24,13 +24,12 @@ class Spider(Agent):
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
-        ctrl_cost = .5 * np.square(action).sum()
+        ctrl_cost = .08 * np.square(action).sum()
         cfrc_ext = self.get_cfrc_ext()
-        contact_cost = 0.5 * 1e-3 * np.sum(
-            np.square(np.clip(cfrc_ext, -1, 1))
-        )
+        contact_cost = 0
+
         qpos = self.get_qpos()
-        agent_standing = qpos[2] >= 0.3 and qpos[2] <= 0.75
+        agent_standing = qpos[2] >= 0.3
         survive = 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
@@ -52,13 +51,14 @@ class Spider(Agent):
         '''
         my_pos = self.get_qpos()
         other_pos = self.get_other_qpos()
+        if other_pos.shape == (0,):
+            other_pos = np.zeros(2) # x and y
         
         my_vel = self.get_qvel()
-        cfrc_ext = np.clip(self.get_cfrc_ext(), -1, 1)
-        
+
         # for multiagent play
         obs = np.concatenate(
-            [my_pos.flat, my_vel.flat, cfrc_ext.flat,
+            [my_pos.flat, my_vel.flat,
              other_pos.flat]
         )
 

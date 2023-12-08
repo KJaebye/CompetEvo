@@ -19,6 +19,40 @@ register(
 )
 
 register(
+    id='run-to-goal-bug-v0',
+    entry_point='gym_compete.new_envs:MultiAgentEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['bug'],
+            'scene_xml_path': os.path.join(
+                os.path.dirname(__file__),
+                "new_envs", "assets",
+                "world_body.bug_body.xml"
+            ),
+            # 'init_pos': [(-1, 0, 0.75)],
+            # 'ini_euler': [(0, 0, 0)],
+            'init_pos': [(1, 0, 0.75)],
+            'ini_euler': [(0, 0, 180)]
+            },
+)
+
+register(
+    id='run-to-goal-spider-v0',
+    entry_point='gym_compete.new_envs:MultiAgentEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['spider'],
+            'scene_xml_path': os.path.join(
+                os.path.dirname(__file__),
+                "new_envs", "assets",
+                "world_body.spider_body.xml"
+            ),
+            # 'init_pos': [(-1, 0, 0.75)],
+            # 'ini_euler': [(0, 0, 0)],
+            'init_pos': [(1, 0, 0.75)],
+            'ini_euler': [(0, 0, 180)]
+            },
+)
+
+register(
     id='run-to-goal-spiders-v0',
     entry_point='gym_compete.new_envs:MultiAgentEnv',
     disable_env_checker=True,
