@@ -200,7 +200,6 @@ class MultiEvoAgentEnv(MujocoEnv):
     #     )
 
     def goal_rewards(self, infos=None, agent_dones=None):
-        self._elapsed_steps += 1
         touchdowns = [self.agents[i].reached_goal()
                       for i in range(self.n_agents)]
         num_reached_goal = sum(touchdowns)
@@ -225,6 +224,7 @@ class MultiEvoAgentEnv(MujocoEnv):
         return dones
 
     def _step(self, actions):
+        self._elapsed_steps += 1
         for i in range(self.n_agents):
             self.agents[i].before_step()
         
