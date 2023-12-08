@@ -41,3 +41,5 @@ delta: 0.
 
 use_exploration_curriculum: True
 termination_epoch: 150
+
+use_parse_reward: False

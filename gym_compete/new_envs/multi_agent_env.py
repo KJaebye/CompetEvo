@@ -6,6 +6,7 @@ from .agents import *
 from .utils import create_multiagent_xml
 import os
 import six
+from config.config import Config
 
 class MultiAgentEnv(MujocoEnv):
     '''
@@ -66,7 +67,7 @@ class MultiAgentEnv(MujocoEnv):
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP,
         scene_xml_path=None, move_reward_weight=1.0,
         init_pos=None, ini_euler=None, rgb=None, agent_args=None,
-        max_episode_steps=500,
+        max_episode_steps=500, cfg_path=None,
         **kwargs,
     ):
         '''
@@ -74,6 +75,8 @@ class MultiAgentEnv(MujocoEnv):
         '''
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = 0
+
+        self.cfg = cfg = Config(cfg_path)
 
         self.n_agents = len(agent_names)
         self.agents = {}
@@ -180,7 +183,11 @@ class MultiAgentEnv(MujocoEnv):
             dones.append(agent_done)
             rinfo['agent_done'] = agent_done
             infos.append(rinfo)
-        goal_rews, game_done = self.goal_rewards(infos=infos, agent_dones=dones)
+        if self.cfg.use_parse_reward:
+            goal_rews, game_done = self.goal_rewards(infos=infos, agent_dones=dones)
+        else:
+            goal_rews = [0, 0]
+            game_done = False
         rews = []
         for i, info in enumerate(infos):
             info['reward_parse'] = float(goal_rews[i])

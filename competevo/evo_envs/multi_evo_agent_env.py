@@ -31,7 +31,7 @@ class MultiEvoAgentEnv(MujocoEnv):
 
     def __init__(
         self, 
-        agent_names, 
+        agent_names,
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP, move_reward_weight=1.0,
         init_pos=None, ini_euler=None, rgb=None, agent_args=None,
@@ -238,7 +238,11 @@ class MultiEvoAgentEnv(MujocoEnv):
             dones.append(agent_done)
             rinfo['agent_done'] = agent_done
             infos.append(rinfo)
-        goal_rews, game_done = self.goal_rewards(infos=infos, agent_dones=dones)
+        if self.cfg.use_parse_reward:
+            goal_rews, game_done = self.goal_rewards(infos=infos, agent_dones=dones)
+        else:
+            goal_rews = [0, 0]
+            game_done = False
         rews = []
         for i, info in enumerate(infos):
             info['reward_parse'] = float(goal_rews[i])

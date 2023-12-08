@@ -14,7 +14,8 @@ register(
                 "world_body.bug_body.bug_body.xml"
             ),
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
-            'ini_euler': [(0, 0, 0), (0, 0, 180)]
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'cfg_path': "config/run-to-goal-bugs-v0.yaml",
             },
 )
 
@@ -31,7 +32,8 @@ register(
             # 'init_pos': [(-1, 0, 0.75)],
             # 'ini_euler': [(0, 0, 0)],
             'init_pos': [(1, 0, 0.75)],
-            'ini_euler': [(0, 0, 180)]
+            'ini_euler': [(0, 0, 180)],
+            'cfg_path': "config/run-to-goal-bug-v0.yaml",
             },
 )
 
@@ -48,7 +50,8 @@ register(
             # 'init_pos': [(-1, 0, 0.75)],
             # 'ini_euler': [(0, 0, 0)],
             'init_pos': [(1, 0, 0.75)],
-            'ini_euler': [(0, 0, 180)]
+            'ini_euler': [(0, 0, 180)],
+            'cfg_path': "config/run-to-goal-spider-v0.yaml",
             },
 )
 
@@ -63,7 +66,8 @@ register(
                 "world_body.spider_body.spider_body.xml"
             ),
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
-            'ini_euler': [(0, 0, 0), (0, 0, 180)]
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'cfg_path': "config/run-to-goal-spiders-v0.yaml",
             },
 )
 
@@ -78,7 +82,8 @@ register(
                 "world_body.ant_body.ant_body.xml"
             ),
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
-            'ini_euler': [(0, 0, 0), (0, 0, 180)]
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'cfg_path': "config/run-to-goal-ants-v0.yaml",
             },
 )
 
@@ -97,6 +102,7 @@ register(
             # 'init_pos': [(1, 0, 0.75)],
             # 'ini_euler': [(0, 0, 180)],
             'max_episode_steps': 500,
+            'cfg_path': "config/run-to-goal-ant-v0.yaml",
             },
 )
 
@@ -111,7 +117,8 @@ register(
                 "world_body.humanoid_body.humanoid_body.xml"
             ),
             'init_pos': [(-1, 0, 1.4), (1, 0, 1.4)],
-            'ini_euler': [(0, 0, 0), (0, 0, 180)]
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'cfg_path': "config/run-to-goal-humans-v0.yaml",
             },
 )
 
@@ -128,6 +135,7 @@ register(
             'init_pos': [(-1, 0, 1.4)],
             'ini_euler': [(0, 0, 0)],
             'max_episode_steps': 500,
+            'cfg_path': "config/run-to-goal-human-v0.yaml",
             },
 )
 
@@ -166,6 +174,7 @@ register(
             'max_episode_steps': 500,
             'min_radius': 1.5,
             'max_radius': 3.5,
+            'cfg_path': "config/sumo-humans-v0.yaml",
             },
 )
 
@@ -187,7 +196,8 @@ register(
             # 'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'max_episode_steps': 500,
             'min_radius': 2.5,
-            'max_radius': 4.5
+            'max_radius': 4.5,
+            'cfg_path': "config/sumo-ants-v0.yaml",
             },
 )
 
@@ -209,7 +219,8 @@ register(
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'max_episode_steps': 500,
             'min_radius': 2.5,
-            'max_radius': 4.5
+            'max_radius': 4.5,
+            'cfg_path': "config/robo-sumo-ants-v0.yaml",
             },
 )
 

@@ -64,6 +64,8 @@ class Config:
         self.skel_transform_nsteps = cfg.get('skel_transform_nsteps', 5)
         self.env_init_height = cfg.get('env_init_height', False)
 
+        self.use_parse_reward = cfg.get("use_parse_reward", True)
+
         # competition config
         self.use_opponent_sample = cfg.get('use_opponent_sample', False)
         self.use_shadow_sample = cfg.get('use_shadow_sample', False)

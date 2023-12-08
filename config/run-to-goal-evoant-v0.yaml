@@ -113,3 +113,4 @@ delta: 0.
 
 use_exploration_curriculum: False
 termination_epoch: 150
+use_parse_reward: False
