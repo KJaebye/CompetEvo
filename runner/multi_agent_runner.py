@@ -23,6 +23,32 @@ from operator import add
 from functools import reduce
 import collections
 
+def calculate_probability(input_list):
+    # 对列表进行排序
+    sorted_list = sorted(input_list)
+    
+    # 统计每个数字的出现次数
+    count_dict = {}
+    total_numbers = len(sorted_list)
+    
+    for number in sorted_list:
+        if number in count_dict:
+            count_dict[number] += 1
+        else:
+            count_dict[number] = 1
+    
+    # 计算每个数字的概率
+    probability_dict = {}
+    for number, count in count_dict.items():
+        probability = count / total_numbers
+        probability_dict[number] = probability
+    
+    # 按照数的大小顺序输出概率
+    sorted_probabilities = sorted(probability_dict.items(), key=lambda x: x[0])
+    
+    for number, probability in sorted_probabilities:
+        print(f"Number: {number}, Probability: {probability:.4f}")
+
 
 def tensorfy(np_list, device=torch.device('cpu')):
     if isinstance(np_list[0], list):
@@ -150,19 +176,22 @@ class MultiAgentRunner(BaseRunner):
         ma_memory = []
         for i in range(self.agent_num): ma_memory.append(Memory())
 
+        ckpts = []
+
         while ma_logger[0].num_steps < min_batch_size:
             # sample random opponent old policies before every rollout
             samplers = {}
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
                 samplers = self.learners
+                ckpt = 0
             else:
                 assert idx is not None
                 """set sampling policy for opponent"""
                 start = math.floor(self.epoch * self.cfg.delta)
+                start = start if start > 1 else 1
                 end = self.epoch
                 samplers[1-idx] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
                 ckpt = randomstate.randint(start, end) if start!=end else end
-                ckpt = 1 if ckpt==0 else ckpt # avoid first data
                 # get ckpt modeal
                 cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
                 model_cp = pickle.load(open(cp_path, "rb"))
@@ -170,6 +199,8 @@ class MultiAgentRunner(BaseRunner):
 
                 """set sampling policy for self"""
                 samplers[idx] = self.learners[idx]
+
+            ckpts.append(ckpt)
 
             states, info = self.env.reset()
             # normalize states
@@ -240,9 +271,9 @@ class MultiAgentRunner(BaseRunner):
         for logger in ma_logger: logger.end_sampling()
         
         if queue is not None:
-            queue.put([pid, ma_memory, ma_logger, total_score])
+            queue.put([pid, ma_memory, ma_logger, total_score, ckpts])
         else:
-            return ma_memory, ma_logger, total_score
+            return ma_memory, ma_logger, total_score, ckpts
 
     def sample(self, min_batch_size, mean_action=False, render=False, nthreads=None):
         if nthreads is None:
@@ -261,17 +292,20 @@ class MultiAgentRunner(BaseRunner):
                     memories = [None] * nthreads
                     loggers = [None] * nthreads
                     total_scores = [None] * nthreads
+                    ckpts = [None] * nthreads
+
                     for i in range(nthreads-1):
                         worker_args = (i+1, queue, thread_batch_size, mean_action, render, np.random.RandomState())
                         worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
                         worker.start()
-                    memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
+                    memories[0], loggers[0], total_scores[0], ckpts[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
 
                     for i in range(nthreads - 1):
-                        pid, worker_memory, worker_logger, total_score = queue.get()
+                        pid, worker_memory, worker_logger, total_score, ckpt = queue.get()
                         memories[pid] = worker_memory
                         loggers[pid] = worker_logger
                         total_scores[pid] = total_score
+                        ckpts[pid] = ckpt
 
                     # merge batch data and log data from multiprocessings
                     ma_buffer = self.traj_cls(memories).buffers
@@ -301,6 +335,9 @@ class MultiAgentRunner(BaseRunner):
                     loggers_1 = [None] * nthreads
                     total_scores_1 = [None] * nthreads
 
+                    ckpts_0 = [None]*nthreads
+                    ckpts_1 = [None]*nthreads
+
                     for i in range(nthreads-1):
                         worker_args_0 = (i+1, queue_0, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
                         worker_0 = multiprocessing.Process(target=self.sample_worker, args=worker_args_0)
@@ -308,20 +345,29 @@ class MultiAgentRunner(BaseRunner):
                         worker_args_1 = (i+1, queue_1, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
                         worker_1 = multiprocessing.Process(target=self.sample_worker, args=worker_args_1)
                         worker_1.start()
-                    memories_0[0], loggers_0[0], total_scores_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
-                    memories_1[0], loggers_1[0], total_scores_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
+                    memories_0[0], loggers_0[0], total_scores_0[0], ckpts_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
+                    memories_1[0], loggers_1[0], total_scores_1[0], ckpts_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
 
                     for i in range(nthreads - 1):
-                        pid_0, worker_memory_0, worker_logger_0, total_score_0 = queue_0.get()
+                        pid_0, worker_memory_0, worker_logger_0, total_score_0, ckpt_0 = queue_0.get()
                         memories_0[pid_0] = worker_memory_0
                         loggers_0[pid_0] = worker_logger_0
                         total_scores_0[pid_0] = total_score_0
+                        ckpts_0[pid_0] = ckpt_0
 
-                        pid_1, worker_memory_1, worker_logger_1, total_score_1 = queue_1.get()
+                        pid_1, worker_memory_1, worker_logger_1, total_score_1, ckpt_1 = queue_1.get()
                         memories_1[pid_1] = worker_memory_1
                         loggers_1[pid_1] = worker_logger_1
                         total_scores_1[pid_1] = total_score_1
+                        ckpts_1[pid_1] = ckpt_1
                     
+                    # ckpts_0 = [item for sublist in ckpts_0 for item in sublist]
+                    # ckpts_1 = [item for sublist in ckpts_1 for item in sublist]
+                    # print("0:")
+                    # calculate_probability(ckpts_0)
+                    # print("1:")
+                    # calculate_probability(ckpts_1)
+
                     # merge batch data and log data from multiprocessings
                     ma_buffer_0 = self.traj_cls(memories_0).buffers
                     ma_logger_0 = self.logger_cls.merge(loggers_0, **self.logger_kwargs)

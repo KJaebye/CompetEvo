@@ -38,7 +38,7 @@ done_condition:
 use_reward_scaling: False
 use_opponent_sample: True # for multiagent runner
 
-delta: 1.
+delta: 1
 
 use_exploration_curriculum: True
 termination_epoch: 2000
