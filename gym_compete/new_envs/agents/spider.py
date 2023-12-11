@@ -50,7 +50,7 @@ class Spider(Agent):
         Return agent's observations
         '''
         my_pos = self.get_qpos()
-        other_pos = self.get_other_qpos()
+        other_pos = self.get_other_qpos()[:2]
         if other_pos.shape == (0,):
             other_pos = np.zeros(2) # x and y
         

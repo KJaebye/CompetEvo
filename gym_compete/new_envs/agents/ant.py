@@ -51,7 +51,7 @@ class Ant(Agent):
         Return agent's observations
         '''
         my_pos = self.get_qpos()
-        other_pos = self.get_other_qpos()
+        other_pos = self.get_other_qpos()[:2]
         
         # my_vel = self.get_qvel()
         # cfrc_ext = np.clip(self.get_cfrc_ext(), -1, 1)

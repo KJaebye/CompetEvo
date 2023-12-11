@@ -37,9 +37,9 @@ done_condition:
 
 use_reward_scaling: False
 use_opponent_sample: True
-delta: 1
+delta: 0
 
-use_exploration_curriculum: False
-termination_epoch: 1000
+use_exploration_curriculum: True
+termination_epoch: 200
 
 use_parse_reward: True

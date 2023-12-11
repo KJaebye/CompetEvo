@@ -4,6 +4,8 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 import competevo
 import gym_compete
+import os
+import shutil
 
 class BaseRunner:
     def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
@@ -30,6 +32,31 @@ class BaseRunner:
 
         if (ckpt != 0 and ckpt[0] != 0) or not training:
             self.load_checkpoint(ckpt_dir, ckpt)
+
+            def copy_checkpoint(ckpt_dir, ckpt, model_dir, new_filename='epoch_0000.p'):
+                # 确保目标文件夹存在，如果不存在则创建
+                if not os.path.exists(model_dir):
+                    os.makedirs(model_dir)
+
+                # 构建源文件路径
+                source_file = os.path.join(ckpt_dir, ckpt)
+
+                # 构建目标文件路径，使用指定的新文件名
+                target_file = os.path.join(model_dir, new_filename)
+
+                try:
+                    # 复制文件
+                    shutil.copyfile(source_file, target_file)
+                    self.logger.info(f"Checkpoint {source_file} copied successfully to {target_file}")
+                except FileNotFoundError:
+                    self.logger.critical(f"Source file {source_file} not found.")
+                except Exception as e:
+                    self.logger.critical(f"Error copying checkpoint: {e}")
+
+            if training: # consider the load ckpt is epoch_0
+                ckpt = ckpt[0] + '.p'
+                copy_checkpoint(ckpt_dir+'/agent_0', ckpt, self.model_dir+'/agent_0')
+                copy_checkpoint(ckpt_dir+'/agent_1', ckpt, self.model_dir+'/agent_1')
 
     def setup_env(self, env_name):
         if self.training:

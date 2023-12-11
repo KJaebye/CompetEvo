@@ -24,11 +24,15 @@ class Bug(Agent):
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
-        ctrl_cost = .5 * np.square(action).sum()
+        # ctrl_cost = .5 * np.square(action).sum()
+        # cfrc_ext = self.get_cfrc_ext()
+        # contact_cost = 0.5 * 1e-3 * np.sum(
+        #     np.square(np.clip(cfrc_ext, -1, 1))
+        # )
+        ctrl_cost = .08 * np.square(action).sum()
         cfrc_ext = self.get_cfrc_ext()
-        contact_cost = 0.5 * 1e-3 * np.sum(
-            np.square(np.clip(cfrc_ext, -1, 1))
-        )
+        contact_cost = 0
+
         qpos = self.get_qpos()
         agent_standing = qpos[2] >= 0.36
         survive = 1.0
@@ -42,7 +46,7 @@ class Bug(Agent):
         reward_info['reward_dense'] = reward
 
         terminated = not agent_standing
-
+        
         return reward, terminated, reward_info
 
 
@@ -51,7 +55,7 @@ class Bug(Agent):
         Return agent's observations
         '''
         my_pos = self.get_qpos()
-        other_pos = self.get_other_qpos()
+        other_pos = self.get_other_qpos()[:2]
         if other_pos.shape == (0,):
             other_pos = np.zeros(2) # x and y
         

@@ -113,7 +113,9 @@ class MultiAgentRunner(BaseRunner):
 
         # print("0:", log_evals[0].total_reward, log_evals[0].num_episodes, log_evals[0].avg_episode_reward)
         # print("1:", log_evals[1].total_reward, log_evals[1].num_episodes, log_evals[1].avg_episode_reward)
-            
+        # print("0:", logs[0].avg_episode_reward)
+        # print("1:", logs[1].avg_episode_reward)
+
         for i, learner in self.learners.items():
             logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
             logger.info("Agent_{} gets win rate: {:.2f}.".format(i, win_rate[i]))
@@ -169,36 +171,54 @@ class MultiAgentRunner(BaseRunner):
         
         # define multi-agent logger
         ma_logger = self.logger_cls(self.agent_num, **self.logger_kwargs).loggers
+
         # total score record: [agent_0_win_times, agent_1_win_times, games_num]
         total_score = [0 for _ in range(self.agent_num)]
         total_score.append(0)
+
         # define multi-agent memories
         ma_memory = []
         for i in range(self.agent_num): ma_memory.append(Memory())
-
         ckpts = []
 
         while ma_logger[0].num_steps < min_batch_size:
-            # sample random opponent old policies before every rollout
             samplers = {}
+            for i in range(self.agent_num):
+                samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
+
+            # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
-                samplers = self.learners
-                ckpt = 0
+                ckpt = self.epoch
+
+                try:
+                    # get opp/ego ckpt modeal
+                    opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
+                    opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
+                    samplers[0].load_ckpt(opp_model_cp)
+
+                    # get ego ckpt modeal
+                    ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
+                    ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
+                    samplers[1].load_ckpt(ego_model_cp)
+                except:
+                    pass
             else:
                 assert idx is not None
                 """set sampling policy for opponent"""
                 start = math.floor(self.epoch * self.cfg.delta)
                 start = start if start > 1 else 1
                 end = self.epoch
-                samplers[1-idx] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
                 ckpt = randomstate.randint(start, end) if start!=end else end
-                # get ckpt modeal
-                cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
-                model_cp = pickle.load(open(cp_path, "rb"))
-                samplers[1-idx].load_ckpt(model_cp)
 
-                """set sampling policy for self"""
-                samplers[idx] = self.learners[idx]
+                # get opp ckpt modeal
+                opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
+                opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
+                samplers[1-idx].load_ckpt(opp_model_cp)
+
+                # get ego ckpt modeal
+                ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
+                ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
+                samplers[idx].load_ckpt(ego_model_cp)
 
             ckpts.append(ckpt)
 
@@ -269,7 +289,10 @@ class MultiAgentRunner(BaseRunner):
 
             for logger in ma_logger: logger.end_episode(self.env)
         for logger in ma_logger: logger.end_sampling()
-        
+
+        # if idx == 1:
+        #     print(ma_logger[1].episode_reward)
+
         if queue is not None:
             queue.put([pid, ma_memory, ma_logger, total_score, ckpts])
         else:
