@@ -156,14 +156,15 @@ class MultiEvoAgentRunner(BaseRunner):
         ma_memory = []
         for i in range(self.agent_num): ma_memory.append(Memory())
 
+        # sample random opponent old policies before every rollout
+        samplers = {}
+        for i in range(self.agent_num):
+            if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
+                samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+            else:
+                samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+
         while ma_logger[0].num_steps < min_batch_size:
-            # sample random opponent old policies before every rollout
-            samplers = {}
-            for i in range(self.agent_num):
-                if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
-                    samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
-                else:
-                    samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
 
             # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
@@ -268,8 +269,6 @@ class MultiEvoAgentRunner(BaseRunner):
                 states = next_states
 
             for logger in ma_logger: logger.end_episode(self.env)
-            
-            del samplers
         for logger in ma_logger: logger.end_sampling()
         
         if queue is not None:
