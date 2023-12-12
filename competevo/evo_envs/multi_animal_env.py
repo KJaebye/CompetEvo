@@ -11,12 +11,16 @@ import six
 from config.config import Config
 
 
-class MultiEvoAgentEnv(MujocoEnv):
+class MultiAnimalEnv(MujocoEnv):
     '''
     A multi-agent environment supporting morph EVO that consists of some number of EVO Agent and
     a MultiAgentScene
     '''
     AGENT_MAP = {
+        'ant': (
+            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
+            Ant
+        ),
         'evo_ant': (
             os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
             EvoAnt
@@ -24,6 +28,22 @@ class MultiEvoAgentEnv(MujocoEnv):
         'evo_ant_fighter': (
             os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
             EvoAntFighter
+        ),
+        'ant_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
+            AntFighter
+        ),
+        'robo_ant_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
+            RoboAntFighter
+        ),
+        'bug': (
+            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            Bug
+        ),
+        'spider': (
+            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            Spider
         ),
     }
     WORLD_XML = os.path.join(os.path.dirname(__file__), "assets", "world_body.xml")

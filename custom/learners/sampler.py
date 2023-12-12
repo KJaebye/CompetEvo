@@ -7,11 +7,11 @@ class Sampler:
         Sampler is only for loading models and sampling.
         Thus, there are only policy network definition and no optimizer.
     """
-    def __init__(self, cfg, dtype, device, env) -> None:
+    def __init__(self, cfg, dtype, device, agent) -> None:
         self.cfg = cfg
         self.device = device
         self.dtype = dtype
-        self.env = env
+        self.agent = agent
 
         self.__setup_policy()
         self.__setup_reward_scaling()
@@ -28,7 +28,7 @@ class Sampler:
     ############################## Setup part #########################################
     def __setup_policy(self):
         cfg = self.cfg
-        self.policy_net = NormalPolicy(cfg.policy_specs, self.env)
+        self.policy_net = NormalPolicy(cfg.policy_specs, self.agent)
         to_device(self.device, self.policy_net)
     
     def __setup_reward_scaling(self):

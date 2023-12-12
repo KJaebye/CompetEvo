@@ -3,12 +3,21 @@ from gymnasium.spaces import Box
 import numpy as np
 import os
 
+from lxml.etree import XMLParser, parse, ElementTree, Element, SubElement
+from lxml import etree
+from io import BytesIO
+
 class Ant(Agent):
 
     def __init__(self, agent_id, xml_path=None, n_agents=2):
         if xml_path is None:
             xml_path = os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml")
         super(Ant, self).__init__(agent_id, xml_path, n_agents)
+
+        parser = XMLParser(remove_blank_text=True)
+        self.tree = parse(xml_path, parser=parser)
+        self.cur_xml_str = etree.tostring(self.tree, pretty_print=True).decode('utf-8')
+
 
     def set_goal(self, goal):
         self.GOAL = goal

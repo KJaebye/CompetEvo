@@ -49,6 +49,9 @@ class Config:
         self.save_model_interval = cfg.get('save_model_interval', 100)
         self.use_reward_scaling = cfg.get('use_reward_scaling', False)
 
+        self.evo_policy_specs = cfg.get('evo_policy_specs', dict())
+        self.evo_value_specs = cfg.get('evo_value_specs', dict())
+
         # anneal parameters
         self.scheduled_params = cfg.get('scheduled_params', dict())
 

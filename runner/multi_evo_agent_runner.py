@@ -1,6 +1,7 @@
 from runner.base_runner import BaseRunner
 from custom.learners.learner import Learner
 from custom.learners.sampler import Sampler
+from custom.learners.evo_sampler import EvoSampler
 from custom.learners.evo_learner import EvoLearner
 from custom.utils.logger import MaLoggerRL
 from lib.rl.core.trajbatch import MaTrajBatch, MaTrajBatchDisc
@@ -47,7 +48,10 @@ class MultiEvoAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
+                self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            else:
+                self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
     def optimize_policy(self):
         epoch = self.epoch
@@ -155,23 +159,45 @@ class MultiEvoAgentRunner(BaseRunner):
         while ma_logger[0].num_steps < min_batch_size:
             # sample random opponent old policies before every rollout
             samplers = {}
+            for i in range(self.agent_num):
+                if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
+                    samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+                else:
+                    samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+
+            # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
-                samplers = self.learners
+                ckpt = self.epoch
+
+                try:
+                    # get opp/ego ckpt modeal
+                    opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
+                    opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
+                    samplers[0].load_ckpt(opp_model_cp)
+
+                    # get ego ckpt modeal
+                    ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
+                    ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
+                    samplers[1].load_ckpt(ego_model_cp)
+                except:
+                    pass
             else:
                 assert idx is not None
                 """set sampling policy for opponent"""
                 start = math.floor(self.epoch * self.cfg.delta)
+                start = start if start > 1 else 1
                 end = self.epoch
-                samplers[1-idx] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
                 ckpt = randomstate.randint(start, end) if start!=end else end
-                ckpt = 1 if ckpt==0 else ckpt # avoid first data
-                # get ckpt modeal
-                cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
-                model_cp = pickle.load(open(cp_path, "rb"))
-                samplers[1-idx].load_ckpt(model_cp)
 
-                """set sampling policy for self"""
-                samplers[idx] = self.learners[idx]
+                # get opp ckpt modeal
+                opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
+                opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
+                samplers[1-idx].load_ckpt(opp_model_cp)
+
+                # get ego ckpt modeal
+                ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
+                ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
+                samplers[idx].load_ckpt(ego_model_cp)
 
             states, info = self.env.reset()
             # normalize states
@@ -187,7 +213,10 @@ class MultiEvoAgentRunner(BaseRunner):
                 actions = []
                 
                 for i, sampler in samplers.items():
-                    actions.append(sampler.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                    if hasattr(sampler, 'evo_flag') and sampler.evo_flag:
+                        actions.append(sampler.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                    else:
+                        actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
                 
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
                 
@@ -239,6 +268,8 @@ class MultiEvoAgentRunner(BaseRunner):
                 states = next_states
 
             for logger in ma_logger: logger.end_episode(self.env)
+            
+            del samplers
         for logger in ma_logger: logger.end_sampling()
         
         if queue is not None:

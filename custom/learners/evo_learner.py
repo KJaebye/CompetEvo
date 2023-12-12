@@ -47,11 +47,11 @@ class EvoLearner:
         self.save_best_flag = False
 
     def setup_policy(self):
-        self.policy_net = Transform2ActPolicy(self.cfg.policy_specs, self.agent)
+        self.policy_net = Transform2ActPolicy(self.cfg.evo_policy_specs, self.agent)
         to_device(self.device, self.policy_net)
 
     def setup_value(self):
-        self.value_net = Transform2ActValue(self.cfg.value_specs, self.agent)
+        self.value_net = Transform2ActValue(self.cfg.evo_value_specs, self.agent)
         to_device(self.device, self.value_net)
     
     def save_ckpt(self, epoch):
@@ -74,7 +74,7 @@ class EvoLearner:
             epoch = model['epoch']
         
         if self.is_shadow:
-            # should not input averaged reward because the shadow 
+            # should not input averaged reward because the shadow
             # agent's averaged reward is always less than best_reward
             return
         self.best_reward = model.get('best_reward', self.best_reward)

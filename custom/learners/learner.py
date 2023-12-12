@@ -12,11 +12,11 @@ def tensorfy(np_list, device=torch.device('cpu')):
         return [torch.tensor(y).to(device) for y in np_list]
     
 class Learner:
-    def __init__(self, cfg, dtype, device, env, is_shadow=False) -> None:
+    def __init__(self, cfg, dtype, device, agent, is_shadow=False) -> None:
         self.cfg = cfg
         self.device = device
         self.dtype = dtype
-        self.env = env
+        self.agent = agent
         self.is_shadow = is_shadow
 
         self.__setup_policy()
@@ -107,11 +107,11 @@ class Learner:
     ############################## Setup part #########################################
     def __setup_policy(self):
         cfg = self.cfg
-        self.policy_net = NormalPolicy(cfg.policy_specs, self.env)
+        self.policy_net = NormalPolicy(cfg.policy_specs, self.agent)
         to_device(self.device, self.policy_net)
 
     def __setup_value(self):
-        self.value_net = NormalValue(self.cfg.value_specs, self.env)
+        self.value_net = NormalValue(self.cfg.value_specs, self.agent)
         to_device(self.device, self.value_net)
 
     def __setup_optimizer(self):

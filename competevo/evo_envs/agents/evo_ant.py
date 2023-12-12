@@ -21,6 +21,8 @@ class EvoAnt(Ant):
         self.cfg = cfg
         self.xml_folder = os.path.dirname(xml_path)
 
+        self.evo_flag = True
+
         # robot xml
         self.robot = Robot(cfg.robot_cfg, xml=xml_path)
         self.init_xml_str = self.robot.export_xml_string()
@@ -41,7 +43,7 @@ class EvoAnt(Ant):
         self.attr_specs = set(cfg.obs_specs.get('attr', []))
         self.control_action_dim = 1
         self.skel_num_action = 3 if cfg.enable_remove else 2
-        self.sim_obs_dim = 13
+        self.sim_obs_dim = 15
         self.attr_fixed_dim = self.get_attr_fixed().shape[-1]
 
         self.state_dim = self.attr_fixed_dim + self.sim_obs_dim + self.attr_design_dim
@@ -128,7 +130,6 @@ class EvoAnt(Ant):
             self._set_other_joint()
         # self.set_action_space() # testing only
 
-
     def reached_goal(self):
         if self.n_agents == 1: return False
         xpos = self.get_body_com('0')[0]
@@ -178,7 +179,6 @@ class EvoAnt(Ant):
         self.cur_xml_str = xml_str.decode('utf-8')
         self.design_cur_params = self.get_attr_design()
 
-    
     def set_design_params(self, in_design_params):
         design_params = in_design_params
         for params, body in zip(design_params, self.robot.bodies):
@@ -215,6 +215,7 @@ class EvoAnt(Ant):
         # for body in self.robot.bodies:
         #     body_names.append(body.name)
         # print(body_names)
+        other_pos = self.get_other_qpos()[:2]
 
         for i, body in enumerate(self.robot.bodies):
             qpos = self.get_qpos()
@@ -224,7 +225,7 @@ class EvoAnt(Ant):
             # print(self.id, self.joint_names[i])
             # print(self.id, self.qvel_start_idx, self.qvel_end_idx)
             if i == 0:
-                obs_i = [qpos[2:7], qvel[:6], np.zeros(2)]
+                obs_i = [qpos[2:7], qvel[:6], np.zeros(2), other_pos]
             else:
                 # print(self.id, i, body.name)
                 qs, qe = get_single_body_qposaddr(self.env.model, self.scope + "/" + body.name)
@@ -235,9 +236,9 @@ class EvoAnt(Ant):
                 if qe - qs >= 1:
                     assert qe - qs == 1
                     # print(qs, qe)
-                    obs_i = [np.zeros(11), self.env.data.qpos[qs:qe], self.env.data.qvel[qs-1-self.id:qe-1-self.id]]
+                    obs_i = [np.zeros(11), self.env.data.qpos[qs:qe], self.env.data.qvel[qs-1-self.id:qe-1-self.id], np.zeros(2)]
                 else:
-                    obs_i = [np.zeros(13)]
+                    obs_i = [np.zeros(13), np.zeros(2)]
             if 'root_offset' in self.sim_specs:
                 offset = self.data.body_xpos[self.model._body_name2id[body.name]][[0, 2]] - root_pos[[0, 2]]
                 obs_i.append(offset)

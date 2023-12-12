@@ -29,7 +29,7 @@ class Spider(Agent):
         contact_cost = 0
 
         qpos = self.get_qpos()
-        agent_standing = qpos[2] >= 0.3
+        agent_standing = qpos[2] >= 0.3 and qpos[2] <= 0.75
         survive = 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
