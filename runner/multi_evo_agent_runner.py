@@ -156,30 +156,30 @@ class MultiEvoAgentRunner(BaseRunner):
         ma_memory = []
         for i in range(self.agent_num): ma_memory.append(Memory())
 
-        # sample random opponent old policies before every rollout
-        samplers = {}
-        for i in range(self.agent_num):
-            if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
-                samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
-            else:
-                samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
-
         while ma_logger[0].num_steps < min_batch_size:
+            # sample random opponent old policies before every rollout
+            samplers = {}
+            for i in range(self.agent_num):
+                if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
+                    samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+                else:
+                    samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
 
             # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
                 ckpt = self.epoch
-
                 try:
                     # get opp/ego ckpt modeal
                     opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
-                    opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
-                    samplers[0].load_ckpt(opp_model_cp)
+                    with open(opp_cp_path, "rb") as f:
+                        opp_model_cp = pickle.load(f)
+                        samplers[0].load_ckpt(opp_model_cp)
 
                     # get ego ckpt modeal
                     ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
-                    ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
-                    samplers[1].load_ckpt(ego_model_cp)
+                    with open(ego_cp_path, "rb") as f:
+                        ego_model_cp = pickle.load(f)
+                        samplers[1].load_ckpt(ego_model_cp)
                 except:
                     pass
             else:
@@ -192,13 +192,16 @@ class MultiEvoAgentRunner(BaseRunner):
 
                 # get opp ckpt modeal
                 opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
-                opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
-                samplers[1-idx].load_ckpt(opp_model_cp)
+                with open(opp_cp_path, "rb") as f:
+                    opp_model_cp = pickle.load(f)
+                    samplers[1-idx].load_ckpt(opp_model_cp)
 
                 # get ego ckpt modeal
                 ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
-                ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
-                samplers[idx].load_ckpt(ego_model_cp)
+                with open(ego_cp_path, "rb") as f:
+                    ego_model_cp = pickle.load(f)
+                    samplers[idx].load_ckpt(ego_model_cp)
+
 
             states, info = self.env.reset()
             # normalize states
@@ -390,7 +393,8 @@ class MultiEvoAgentRunner(BaseRunner):
             assert isinstance(ckpt, str)
             cp_path = '%s/%s/%s.p' % (ckpt_dir, "agent_"+str(idx), ckpt)
         self.logger.info('loading agent_%s model from checkpoint: %s' % (str(idx), cp_path))
-        model_cp = pickle.load(open(cp_path, "rb"))
+        with open(cp_path, "rb") as f:
+            model_cp = pickle.load(f)
 
         # load model
         self.learners[idx].load_ckpt(model_cp)
@@ -398,11 +402,13 @@ class MultiEvoAgentRunner(BaseRunner):
     def save_checkpoint(self, epoch):
         def save(cp_path, idx):
             try:
-                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
+                with open(cp_path, 'wb') as f:
+                    pickle.dump(self.learners[idx].save_ckpt(epoch), f)
             except FileNotFoundError:
                 folder_path = os.path.dirname(cp_path)
                 os.makedirs(folder_path, exist_ok=True)
-                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
+                with open(cp_path, 'wb') as f:
+                    pickle.dump(self.learners[idx].save_ckpt(epoch), f)
             except Exception as e:
                 print("An error occurred while saving the model:", e)
 

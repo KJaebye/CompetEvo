@@ -193,13 +193,15 @@ class MultiAgentRunner(BaseRunner):
                 try:
                     # get opp/ego ckpt modeal
                     opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
-                    opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
-                    samplers[0].load_ckpt(opp_model_cp)
+                    with open(opp_cp_path, "rb") as f:
+                        opp_model_cp = pickle.load(f)
+                        samplers[0].load_ckpt(opp_model_cp)
 
                     # get ego ckpt modeal
                     ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
-                    ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
-                    samplers[1].load_ckpt(ego_model_cp)
+                    with open(ego_cp_path, "rb") as f:
+                        ego_model_cp = pickle.load(f)
+                        samplers[1].load_ckpt(ego_model_cp)
                 except:
                     pass
             else:
@@ -212,13 +214,15 @@ class MultiAgentRunner(BaseRunner):
 
                 # get opp ckpt modeal
                 opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
-                opp_model_cp = pickle.load(open(opp_cp_path, "rb"))
-                samplers[1-idx].load_ckpt(opp_model_cp)
+                with open(opp_cp_path, "rb") as f:
+                    opp_model_cp = pickle.load(f)
+                    samplers[1-idx].load_ckpt(opp_model_cp)
 
                 # get ego ckpt modeal
                 ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
-                ego_model_cp = pickle.load(open(ego_cp_path, "rb"))
-                samplers[idx].load_ckpt(ego_model_cp)
+                with open(ego_cp_path, "rb") as f:
+                    ego_model_cp = pickle.load(f)
+                    samplers[idx].load_ckpt(ego_model_cp)
 
             ckpts.append(ckpt)
 
@@ -236,6 +240,9 @@ class MultiAgentRunner(BaseRunner):
                 actions = []
                 
                 for i, sampler in samplers.items():
+                    use_mean_action = False if i == idx else True
+                    use_mean_action = use_mean_action or mean_action
+
                     actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
                 
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
@@ -290,8 +297,8 @@ class MultiAgentRunner(BaseRunner):
             for logger in ma_logger: logger.end_episode(self.env)
         for logger in ma_logger: logger.end_sampling()
 
-        # if idx == 1:
-        #     print(ma_logger[1].episode_reward)
+        if idx == 0:
+            print(ma_logger[1].episode_reward)
 
         if queue is not None:
             queue.put([pid, ma_memory, ma_logger, total_score, ckpts])

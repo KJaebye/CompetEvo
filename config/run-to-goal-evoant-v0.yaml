@@ -58,7 +58,7 @@ value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
 min_batch_size: 50000
-mini_batch_size: 2000
+mini_batch_size: 2048
 num_optim_epoch: 10
 max_epoch_num: 1000
 seed: 1
