@@ -9,4 +9,6 @@ from .humanoid_kicker import HumanoidKicker
 from .humanoid_goalkeeper import HumanoidGoalKeeper
 
 from .bug import Bug
+from .bug_fighter import BugFighter
 from .spider import Spider
+from .spider_fighter import SpiderFighter

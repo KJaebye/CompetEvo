@@ -54,9 +54,17 @@ class MultiAgentEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
             Bug
         ),
+        'bug_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            BugFighter
+        ),
         'spider': (
             os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
             Spider
+        ),
+        'spider_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            SpiderFighter
         ),
     }
     WORLD_XML = os.path.join(os.path.dirname(__file__), "assets", "world_body.xml")

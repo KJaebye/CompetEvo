@@ -76,7 +76,6 @@ def main():
     #                              num_threads=args.num_threads, training=True)
     
     ckpt = int(args.ckpt) if args.ckpt.isnumeric() else args.ckpt
-    start_epoch = ckpt if args.ckpt.isnumeric() else 0
 
     if cfg.runner_type == "multi-agent-runner":
         ckpt = [ckpt] * 2
@@ -91,7 +90,7 @@ def main():
                                      num_threads=args.num_threads, training=True, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     
     # main loop
-    for epoch in range(start_epoch, cfg.max_epoch_num):
+    for epoch in range(0, cfg.max_epoch_num):
         runner.optimize(epoch)
         runner.save_checkpoint(epoch)
 

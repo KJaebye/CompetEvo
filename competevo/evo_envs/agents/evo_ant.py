@@ -20,7 +20,6 @@ class EvoAnt(Ant):
         super(EvoAnt, self).__init__(agent_id, xml_path, n_agents)
         self.cfg = cfg
         self.xml_folder = os.path.dirname(xml_path)
-
         self.evo_flag = True
 
         # robot xml
@@ -43,7 +42,7 @@ class EvoAnt(Ant):
         self.attr_specs = set(cfg.obs_specs.get('attr', []))
         self.control_action_dim = 1
         self.skel_num_action = 3 if cfg.enable_remove else 2
-        self.sim_obs_dim = 15
+        self.sim_obs_dim = 15 #13
         self.attr_fixed_dim = self.get_attr_fixed().shape[-1]
 
         self.state_dim = self.attr_fixed_dim + self.sim_obs_dim + self.attr_design_dim
@@ -58,11 +57,38 @@ class EvoAnt(Ant):
     def before_step(self):
         self._xposbefore = self.get_body_com("0")[0]
 
+    # def after_step(self, action):
+    #     xposafter = self.get_body_com("0")[0]
+    #     forward_reward = (xposafter - self._xposbefore) / self.env.dt
+    #     if self.move_left:
+    #         forward_reward *= -1
+    #     ctrl_cost = .5 * np.square(action).sum()
+    #     cfrc_ext = self.get_cfrc_ext()
+    #     contact_cost = 0.5 * 1e-3 * np.sum(
+    #         np.square(np.clip(cfrc_ext, -1, 1))
+    #     )
+    #     qpos = self.get_qpos()
+    #     agent_standing = qpos[2] >= 0.28
+    #     survive = 1.0
+    #     reward = forward_reward - ctrl_cost - contact_cost + survive
+
+    #     reward_info = dict()
+    #     reward_info['reward_forward'] = forward_reward
+    #     reward_info['reward_ctrl'] = ctrl_cost
+    #     reward_info['reward_contact'] = contact_cost
+    #     reward_info['reward_survive'] = survive
+    #     reward_info['reward_dense'] = reward
+
+    #     terminated = not agent_standing
+
+    #     return reward, terminated, reward_info
+
     def after_step(self, action):
         xposafter = self.get_body_com("0")[0]
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
+
         
         # ctrl_cost = .5 * np.square(action).sum()
         # cfrc_ext = self.get_cfrc_ext()
@@ -93,8 +119,8 @@ class EvoAnt(Ant):
         zdir = quaternion_matrix(qpos[3:7])[:3, 2]
         ang = np.arccos(zdir[2])
         done_condition = self.cfg.done_condition
-        min_height = done_condition.get('min_height', 0.0)
-        max_height = done_condition.get('max_height', 2.0)
+        min_height = done_condition.get('min_height', 0.28)
+        max_height = done_condition.get('max_height', 0.8)
         max_ang = done_condition.get('max_ang', 3600)
 
         terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height) and (abs(ang) < np.deg2rad(max_ang)))
@@ -129,6 +155,7 @@ class EvoAnt(Ant):
         if self.n_agents > 1:
             self._set_other_joint()
         # self.set_action_space() # testing only
+
 
     def reached_goal(self):
         if self.n_agents == 1: return False
@@ -179,6 +206,7 @@ class EvoAnt(Ant):
         self.cur_xml_str = xml_str.decode('utf-8')
         self.design_cur_params = self.get_attr_design()
 
+    
     def set_design_params(self, in_design_params):
         design_params = in_design_params
         for params, body in zip(design_params, self.robot.bodies):
@@ -215,7 +243,10 @@ class EvoAnt(Ant):
         # for body in self.robot.bodies:
         #     body_names.append(body.name)
         # print(body_names)
+
         other_pos = self.get_other_qpos()[:2]
+        if other_pos.shape == (0,):
+            other_pos = np.zeros(2) # x and y
 
         for i, body in enumerate(self.robot.bodies):
             qpos = self.get_qpos()
@@ -236,9 +267,9 @@ class EvoAnt(Ant):
                 if qe - qs >= 1:
                     assert qe - qs == 1
                     # print(qs, qe)
-                    obs_i = [np.zeros(11), self.env.data.qpos[qs:qe], self.env.data.qvel[qs-1-self.id:qe-1-self.id], np.zeros(2)]
+                    obs_i = [np.zeros(11), self.env.data.qpos[qs:qe], self.env.data.qvel[qs-1-self.id:qe-1-self.id], other_pos]
                 else:
-                    obs_i = [np.zeros(13), np.zeros(2)]
+                    obs_i = [np.zeros(13), other_pos]
             if 'root_offset' in self.sim_specs:
                 offset = self.data.body_xpos[self.model._body_name2id[body.name]][[0, 2]] - root_pos[[0, 2]]
                 obs_i.append(offset)

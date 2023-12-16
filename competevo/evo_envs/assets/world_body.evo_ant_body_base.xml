@@ -23,22 +23,22 @@
     <geom fromto="4 -5 0  4 +5 0" name="rightgoal" rgba="0.6 0.0 0.0 1" size=".03" type="cylinder" />
     <geom fromto="-4 -5 0  -4 +5 0" name="leftgoal" rgba="0.6 0.0 0.0 1" size=".03" type="cylinder" />
   <body name="agent0/0" pos="-1 0 0.75" euler="0 0 0">
-      <geom pos="0 0 0" size="0.25" type="sphere" class="agent0" name="agent0/anon8577843436" />
+      <geom pos="0 0 0" size="0.25" type="sphere" class="agent0" name="agent0/anon787846415" />
       <joint armature="0" damping="0" limited="false" margin="0.01" name="agent0/root" pos="0 0 0" range="-30 30" type="free" />
       <body name="agent0/1" pos="0 0 0">
-          <geom fromto="0.0 0.0 0.0 0.4 0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon4005303369" />
+          <geom fromto="0.0 0.0 0.0 0.4 0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon2563451925" />
           <joint axis="-1 1 0" name="agent0/1_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge" />
       </body>
       <body name="agent0/2" pos="0 0 0">
-          <geom fromto="0.0 0.0 0.0 -0.4 0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon1703301250" />
+          <geom fromto="0.0 0.0 0.0 -0.4 0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon9019323607" />
           <joint axis="-1 -1 0" name="agent0/2_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge" />
       </body>
       <body name="agent0/3" pos="0 0 0">
-          <geom fromto="0.0 0.0 0.0 -0.4 -0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon1666063944" />
+          <geom fromto="0.0 0.0 0.0 -0.4 -0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon4537253173" />
           <joint axis="1 -1 0" name="agent0/3_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge" />
       </body>
       <body name="agent0/4" pos="0 0 0">
-          <geom fromto="0.0 0.0 0.0 0.4 -0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon7171504637" />
+          <geom fromto="0.0 0.0 0.0 0.4 -0.4 0.0" size="0.08" type="capsule" class="agent0" name="agent0/anon7395928408" />
           <joint axis="1 1 0" name="agent0/4_joint" pos="0.0 0.0 0.0" range="-30 30" type="hinge" />
       </body>
     </body>

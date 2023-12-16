@@ -404,7 +404,7 @@ class Body:
                     self.param_specs['offset']['ub'] = np.minimum(self.param_specs['offset']['ub'], self.param_specs['offset'].get('max', np.full_like(offset, np.inf)))
                 offset = normalize_range(offset, self.param_specs['offset']['lb'], self.param_specs['offset']['ub'])
                 param_list.append(offset.flatten())
-
+        
         if self.bone_offset is not None and 'bone_len' in self.param_specs:
             if get_name:
                 param_list += ['bone_len']

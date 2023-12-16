@@ -297,8 +297,8 @@ class MultiAgentRunner(BaseRunner):
             for logger in ma_logger: logger.end_episode(self.env)
         for logger in ma_logger: logger.end_sampling()
 
-        if idx == 0:
-            print(ma_logger[1].episode_reward)
+        # if idx == 0:
+        #     print(ma_logger[1].episode_reward)
 
         if queue is not None:
             queue.put([pid, ma_memory, ma_logger, total_score, ckpts])

@@ -48,10 +48,7 @@ class MultiEvoAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
-                self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
-            else:
-                self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
     def optimize_policy(self):
         epoch = self.epoch
@@ -201,7 +198,6 @@ class MultiEvoAgentRunner(BaseRunner):
                 with open(ego_cp_path, "rb") as f:
                     ego_model_cp = pickle.load(f)
                     samplers[idx].load_ckpt(ego_model_cp)
-
 
             states, info = self.env.reset()
             # normalize states
@@ -393,8 +389,7 @@ class MultiEvoAgentRunner(BaseRunner):
             assert isinstance(ckpt, str)
             cp_path = '%s/%s/%s.p' % (ckpt_dir, "agent_"+str(idx), ckpt)
         self.logger.info('loading agent_%s model from checkpoint: %s' % (str(idx), cp_path))
-        with open(cp_path, "rb") as f:
-            model_cp = pickle.load(f)
+        model_cp = pickle.load(open(cp_path, "rb"))
 
         # load model
         self.learners[idx].load_ckpt(model_cp)
@@ -402,13 +397,11 @@ class MultiEvoAgentRunner(BaseRunner):
     def save_checkpoint(self, epoch):
         def save(cp_path, idx):
             try:
-                with open(cp_path, 'wb') as f:
-                    pickle.dump(self.learners[idx].save_ckpt(epoch), f)
+                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
             except FileNotFoundError:
                 folder_path = os.path.dirname(cp_path)
                 os.makedirs(folder_path, exist_ok=True)
-                with open(cp_path, 'wb') as f:
-                    pickle.dump(self.learners[idx].save_ckpt(epoch), f)
+                pickle.dump(self.learners[idx].save_ckpt(epoch), open(cp_path, 'wb'))
             except Exception as e:
                 print("An error occurred while saving the model:", e)
 

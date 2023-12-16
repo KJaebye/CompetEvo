@@ -54,9 +54,20 @@ class BaseRunner:
                     self.logger.critical(f"Error copying checkpoint: {e}")
 
             if training: # consider the load ckpt is epoch_0
-                ckpt = ckpt[0] + '.p'
-                copy_checkpoint(ckpt_dir+'/agent_0', ckpt, self.model_dir+'/agent_0')
-                copy_checkpoint(ckpt_dir+'/agent_1', ckpt, self.model_dir+'/agent_1')
+                ckpt0 = ckpt[0]
+                if isinstance(ckpt0, str):
+                    ckpt0 = ckpt0 + '.p'
+                elif isinstance(ckpt0, int):
+                    ckpt0 = 'epoch_%04d.p' % (ckpt0)
+
+                ckpt1 = ckpt[1]
+                if isinstance(ckpt1, str):
+                    ckpt1 = ckpt1 + '.p'
+                elif isinstance(ckpt1, int):
+                    ckpt1 = 'epoch_%04d.p' % (ckpt1)
+
+                copy_checkpoint(ckpt_dir+'/agent_0', ckpt0, self.model_dir+'/agent_0')
+                copy_checkpoint(ckpt_dir+'/agent_1', ckpt1, self.model_dir+'/agent_1')
 
     def setup_env(self, env_name):
         if self.training:

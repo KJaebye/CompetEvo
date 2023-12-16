@@ -18,7 +18,7 @@ class EvoSampler:
         self.dtype = dtype
         self.agent = agent
 
-        self.evo_flag = self.agent.evo_flag
+        self.evo_flag = True
         self.is_shadow = is_shadow
 
         self.setup_policy()

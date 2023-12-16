@@ -58,14 +58,14 @@ value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
 min_batch_size: 50000
-mini_batch_size: 2000
+mini_batch_size: 2048
 num_optim_epoch: 10
 max_epoch_num: 1000
 seed: 42
 save_model_interval: 1
 
 robot_param_scale: 1
-skel_transform_nsteps: 5
+skel_transform_nsteps: 5 #5
 
 done_condition:
   max_ang: 60
@@ -109,8 +109,8 @@ robot:
 
 use_reward_scaling: False
 use_opponent_sample: True
-delta: 0.5
+delta: 1
 
 use_exploration_curriculum: True
-termination_epoch: 500
+termination_epoch: 1000
 use_parse_reward: True

@@ -61,11 +61,11 @@ min_batch_size: 50000
 mini_batch_size: 2048
 num_optim_epoch: 10
 max_epoch_num: 1000
-seed: 1
+seed: 42
 save_model_interval: 1
 
 robot_param_scale: 1
-skel_transform_nsteps: 5
+skel_transform_nsteps: 3
 
 done_condition:
   max_ang: 60
@@ -89,8 +89,10 @@ robot:
   body_params:
     offset:
       type: 'xy'
-      lb: [-0.5, -0.5]
-      ub: [0.5, 0.5]
+      # lb: [-0.5, -0.5]
+      # ub: [0.5, 0.5]
+      lb: [-0.4, -0.4]
+      ub: [0.4, 0.4]
 
   joint_params: {}
 
