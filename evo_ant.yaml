@@ -1,13 +1,10 @@
-env_name: run-to-goal-evoant-v0
-runner_type: multi-evo-agent-runner
-
+env_name: ant
 agent_specs:
   batch_design: true
-
 # training parameters
 gamma: 0.995
 tau: 0.95
-evo_policy_specs:
+policy_specs:
   name: v5
   htype: tanh
   skel_gnn_specs:
@@ -42,7 +39,7 @@ policy_optimizer: 'Adam'
 policy_lr: 5.e-5
 policy_momentum: 0.0
 policy_weightdecay: 0.0
-evo_value_specs:
+value_specs:
   htype: tanh
   design_flag_in_state: true
   onehot_design_flag: true
@@ -61,40 +58,36 @@ min_batch_size: 50000
 mini_batch_size: 2048
 num_optim_epoch: 10
 max_epoch_num: 1000
-seed: 42
-save_model_interval: 1
+seed: 1
+save_model_interval: 100
 
 robot_param_scale: 1
-skel_transform_nsteps: 1
+skel_transform_nsteps: 5
 
 done_condition:
   max_ang: 60
 
-obs_specs:
-  attr: ['depth']
-  sim: []
-  design: true
-  clip_qvel: true
-  use_projected_params: true
-  use_body_ind: true
-max_body_depth: 4
-
-enable_remove: false
-
-add_body_condition:
-  max_nchild: 2
-
 robot:
+  max_body_depth: 4
+  add_body_condition:
+    max_nchild: 2
+
   param_mapping: sin
   no_root_offset: true
+
+  obs_specs:
+    attr: ['depth']
+    sim: []
+    design: true
+    clip_qvel: true
+    use_projected_params: true
+    use_body_ind: true
   
   body_params:
     offset:
       type: 'xy'
-      # lb: [-0.5, -0.5]
-      # ub: [0.5, 0.5]
-      lb: [-0.4, -0.4]
-      ub: [0.4, 0.4]
+      lb: [-0.5, -0.5]
+      ub: [0.5, 0.5]
 
   joint_params: {}
 
@@ -110,11 +103,4 @@ robot:
     gear:
       lb: 20
       ub: 400
-
-use_reward_scaling: False
-use_opponent_sample: False
-delta: 0.
-
-use_exploration_curriculum: False
-termination_epoch: 150
-use_parse_reward: False
+  

@@ -3,7 +3,7 @@
   <option integrator="RK4" timestep="0.01"/>
   <default>
     <joint armature="1" damping="1" limited="true"/>
-    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba=".98 .54 .56 1."/>
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba=".98 .54 .56 1." material="geom"/>
   </default>
   <visual>
     <headlight ambient=".1 .1 .1" diffuse=".6 .6 .6" specular="0.3 0.3 0.3"/>
