@@ -6,7 +6,6 @@ from .agents import *
 from .utils import create_multiagent_xml
 import os
 import six
-from config.config import Config
 
 class MultiAgentEnv(MujocoEnv):
     '''
@@ -71,11 +70,11 @@ class MultiAgentEnv(MujocoEnv):
     GOAL_REWARD = 1000
 
     def __init__(
-        self, agent_names,
+        self, cfg, agent_names,
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP,
         scene_xml_path=None, move_reward_weight=1.0,
         init_pos=None, ini_euler=None, rgb=None, agent_args=None,
-        max_episode_steps=500, cfg_path=None,
+        max_episode_steps=500,
         **kwargs,
     ):
         '''
@@ -84,7 +83,7 @@ class MultiAgentEnv(MujocoEnv):
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = 0
 
-        self.cfg = cfg = Config(cfg_path)
+        self.cfg = cfg
 
         self.n_agents = len(agent_names)
         self.agents = {}

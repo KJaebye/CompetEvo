@@ -10,13 +10,13 @@ from lib.utils.math import *
 from custom.utils.tools import *
 
 class NormalPolicy(Policy):
-    def __init__(self, cfg, env):
+    def __init__(self, cfg, agent):
         super().__init__()
         self.type = 'gaussian'
         self.cfg = cfg
-        self.env = env
-        self.control_state_dim = env.observation_space[0].shape[0]
-        self.control_action_dim = env.action_space[0].shape[0]
+        self.agent = agent
+        self.control_state_dim = agent.observation_space.shape[0]
+        self.control_action_dim = agent.action_space.shape[0]
 
         self.control_norm = RunningNorm(self.control_state_dim)
         cur_dim = self.control_state_dim

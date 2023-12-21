@@ -8,8 +8,6 @@ from competevo.evo_envs.agents import *
 from competevo.evo_envs.multi_evo_agent_scene import MultiEvoAgentScene
 import os
 import six
-from config.config import Config
-
 
 class MultiEvoAgentEnv(MujocoEnv):
     '''
@@ -19,6 +17,7 @@ class MultiEvoAgentEnv(MujocoEnv):
     AGENT_MAP = {
         'evo_ant': (
             os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base1.xml"),
+            # os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
             EvoAnt
         ),
         'evo_ant_fighter': (
@@ -31,11 +30,12 @@ class MultiEvoAgentEnv(MujocoEnv):
 
     def __init__(
         self, 
+        cfg,
         agent_names,
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP, move_reward_weight=1.0,
         init_pos=None, ini_euler=None, rgb=None, agent_args=None,
-        max_episode_steps=500, cfg_path=None,
+        max_episode_steps=500,
         **kwargs,
     ):
         '''
@@ -55,7 +55,7 @@ class MultiEvoAgentEnv(MujocoEnv):
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = 0
 
-        self.cfg = cfg = Config(cfg_path)
+        self.cfg = cfg
         self.n_agents = len(agent_names)
         
         # create agents and corresponding robots

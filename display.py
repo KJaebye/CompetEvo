@@ -68,7 +68,7 @@ def main():
     # runner definition
     # runner = MultiEvoAgentRunner(cfg, logger, dtype, device, 
     #                              num_threads=args.num_threads, training=False)
-
+    print(cfg.enable_remove)
     if cfg.runner_type == "multi-agent-runner":
         runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
     elif cfg.runner_type == "selfplay-agent-runner":

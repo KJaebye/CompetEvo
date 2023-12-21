@@ -20,11 +20,10 @@ register(
     entry_point='competevo.evo_envs:MultiEvoAgentEnv',
     disable_env_checker=True,
     kwargs={'agent_names': ['evo_ant', 'evo_ant'],
-            'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
+            'init_pos': [(-2, 0, 0.75), (2, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],
             'max_episode_steps': 500,
-            'cfg_path': "config/run-to-goal-evoants-v0.yaml",
             },
 )
 
@@ -33,23 +32,33 @@ register(
     entry_point='competevo.evo_envs:MultiEvoAgentEnv',
     disable_env_checker=True,
     kwargs={'agent_names': ['evo_ant'],
-            'init_pos': [(-1, 0, 0.75)],
+            'init_pos': [(2, 0, 0.75)],
             'ini_euler': [(0, 0, 0)],
             'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],
             'max_episode_steps': 500,
-            'cfg_path': "config/run-to-goal-evoant-v0.yaml",
             },
 )
 
 register(
     id='run-to-goal-animals-v0',
-    entry_point='competevo.evo_envs:MultiEvoAgentEnv',
+    entry_point='competevo.evo_envs:MultiAnimalEnv',
     disable_env_checker=True,
     kwargs={'agent_names': ['ant', 'evo_ant'],
-            'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
+            'init_pos': [(-2, 0, 0.75), (2, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],
             'max_episode_steps': 500,
-            'cfg_path': "config/run-to-goal-animals-v0.yaml",
+            },
+)
+
+register(
+    id='run-to-goal-ant-evoant-v0',
+    entry_point='competevo.evo_envs:MultiAnimalEnv',
+    disable_env_checker=True,
+    kwargs={'agent_names': ['ant', 'evo_ant'],
+            'init_pos': [(-2, 0, 0.75), (2, 0, 0.75)],
+            'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],
+            'max_episode_steps': 500,
             },
 )

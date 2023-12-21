@@ -8,7 +8,6 @@ from competevo.evo_envs.agents import *
 from competevo.evo_envs.multi_evo_agent_scene import MultiEvoAgentScene
 import os
 import six
-from config.config import Config
 
 
 class MultiAnimalEnv(MujocoEnv):
@@ -22,7 +21,7 @@ class MultiAnimalEnv(MujocoEnv):
             Ant
         ),
         'evo_ant': (
-            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base1.xml"),
             EvoAnt
         ),
         'evo_ant_fighter': (
@@ -51,11 +50,12 @@ class MultiAnimalEnv(MujocoEnv):
 
     def __init__(
         self, 
+        cfg,
         agent_names,
         rundir=os.path.join(os.path.dirname(__file__), "assets"),
         world_xml_path=WORLD_XML, agent_map=AGENT_MAP, move_reward_weight=1.0,
         init_pos=None, ini_euler=None, rgb=None, agent_args=None,
-        max_episode_steps=500, cfg_path=None,
+        max_episode_steps=500,
         **kwargs,
     ):
         '''
@@ -75,7 +75,7 @@ class MultiAnimalEnv(MujocoEnv):
         self._max_episode_steps = max_episode_steps
         self._elapsed_steps = 0
 
-        self.cfg = cfg = Config(cfg_path)
+        self.cfg = cfg
         self.n_agents = len(agent_names)
         
         # create agents and corresponding robots
@@ -99,7 +99,10 @@ class MultiAnimalEnv(MujocoEnv):
         for i, name in enumerate(agent_names):
             # print("Creating agent", name)
             agent_xml_path, agent_class = agent_map[name]
-            self.agents[i] = agent_class(i, cfg, agent_xml_path, self.n_agents, **agent_args[i])
+            if hasattr(agent_class, 'evo_flag'):
+                self.agents[i] = agent_class(i, cfg, agent_xml_path, self.n_agents, **agent_args[i])
+            else:
+                self.agents[i] = agent_class(i, agent_xml_path, self.n_agents, **agent_args[i])
             all_agent_xml_paths.append(agent_xml_path)
         return all_agent_xml_paths
 
@@ -282,15 +285,22 @@ class MultiAnimalEnv(MujocoEnv):
             infos = []
             cur_xml_strs = []
             for i in range(self.n_agents):
-                skel_a = actions[i][:, -1]
-                self.agents[i].apply_skel_action(skel_a)
-                info = {'use_transform_action': True, 
-                        'stage': 'skeleton_transform',
-                        'reward_parse': 0,
-                        'reward_dense': 0,
-                        }
+                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                    skel_a = actions[i][:, -1]
+                    self.agents[i].apply_skel_action(skel_a)
+                    info = {'use_transform_action': True, 
+                            'stage': 'skeleton_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+                else:
+                    info = {'use_transform_action': True, 
+                            'stage': 'skeleton_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+                    
                 infos.append(info)
-
                 cur_xml_str = self.agents[i].cur_xml_str
                 cur_xml_strs.append(cur_xml_str)
             
@@ -313,20 +323,27 @@ class MultiAnimalEnv(MujocoEnv):
             infos = []
             cur_xml_strs = []
             for i in range(self.n_agents):
-                design_a = actions[i][:, self.agents[i].control_action_dim:-1] 
-                if self.agents[i].abs_design:
-                    design_params = design_a * self.cfg.robot_param_scale
+                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                    design_a = actions[i][:, self.agents[i].control_action_dim:-1] 
+                    if self.agents[i].abs_design:
+                        design_params = design_a * self.cfg.robot_param_scale
+                    else:
+                        design_params = self.agents[i].design_cur_params + design_a * self.cfg.robot_param_scale
+                    self.agents[i].set_design_params(design_params)
+
+                    info = {'use_transform_action': True, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
                 else:
-                    design_params = self.agents[i].design_cur_params + design_a * self.cfg.robot_param_scale
-                self.agents[i].set_design_params(design_params)
+                    info = {'use_transform_action': False, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
 
-                info = {'use_transform_action': True, 
-                        'stage': 'attribute_transform',
-                        'reward_parse': 0,
-                        'reward_dense': 0,
-                        }
                 infos.append(info)
-
                 cur_xml_str = self.agents[i].cur_xml_str
                 cur_xml_strs.append(cur_xml_str)
 
@@ -349,10 +366,14 @@ class MultiAnimalEnv(MujocoEnv):
             self.control_nsteps += 1
             flatten_actions = []
             for i in range(self.n_agents):
-                action = actions[i]
-                assert np.all(action[:, self.agents[i].control_action_dim:] == 0)
-                control_a = action[1:, :self.agents[i].control_action_dim] # rm the torso node
-                flatten_actions.append(control_a.flatten())
+                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                    action = actions[i]
+                    assert np.all(action[:, self.agents[i].control_action_dim:] == 0)
+                    control_a = action[1:, :self.agents[i].control_action_dim] # rm the torso node
+                    flatten_actions.append(control_a.flatten())
+                else:
+                    action = actions[i]
+                    flatten_actions.append(action.flatten())
             obses, rews, terminateds, truncated, infos = self._step(flatten_actions)
         if self._past_limit():
             return obses, rews, terminateds, True, infos

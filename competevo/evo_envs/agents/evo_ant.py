@@ -20,7 +20,6 @@ class EvoAnt(Ant):
         super(EvoAnt, self).__init__(agent_id, xml_path, n_agents)
         self.cfg = cfg
         self.xml_folder = os.path.dirname(xml_path)
-        self.evo_flag = True
 
         # robot xml
         self.robot = Robot(cfg.robot_cfg, xml=xml_path)
@@ -47,6 +46,10 @@ class EvoAnt(Ant):
 
         self.state_dim = self.attr_fixed_dim + self.sim_obs_dim + self.attr_design_dim
         self.action_dim = self.control_action_dim + self.attr_design_dim
+
+    @property
+    def evo_flag(self):
+        return True
 
     def set_goal(self, goal):
         self.GOAL = goal
@@ -88,7 +91,6 @@ class EvoAnt(Ant):
         forward_reward = (xposafter - self._xposbefore) / self.env.dt
         if self.move_left:
             forward_reward *= -1
-
         
         # ctrl_cost = .5 * np.square(action).sum()
         # cfrc_ext = self.get_cfrc_ext()
@@ -99,7 +101,7 @@ class EvoAnt(Ant):
         ctrl_cost = 1e-4 * np.square(action).mean()
         contact_cost = 0
 
-        survive = 0.0
+        survive = 0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
         reward_info = dict()
@@ -246,7 +248,8 @@ class EvoAnt(Ant):
 
         other_pos = self.get_other_qpos()[:2]
         if other_pos.shape == (0,):
-            other_pos = np.zeros(2) # x and y
+            # other_pos = np.zeros(2) # x and y
+            other_pos = np.random.uniform(-5, 5, 2)
 
         for i, body in enumerate(self.robot.bodies):
             qpos = self.get_qpos()

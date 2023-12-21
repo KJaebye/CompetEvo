@@ -29,7 +29,7 @@
     <geom contype="1" conaffinity="1" friction="1 .1 .1" condim="3" material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="20 20 0.125" type="plane" />
     <geom fromto="4 -5 0  4 +5 0" name="rightgoal" rgba="1 0 0 0.5" size=".03" type="cylinder" />
     <geom fromto="-4 -5 0  -4 +5 0" name="leftgoal" rgba="1 0 0 0.5" size=".03" type="cylinder" />
-  <body name="agent0/0" pos="-1 0 0.75" euler="0 0 0">
+  <body name="agent0/0" pos="2 0 0.75" euler="0 0 0">
     <geom pos="0 0 0" size="0.25" type="sphere" class="agent0" name="agent0/anon787846415" />
     <joint armature="0" damping="0" limited="false" margin="0.01" name="agent0/0_joint" pos="0 0 0" range="-30 30" type="free" />
     <body name="agent0/1" pos="0 0 0">

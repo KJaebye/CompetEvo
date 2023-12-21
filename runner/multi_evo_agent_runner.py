@@ -31,6 +31,15 @@ def tensorfy(np_list, device=torch.device('cpu')):
     else:
         return [torch.tensor(y).to(device) for y in np_list]
     
+def mix_tensorfy(np_list, device=torch.device('cpu')):
+    res = []
+    for l in np_list:
+        if isinstance(l, list):
+            res.append([torch.tensor(x).to(device) if i < 2 else x for i, x in enumerate(l)])
+        else:
+            res.append(torch.tensor(l).to(device))
+    return res
+    
 
 class MultiEvoAgentRunner(BaseRunner):
     def __init__(self, cfg, logger, dtype, device, num_threads=1, training=True, ckpt_dir=None, ckpt=0) -> None:
@@ -48,7 +57,10 @@ class MultiEvoAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            if hasattr(agent, "evo_flag") and agent.evo_flag:
+                self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            else:
+                self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
     def optimize_policy(self):
         epoch = self.epoch
@@ -207,7 +219,7 @@ class MultiEvoAgentRunner(BaseRunner):
                 ma_logger[i].start_episode(self.env)
             
             for t in range(10000):
-                state_var = tensorfy(states)
+                state_var = mix_tensorfy(states)
                 use_mean_action = mean_action or torch.bernoulli(torch.tensor([1 - self.noise_rate])).item()
                 # select actions
                 actions = []
@@ -430,7 +442,7 @@ class MultiEvoAgentRunner(BaseRunner):
                     states[i] = learner.running_state(states[i])
 
             for t in range(10000):
-                state_var = tensorfy(states)
+                state_var = mix_tensorfy(states)
                 use_mean_action = mean_action or torch.bernoulli(torch.tensor([1 - self.noise_rate])).item()
                 # select actions
                 with torch.no_grad():

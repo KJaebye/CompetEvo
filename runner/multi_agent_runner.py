@@ -71,7 +71,7 @@ class MultiAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env)
+            self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
     def optimize_policy(self):
         epoch = self.epoch

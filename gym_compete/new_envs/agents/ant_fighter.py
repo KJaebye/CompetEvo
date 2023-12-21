@@ -86,7 +86,7 @@ class AntFighter(Ant):
 
     #     return reward, done, reward_info
 
-    def _get_obs(self):
+    def _get_obs(self, stage=None):
         '''
         Return agent's observations
         '''

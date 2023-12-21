@@ -1,4 +1,4 @@
-env_name: run-to-goal-evoants-v0
+env_name: run-to-goal-ant-evoant-v0
 runner_type: multi-evo-agent-runner
 
 agent_specs:
@@ -7,6 +7,20 @@ agent_specs:
 # training parameters
 gamma: 0.995
 tau: 0.95
+
+policy_specs:
+  name: v5
+  htype: tanh
+  control_mlp:
+    hdims: [128, 128]
+    rescale_linear: true
+  control_log_std: 0
+  fix_control_std: false
+
+value_specs:
+  htype: tanh
+  mlp: [512, 256]
+
 evo_policy_specs:
   name: v5
   htype: tanh
@@ -57,15 +71,16 @@ value_lr: 3.e-4
 value_momentum: 0.0
 value_weightdecay: 0.0
 clip_epsilon: 0.2
+
 min_batch_size: 50000
-mini_batch_size: 2048
+mini_batch_size: 2000
 num_optim_epoch: 10
 max_epoch_num: 1000
 seed: 42
 save_model_interval: 1
 
 robot_param_scale: 1
-skel_transform_nsteps: 1 #5
+skel_transform_nsteps: 5
 
 done_condition:
   max_ang: 60
@@ -78,8 +93,6 @@ obs_specs:
   use_projected_params: true
   use_body_ind: true
 max_body_depth: 4
-
-enable_remove: false
 
 add_body_condition:
   max_nchild: 2
@@ -111,8 +124,8 @@ robot:
 
 use_reward_scaling: False
 use_opponent_sample: True
-delta: 1
+delta: 0.8
 
 use_exploration_curriculum: True
-termination_epoch: 1000
+termination_epoch: 150
 use_parse_reward: True

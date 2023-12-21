@@ -7,11 +7,11 @@ from custom.utils.tools import *
 from custom.models.gnn import GNNSimple
 
 class NormalValue(nn.Module):
-    def __init__(self, cfg, env):
+    def __init__(self, cfg, agent):
         super().__init__()
         self.cfg = cfg
-        self.env = env
-        self.state_dim = env.observation_space[0].shape[0]
+        self.agent = agent
+        self.state_dim = agent.observation_space.shape[0]
         self.norm = RunningNorm(self.state_dim)
         cur_dim = self.state_dim
         if 'pre_mlp' in cfg:

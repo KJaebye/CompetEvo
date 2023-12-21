@@ -48,7 +48,7 @@ class RoboAntFighter(Ant):
 
         return control_reward, alive_reward
 
-    def _get_obs(self):
+    def _get_obs(self, stage=None):
         '''
         Return agent's observations
         '''

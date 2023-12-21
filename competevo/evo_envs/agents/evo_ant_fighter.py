@@ -37,6 +37,10 @@ class EvoAntFighter(AntFighter):
         self.sim_obs_dim = self.get_sim_obs().shape[-1]
         self.attr_fixed_dim = self.get_attr_fixed().shape[-1]
 
+    @property
+    def evo_flag(self):
+        return True
+
     def allow_add_body(self, body):
         add_body_condition = self.cfg.add_body_condition
         max_nchild = add_body_condition.get('max_nchild', 3)
