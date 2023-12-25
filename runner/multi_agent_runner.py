@@ -184,7 +184,7 @@ class MultiAgentRunner(BaseRunner):
         while ma_logger[0].num_steps < min_batch_size:
             samplers = {}
             for i in range(self.agent_num):
-                samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env)
+                samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
 
             # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:

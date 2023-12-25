@@ -77,7 +77,7 @@ register(
                 "new_envs", "assets",
                 "world_body.ant_body.ant_body.xml"
             ),
-            'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
+            'init_pos': [(-2, 0, 0.75), (2, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             },
 )
