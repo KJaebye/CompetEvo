@@ -16,7 +16,8 @@ class MultiEvoAgentEnv(MujocoEnv):
     '''
     AGENT_MAP = {
         'evo_ant': (
-            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base1.xml"),
+            # os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base2.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base1.xml"), # 
             # os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
             EvoAnt
         ),

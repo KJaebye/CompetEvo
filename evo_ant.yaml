@@ -68,9 +68,9 @@ done_condition:
   max_ang: 60
 
 robot:
-  max_body_depth: 4
+  max_body_depth: 5
   add_body_condition:
-    max_nchild: 2
+    max_nchild: 5
 
   param_mapping: sin
   no_root_offset: true

@@ -14,6 +14,8 @@ from competevo.evo_envs.robot.xml_robot import Robot
 from lib.utils import get_single_body_qposaddr, get_graph_fc_edges
 from custom.utils.transformation import quaternion_matrix
 
+UNCHANGED = ["11", "12", "13", "14"]
+
 class EvoAnt(Ant):
 
     def __init__(self, agent_id, cfg, xml_path=None, n_agents=2):
@@ -122,7 +124,7 @@ class EvoAnt(Ant):
         ang = np.arccos(zdir[2])
         done_condition = self.cfg.done_condition
         min_height = done_condition.get('min_height', 0.28)
-        max_height = done_condition.get('max_height', 1.2)
+        max_height = done_condition.get('max_height', 0.8)
         max_ang = done_condition.get('max_ang', 3600)
 
         # terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height) and (abs(ang) < np.deg2rad(max_ang)))
@@ -184,9 +186,12 @@ class EvoAnt(Ant):
         add_body_condition = self.cfg.add_body_condition
         max_nchild = add_body_condition.get('max_nchild', 3)
         min_nchild = add_body_condition.get('min_nchild', 0)
+        # return body.depth >= self.cfg.min_body_depth \
+        #         and body.depth < self.cfg.max_body_depth - 1 \
+        #         and len(body.child) < max_nchild and len(body.child) >= min_nchild
         return body.depth >= self.cfg.min_body_depth \
                 and body.depth < self.cfg.max_body_depth - 1 \
-                and len(body.child) < max_nchild and len(body.child) >= min_nchild
+                and len(body.child) < max_nchild and len(body.child) >= min_nchild and body.name not in UNCHANGED
     
     def allow_remove_body(self, body):
         if body.depth >= self.cfg.min_body_depth + 1 and len(body.child) == 0:

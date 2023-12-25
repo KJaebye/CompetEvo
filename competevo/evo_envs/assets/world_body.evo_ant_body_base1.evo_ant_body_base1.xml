@@ -39,7 +39,7 @@
       <joint axis="0 0 1" name="agent0/1_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent0/11" pos="0.4 0.4 0">
         <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule" class="agent0" name="agent0/anon9019323607" />
-        <joint axis="-0.707107 0.707107 0" name="agent0/11_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="-0.707107 0.707107 0" name="agent0/11_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent0/2" pos="0 0 0">
@@ -47,7 +47,7 @@
       <joint axis="0 0 1" name="agent0/2_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent0/12" pos="-0.4 0.4 0">
         <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule" class="agent0" name="agent0/anon7395928408" />
-        <joint axis="-0.707107 -0.707107 0" name="agent0/12_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="-0.707107 -0.707107 0" name="agent0/12_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent0/3" pos="0 0 0">
@@ -55,7 +55,7 @@
       <joint axis="0 0 1" name="agent0/3_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent0/13" pos="-0.4 -0.4 0">
         <geom fromto="0 0 0 -0.4 -0.4 0" size="0.08" type="capsule" class="agent0" name="agent0/anon2652062881" />
-        <joint axis="0.707107 -0.707107 0" name="agent0/13_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="0.707107 -0.707107 0" name="agent0/13_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent0/4" pos="0 0 0">
@@ -63,11 +63,11 @@
       <joint axis="0 0 1" name="agent0/4_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent0/14" pos="0.4 -0.4 0">
         <geom fromto="0 0 0 0.4 -0.4 0" size="0.08" type="capsule" class="agent0" name="agent0/anon2253890011" />
-        <joint axis="0.707107 0.707107 0" name="agent0/14_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="0.707107 0.707107 0" name="agent0/14_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
   </body>
-  
+
 
   <body name="agent1/0" pos="2 0 0.75" euler="0 0 180">
     <geom pos="0 0 0" size="0.25" type="sphere" class="agent1" name="agent1/anon4495394816" />
@@ -77,7 +77,7 @@
       <joint axis="0 0 1" name="agent1/1_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent1/11" pos="0.4 0.4 0">
         <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon1934879561" />
-        <joint axis="-0.707107 0.707107 0" name="agent1/11_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="-0.707107 0.707107 0" name="agent1/11_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent1/2" pos="0 0 0">
@@ -85,7 +85,7 @@
       <joint axis="0 0 1" name="agent1/2_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent1/12" pos="-0.4 0.4 0">
         <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon5950318586" />
-        <joint axis="-0.707107 -0.707107 0" name="agent1/12_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="-0.707107 -0.707107 0" name="agent1/12_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent1/3" pos="0 0 0">
@@ -93,7 +93,7 @@
       <joint axis="0 0 1" name="agent1/3_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent1/13" pos="-0.4 -0.4 0">
         <geom fromto="0 0 0 -0.4 -0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon991681410" />
-        <joint axis="0.707107 -0.707107 0" name="agent1/13_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="0.707107 -0.707107 0" name="agent1/13_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
     <body name="agent1/4" pos="0 0 0">
@@ -101,11 +101,11 @@
       <joint axis="0 0 1" name="agent1/4_joint" pos="0 0 0" range="-30 30" type="hinge" />
       <body name="agent1/14" pos="0.4 -0.4 0">
         <geom fromto="0 0 0 0.4 -0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon9334530083" />
-        <joint axis="0.707107 0.707107 0" name="agent1/14_joint" pos="0 0 0" range="-60 60" type="hinge" />
+        <joint axis="0.707107 0.707107 0" name="agent1/14_joint" pos="0 0 0" range="30 70" type="hinge" />
       </body>
     </body>
   </body>
-  
+
 
   </worldbody>
 <actuator>

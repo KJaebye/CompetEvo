@@ -65,7 +65,7 @@ seed: 42
 save_model_interval: 1
 
 robot_param_scale: 1
-skel_transform_nsteps: 1 #5
+skel_transform_nsteps: 2 #5
 
 done_condition:
   max_ang: 60
@@ -77,12 +77,12 @@ obs_specs:
   clip_qvel: true
   use_projected_params: true
   use_body_ind: true
-max_body_depth: 4
+max_body_depth: 5
 
 enable_remove: false
 
 add_body_condition:
-  max_nchild: 2
+  max_nchild: 5
 
 robot:
   param_mapping: sin

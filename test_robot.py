@@ -58,20 +58,28 @@ def allow_remove_body(cfg, body):
     return False
 
 
-
 cfg_path = '/root/ws/competevo/evo_ant.yaml'
 yml = yaml.safe_load(open(cfg_path, 'r'))
 cfg = yml['robot']
-base_ant_path = '/root/ws/competevo/competevo/evo_envs/assets/evo_ant_body_base.xml'
+base_ant_path = '/root/ws/competevo/competevo/evo_envs/assets/evo_ant_body_base1.xml'
 xml_robot = Robot(cfg, base_ant_path, is_xml_str=False)
 
-skel_action = [1, 1, 1, 1, 1]
 bodies = list(xml_robot.bodies)
-for body, a in zip(bodies, skel_action):
-    if a == 1 and allow_add_body(cfg, body):
-        xml_robot.add_child_to_body(body)
-    if a == 2 and allow_remove_body(cfg, body):
-        xml_robot.remove_body(body)
+skel_action = np.ones(len(bodies))
+
+# unchanged = ["1", "2", "3", "4", "111", "112", "113", "114"]
+unchanged = ["11", "12", "13", "14"]
+print("pre:", bodies)
+for i in range(3):
+    skel_action = np.ones(len(list(xml_robot.bodies)))
+    for body, a in zip(bodies, skel_action):
+        if body.name in unchanged:
+            continue
+        if a == 1 and allow_add_body(cfg, body):
+            xml_robot.add_child_to_body(body)
+        if a == 2 and allow_remove_body(cfg, body):
+            xml_robot.remove_body(body)
+print("post:", list(xml_robot.bodies))
 
 # write a xml
 model_name = "evo_ant"
@@ -89,7 +97,7 @@ d = mujoco.MjData(m)
 with mujoco.viewer.launch_passive(m, d) as viewer:
   # Close the viewer automatically after 30 wall-seconds.
   start = time.time()
-  while viewer.is_running() and time.time() - start < 30:
+  while viewer.is_running() and time.time() - start < 300:
     step_start = time.time()
 
     # mj_step can be replaced with code that also evaluates

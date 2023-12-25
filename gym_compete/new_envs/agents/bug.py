@@ -65,7 +65,8 @@ class Bug(Agent):
         my_pos = self.get_qpos()
         other_pos = self.get_other_qpos()[:2]
         if other_pos.shape == (0,):
-            other_pos = np.zeros(2) # x and y
+            # other_pos = np.zeros(2) # x and y
+            other_pos = np.random.uniform(-5, 5, 2)
         
         my_vel = self.get_qvel()
 
