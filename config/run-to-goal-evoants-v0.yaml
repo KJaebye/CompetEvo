@@ -111,8 +111,8 @@ robot:
 
 use_reward_scaling: False
 use_opponent_sample: True
-delta: 1
+delta: 0.5
 
 use_exploration_curriculum: True
-termination_epoch: 1000
+termination_epoch: 50
 use_parse_reward: True

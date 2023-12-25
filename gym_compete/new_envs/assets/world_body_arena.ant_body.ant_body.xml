@@ -4,12 +4,17 @@
   <default>
     <joint armature="1" damping="1" limited="true" />
   <default class="agent0"><joint armature="1" damping="1" limited="true" />
-    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.5 0.25 0.25 1" />
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.5 0.25 0.25 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-.4 .4" />
 </default><default class="agent1"><joint armature="1" damping="1" limited="true" />
-    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.25 0.5 0.5 1" />
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.25 0.5 0.5 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-.4 .4" />
 </default></default>
+  <visual>
+    <headlight ambient=".1 .1 .1" diffuse=".6 .6 .6" specular="0.3 0.3 0.3" />
+    <map znear=".01" />
+    <quality shadowsize="16384" />
+  </visual>
   <asset>
     <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100" />
     <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127" />
