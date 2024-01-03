@@ -505,8 +505,11 @@ class MultiEvoAgentRunner(BaseRunner):
                 save('%s/%s/best.p' % (self.model_dir, "agent_"+str(i)), i)
     
     def display(self, num_episode=3, mean_action=True):
+        # total score record: [agent_0_win_times, agent_1_win_times, games_num]
         total_score = [0 for _ in self.learners]
+        total_score.append(0)
         total_reward = []
+        
         for _ in range(num_episode):
             episode_reward = [0 for _ in self.learners]
             states, info = self.env.reset()
@@ -557,6 +560,7 @@ class MultiEvoAgentRunner(BaseRunner):
                     masks = [0 for _ in self.learners]
                 
                 if terminateds[0] or truncated:
+                    total_score[-1] += 1
                     break
                 states = next_states
             
@@ -569,4 +573,7 @@ class MultiEvoAgentRunner(BaseRunner):
 
         self.logger.info("Agent_0 gets averaged episode reward: {:.2f}".format(average(list(zip(*total_reward))[0])))
         self.logger.info("Agent_1 gets averaged episode reward: {:.2f}".format(average(list(zip(*total_reward))[1])))
+
+        self.logger.info("Agent_0 gets win rate over {} rounds: {:.2f}".format(num_episode, total_score[0]/total_score[-1]))
+        self.logger.info("Agent_1 gets win rate over {} rounds: {:.2f}".format(num_episode, total_score[1]/total_score[-1]))
         

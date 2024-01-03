@@ -57,7 +57,7 @@ register(
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             # 'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],
             'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
-            'max_episode_steps': 1000,
+            'max_episode_steps': 500,
             'min_radius': 2.5,
             'max_radius': 4.5,
             },

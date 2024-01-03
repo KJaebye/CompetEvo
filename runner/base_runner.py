@@ -74,7 +74,8 @@ class BaseRunner:
             self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
             # self.env = gym.make(env_name, cfg=self.cfg)
         else:
-            self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
+            # self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
+            self.env = gym.make(env_name, cfg=self.cfg)
 
     def setup_writer(self):
         self.writer = SummaryWriter(log_dir=self.tb_dir) if self.training else None
