@@ -65,7 +65,7 @@ seed: 42
 save_model_interval: 1
 
 robot_param_scale: 1
-skel_transform_nsteps: 2 #5
+skel_transform_nsteps: 1 #5
 
 done_condition:
   max_ang: 60
@@ -114,5 +114,5 @@ use_opponent_sample: True
 delta: 0.5
 
 use_exploration_curriculum: True
-termination_epoch: 50
+termination_epoch: 1000
 use_parse_reward: True

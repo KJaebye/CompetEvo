@@ -52,6 +52,12 @@ class Config:
         self.evo_policy_specs = cfg.get('evo_policy_specs', dict())
         self.evo_value_specs = cfg.get('evo_value_specs', dict())
 
+        self.dev_policy_specs = cfg.get('dev_policy_specs', dict())
+        self.dev_value_specs = cfg.get('dev_value_specs', dict())
+
+        self.use_entire_obs = cfg.get('use_entire_obs', False)
+        self.l2_reg = cfg.get("l2_reg", 1.e-3)
+
         # anneal parameters
         self.scheduled_params = cfg.get('scheduled_params', dict())
 

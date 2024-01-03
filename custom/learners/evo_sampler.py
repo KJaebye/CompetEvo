@@ -5,12 +5,6 @@ from lib.utils.tools import *
 from lib.rl.core import estimate_advantages
 import math
 
-def tensorfy(np_list, device=torch.device('cpu')):
-    if isinstance(np_list[0], list):
-        return [[torch.tensor(x).to(device) if i < 2 else x for i, x in enumerate(y)] for y in np_list]
-    else:
-        return [torch.tensor(y).to(device) for y in np_list]
-
 class EvoSampler:
     def __init__(self, cfg, dtype, device, agent, is_shadow=False) -> None:
         self.cfg = cfg
@@ -18,7 +12,7 @@ class EvoSampler:
         self.dtype = dtype
         self.agent = agent
 
-        self.evo_flag = True
+        self.flag = "evo"
         self.is_shadow = is_shadow
 
         self.setup_policy()

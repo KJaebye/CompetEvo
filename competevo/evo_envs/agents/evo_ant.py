@@ -50,8 +50,8 @@ class EvoAnt(Ant):
         self.action_dim = self.control_action_dim + self.attr_design_dim
 
     @property
-    def evo_flag(self):
-        return True
+    def flag(self):
+        return "evo"
 
     def set_goal(self, goal):
         self.GOAL = goal
@@ -124,7 +124,7 @@ class EvoAnt(Ant):
         ang = np.arccos(zdir[2])
         done_condition = self.cfg.done_condition
         min_height = done_condition.get('min_height', 0.28)
-        max_height = done_condition.get('max_height', 0.8)
+        max_height = done_condition.get('max_height', 10) #0.8
         max_ang = done_condition.get('max_ang', 3600)
 
         # terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height) and (abs(ang) < np.deg2rad(max_ang)))
@@ -217,6 +217,8 @@ class EvoAnt(Ant):
     def set_design_params(self, in_design_params):
         design_params = in_design_params
         for params, body in zip(design_params, self.robot.bodies):
+            if body.name in UNCHANGED:
+                continue
             body.set_params(params, pad_zeros=True, map_params=True)
             body.sync_node()
 

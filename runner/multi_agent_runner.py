@@ -244,7 +244,6 @@ class MultiAgentRunner(BaseRunner):
                     use_mean_action = use_mean_action or mean_action
 
                     actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
-                
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
                 
                 # normalize states

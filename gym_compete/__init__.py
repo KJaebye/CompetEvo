@@ -13,6 +13,7 @@ register(
                 "new_envs", "assets",
                 "world_body.bug_body.bug_body.xml"
             ),
+            'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             },
@@ -62,6 +63,7 @@ register(
                 "new_envs", "assets",
                 "world_body.spider_body.spider_body.xml"
             ),
+            'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             },
@@ -77,7 +79,8 @@ register(
                 "new_envs", "assets",
                 "world_body.ant_body.ant_body.xml"
             ),
-            'init_pos': [(-2, 0, 0.75), (2, 0, 0.75)],
+            'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
+            'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             },
 )

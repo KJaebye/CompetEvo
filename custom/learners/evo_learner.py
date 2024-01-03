@@ -17,7 +17,7 @@ class EvoLearner:
         self.device = device
         self.dtype = dtype
         self.agent = agent
-        self.evo_flag = True
+        self.flag = "evo"
         
         self.loss_iter = 0
         self.is_shadow = is_shadow

@@ -5,9 +5,9 @@
   
   <default>
     <joint armature="1" damping="1" limited="true" />
-  <default class="agent0"><geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.5 0.25 0.25 1" material="geom" />
+  <default class="agent0"><geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-1. 1." />
-  </default><default class="agent1"><geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.25 0.5 0.5 1" material="geom" />
+  </default><default class="agent1"><geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-1. 1." />
   </default></default>
   <visual>

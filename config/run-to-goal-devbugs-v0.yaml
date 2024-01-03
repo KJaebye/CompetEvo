@@ -1,0 +1,52 @@
+env_name: run-to-goal-devbugs-v0
+runner_type: multi-evo-agent-runner
+
+agent_specs:
+  batch_design: true
+
+# training parameters
+gamma: 0.995
+tau: 0.95
+
+dev_policy_specs:
+  scale_htype: tanh
+  scale_mlp: [64, 64]
+  scale_log_std: 0
+  scale_fix_control_std: False
+  control_htype: tanh
+  control_mlp: [64, 128, 64]
+  control_log_std: 0
+  control_fix_control_std: False
+
+policy_optimizer: 'Adam'
+policy_lr: 5.e-5
+policy_momentum: 0.0
+policy_weightdecay: 0.0
+
+dev_value_specs:
+  htype: tanh
+  mlp: [64, 64, 64]
+
+value_optimizer: 'Adam'
+value_lr: 3.e-4
+value_momentum: 0.0
+value_weightdecay: 0.0
+
+l2_reg: 1.e-3
+clip_epsilon: 0.2
+min_batch_size: 50000
+mini_batch_size: 2048
+num_optim_epoch: 10
+max_epoch_num: 1000
+seed: 42
+save_model_interval: 1
+
+use_entire_obs: False
+
+use_reward_scaling: False
+use_opponent_sample: True
+delta: 0.5
+
+use_exploration_curriculum: True
+termination_epoch: 1000
+use_parse_reward: True

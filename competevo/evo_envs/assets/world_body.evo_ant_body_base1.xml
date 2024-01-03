@@ -20,8 +20,8 @@
     <texture builtin="flat" height="1278" mark="cross" markrgb="0 0 0" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="1 1 1" type="cube" width="127" />
     <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100" />
     <material name="geom" texture="texgeom" texuniform="true" />
-    <texture name="MatPlane" type="2d" builtin="checker" rgb1=".4 .4 .4" rgb2=".4 .4 .4" width="300" height="300" mark="edge" markrgb="0.1 0.1 0.1" />
-    <material name="MatPlane" texture="MatPlane" texrepeat="2 2" texuniform="true" reflectance=".2" />
+    <texture name="MatPlane" type="2d" builtin="checker" rgb1="1 1 1" rgb2="1 1 1" width="300" height="300" mark="edge" markrgb="0.1 0.1 0.1" />
+    <material name="MatPlane" texture="MatPlane" texrepeat="2 2" texuniform="true" reflectance="0" />
   </asset>
 
   <worldbody>

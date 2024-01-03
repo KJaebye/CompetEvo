@@ -6,10 +6,10 @@
   <default>
     <joint armature="1" damping="1" limited="true" />
   <default class="agent0"><joint armature="1" damping="1" limited="true" />
-    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.5 0.25 0.25 1" material="geom" />
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-.4 .4" />
 </default><default class="agent1"><joint armature="1" damping="1" limited="true" />
-    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.25 0.5 0.5 1" material="geom" />
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" />
     <motor ctrllimited="true" ctrlrange="-.4 .4" />
 </default></default>
   <visual>
@@ -31,7 +31,7 @@
     <geom contype="1" conaffinity="1" friction="1 .1 .1" condim="3" material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="20 20 0.125" type="plane" />
     <geom fromto="4 -5 0  4 +5 0" name="rightgoal" rgba="0.6 0.0 0.0 1" size=".03" type="cylinder" />
     <geom fromto="-4 -5 0  -4 +5 0" name="leftgoal" rgba="0.6 0.0 0.0 1" size=".03" type="cylinder" />
-  <body name="agent0/torso" pos="-2 0 0.75" euler="0 0 0">
+  <body name="agent0/torso" pos="-1 0 0.75" euler="0 0 0">
   <geom name="agent0/torso_geom" pos="0 0 0" size="0.25" type="sphere" class="agent0" />
   <joint armature="0" damping="0" limited="false" margin="0.01" name="agent0/root" pos="0 0 0" range="-30 30" type="free" />
   <body name="agent0/front_left_leg" pos="0 0 0">
@@ -80,7 +80,7 @@
   </body>
 </body>
 
-<body name="agent1/torso" pos="2 0 0.75" euler="0 0 180">
+<body name="agent1/torso" pos="1 0 0.75" euler="0 0 180">
   <geom name="agent1/torso_geom" pos="0 0 0" size="0.25" type="sphere" class="agent1" />
   <joint armature="0" damping="0" limited="false" margin="0.01" name="agent1/root" pos="0 0 0" range="-30 30" type="free" />
   <body name="agent1/front_left_leg" pos="0 0 0">

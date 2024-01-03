@@ -22,15 +22,17 @@ def main():
     # Load config options from terminal and predefined yaml file
     # ----------------------------------------------------------------------------#
     parser = argparse.ArgumentParser(description="User's arguments from terminal.")
-    parser.add_argument("--run_dir", 
-                        dest="run_dir", 
-                        help="run directory", 
+    parser.add_argument("--cfg", 
+                        dest="cfg", 
+                        help="run directory and cfg", 
                         required=True, 
                         type=str)
+    parser.add_argument('--ckpt_dir', type=str, default=None)
     parser.add_argument('--ckpt', type=str, default='best')
     args = parser.parse_args()
     # Load config file
-    cfg_file = args.run_dir + "config.yml"
+    args.run_dir = os.path.split(args.cfg)[0] + '/'
+    cfg_file = args.cfg
     cfg = Config(cfg_file)
 
     # ----------------------------------------------------------------------------#
@@ -70,11 +72,11 @@ def main():
     #                              num_threads=args.num_threads, training=False)
     print(cfg.enable_remove)
     if cfg.runner_type == "multi-agent-runner":
-        runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
+        runner = MultiAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     elif cfg.runner_type == "selfplay-agent-runner":
-        runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
+        runner = SPAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     elif cfg.runner_type == "multi-evo-agent-runner":
-        runner = MultiEvoAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=None, ckpt=ckpt)
+        runner = MultiEvoAgentRunner(cfg, logger, dtype, device, training=False, ckpt_dir=args.ckpt_dir, ckpt=ckpt)
     
     runner.display(num_episode=50, mean_action=True)
 

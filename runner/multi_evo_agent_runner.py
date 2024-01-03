@@ -3,11 +3,14 @@ from custom.learners.learner import Learner
 from custom.learners.sampler import Sampler
 from custom.learners.evo_sampler import EvoSampler
 from custom.learners.evo_learner import EvoLearner
+from custom.learners.dev_learner import DevLearner
+from custom.learners.dev_sampler import DevSampler
 from custom.utils.logger import MaLoggerRL
 from lib.rl.core.trajbatch import MaTrajBatch, MaTrajBatchDisc
 from lib.utils.torch import *
 from lib.utils.memory import Memory
 
+import csv
 import time
 import math
 import os
@@ -24,10 +27,16 @@ from operator import add
 from functools import reduce
 import collections
 
+import random
+
+def write_csv_data(csv_file_path, data: list):
+    with open(csv_file_path, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
 
 def tensorfy(np_list, device=torch.device('cpu')):
     if isinstance(np_list[0], list):
-        return [[torch.tensor(x).to(device) if i < 2 else x for i, x in enumerate(y)] for y in np_list]
+        return [[torch.tensor(x).to(device) for i, x in enumerate(y)] for y in np_list]
     else:
         return [torch.tensor(y).to(device) for y in np_list]
     
@@ -35,7 +44,7 @@ def mix_tensorfy(np_list, device=torch.device('cpu')):
     res = []
     for l in np_list:
         if isinstance(l, list):
-            res.append([torch.tensor(x).to(device) if i < 2 else x for i, x in enumerate(l)])
+            res.append([torch.tensor(x).to(device) for i, x in enumerate(l)])
         else:
             res.append(torch.tensor(l).to(device))
     return res
@@ -57,8 +66,10 @@ class MultiEvoAgentRunner(BaseRunner):
         """ Learners are corresponding to agents. """
         self.learners = {}
         for i, agent in self.env.agents.items():
-            if hasattr(agent, "evo_flag") and agent.evo_flag:
+            if hasattr(agent, "flag") and agent.flag == "evo":
                 self.learners[i] = EvoLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
+            elif hasattr(agent, "flag") and agent.flag == "dev":
+                self.learners[i] = DevLearner(self.cfg, self.dtype, self.device, self.env.agents[i])
             else:
                 self.learners[i] = Learner(self.cfg, self.dtype, self.device, self.env.agents[i])
 
@@ -155,6 +166,7 @@ class MultiEvoAgentRunner(BaseRunner):
 
     def sample_worker(self, pid, queue, min_batch_size, mean_action, render, randomstate, idx=None):
         self.seed_worker(pid)
+        design_params = {0: [], 1: []}
         
         # define multi-agent logger
         ma_logger = self.logger_cls(self.agent_num, **self.logger_kwargs).loggers
@@ -169,8 +181,10 @@ class MultiEvoAgentRunner(BaseRunner):
             # sample random opponent old policies before every rollout
             samplers = {}
             for i in range(self.agent_num):
-                if hasattr(self.env.agents[i], 'evo_flag') and self.env.agents[i].evo_flag:
+                if hasattr(self.env.agents[i], 'flag') and self.env.agents[i].flag == "evo":
                     samplers[i] = EvoSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
+                elif hasattr(self.env.agents[i], "flag") and self.env.agents[i].flag == "dev":
+                    samplers[i] = DevSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
                 else:
                     samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
 
@@ -225,7 +239,9 @@ class MultiEvoAgentRunner(BaseRunner):
                 actions = []
                 
                 for i, sampler in samplers.items():
-                    if hasattr(sampler, 'evo_flag') and sampler.evo_flag:
+                    if hasattr(sampler, 'flag') and self.env.agents[i].flag == "evo":
+                        actions.append(sampler.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                    elif hasattr(sampler, 'flag') and self.env.agents[i].flag == "dev":
                         actions.append(sampler.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
                     else:
                         actions.append(sampler.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
@@ -236,6 +252,11 @@ class MultiEvoAgentRunner(BaseRunner):
                 for i, sampler in samplers.items():
                     if sampler.running_state is not None:
                         next_states[i] = sampler.running_state(next_states[i])
+
+                if not mean_action and "design_params" in infos[0]:
+                    for i, info in enumerate(infos):
+                        d = info["design_params"]
+                        design_params[i].append(d)
 
                 # use custom or env reward
                 if self.cfg.use_exploration_curriculum:
@@ -283,9 +304,9 @@ class MultiEvoAgentRunner(BaseRunner):
         for logger in ma_logger: logger.end_sampling()
         
         if queue is not None:
-            queue.put([pid, ma_memory, ma_logger, total_score])
+            queue.put([pid, ma_memory, ma_logger, total_score, design_params])
         else:
-            return ma_memory, ma_logger, total_score
+            return ma_memory, ma_logger, total_score, design_params
 
     def sample(self, min_batch_size, mean_action=False, render=False, nthreads=None):
         if nthreads is None:
@@ -304,17 +325,43 @@ class MultiEvoAgentRunner(BaseRunner):
                     memories = [None] * nthreads
                     loggers = [None] * nthreads
                     total_scores = [None] * nthreads
+                    design_params = [None] * nthreads
+
                     for i in range(nthreads-1):
                         worker_args = (i+1, queue, thread_batch_size, mean_action, render, np.random.RandomState())
                         worker = multiprocessing.Process(target=self.sample_worker, args=worker_args)
                         worker.start()
-                    memories[0], loggers[0], total_scores[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
+                    memories[0], loggers[0], total_scores[0], design_params[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState())
 
                     for i in range(nthreads - 1):
-                        pid, worker_memory, worker_logger, total_score = queue.get()
+                        pid, worker_memory, worker_logger, total_score, design_param = queue.get()
                         memories[pid] = worker_memory
                         loggers[pid] = worker_logger
                         total_scores[pid] = total_score
+                        design_params[pid] = design_param
+
+                    ## design params
+                    design_params0 = []
+                    design_params1 = []
+                    for i in range(nthreads):
+                        for l in design_params[i][0]:
+                            design_params0.append(l)
+                        for l in design_params[i][1]:
+                            design_params1.append(l)
+
+                    if len(design_params0) > 10:
+                        design_params0 = random.sample(design_params0, 10)
+                    if len(design_params1) > 10:
+                        design_params1 = random.sample(design_params1, 10)
+
+                    for d in design_params0:
+                        file_path = self.run_dir + '/' + '0.csv'
+                        d = [self.epoch] + list(d)
+                        write_csv_data(file_path, d)
+                    for d in design_params1:
+                        file_path = self.run_dir + '/' + '1.csv'
+                        d = [self.epoch] + list(d)
+                        write_csv_data(file_path, d)
 
                     # merge batch data and log data from multiprocessings
                     ma_buffer = self.traj_cls(memories).buffers
@@ -344,6 +391,9 @@ class MultiEvoAgentRunner(BaseRunner):
                     loggers_1 = [None] * nthreads
                     total_scores_1 = [None] * nthreads
 
+                    design_params_0 = [None] * nthreads
+                    design_params_1 = [None] * nthreads
+
                     for i in range(nthreads-1):
                         worker_args_0 = (i+1, queue_0, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
                         worker_0 = multiprocessing.Process(target=self.sample_worker, args=worker_args_0)
@@ -351,20 +401,44 @@ class MultiEvoAgentRunner(BaseRunner):
                         worker_args_1 = (i+1, queue_1, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
                         worker_1 = multiprocessing.Process(target=self.sample_worker, args=worker_args_1)
                         worker_1.start()
-                    memories_0[0], loggers_0[0], total_scores_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
-                    memories_1[0], loggers_1[0], total_scores_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
+                    memories_0[0], loggers_0[0], total_scores_0[0], design_params_0[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 0)
+                    memories_1[0], loggers_1[0], total_scores_1[0], design_params_1[0] = self.sample_worker(0, None, thread_batch_size, mean_action, render, np.random.RandomState(), 1)
 
                     for i in range(nthreads - 1):
-                        pid_0, worker_memory_0, worker_logger_0, total_score_0 = queue_0.get()
+                        pid_0, worker_memory_0, worker_logger_0, total_score_0, design_param_0 = queue_0.get()
                         memories_0[pid_0] = worker_memory_0
                         loggers_0[pid_0] = worker_logger_0
                         total_scores_0[pid_0] = total_score_0
+                        design_params_0[pid_0] = design_param_0
 
-                        pid_1, worker_memory_1, worker_logger_1, total_score_1 = queue_1.get()
+                        pid_1, worker_memory_1, worker_logger_1, total_score_1, design_param_1 = queue_1.get()
                         memories_1[pid_1] = worker_memory_1
                         loggers_1[pid_1] = worker_logger_1
                         total_scores_1[pid_1] = total_score_1
+                        design_params_1[pid_1] = design_param_1
                     
+                    design_params0 = []
+                    design_params1 = []
+                    for i in range(nthreads):
+                        for l in design_params_0[i][0]:
+                            design_params0.append(l)
+                        for l in design_params_1[i][1]:
+                            design_params1.append(l)
+
+                    if len(design_params0) > 10:
+                        design_params0 = random.sample(design_params0, 10)
+                    if len(design_params1) > 10:
+                        design_params1 = random.sample(design_params1, 10)
+
+                    for d in design_params0:
+                        file_path = self.run_dir + '/' + '0.csv'
+                        d = [self.epoch] + list(d)
+                        write_csv_data(file_path, d)
+                    for d in design_params1:
+                        file_path = self.run_dir + '/' + '1.csv'
+                        d = [self.epoch] + list(d)
+                        write_csv_data(file_path, d)
+
                     # merge batch data and log data from multiprocessings
                     ma_buffer_0 = self.traj_cls(memories_0).buffers
                     ma_logger_0 = self.logger_cls.merge(loggers_0, **self.logger_kwargs)
@@ -448,14 +522,19 @@ class MultiEvoAgentRunner(BaseRunner):
                 with torch.no_grad():
                     actions = []
                     for i, learner in self.learners.items():
-                        actions.append(learner.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                        if hasattr(learner, 'flag') and self.env.agents[i].flag == "evo":
+                            actions.append(learner.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                        elif hasattr(learner, 'flag') and self.env.agents[i].flag == "dev":
+                            actions.append(learner.policy_net.select_action([state_var[i]], use_mean_action).squeeze().numpy().astype(np.float64))
+                        else:
+                            actions.append(learner.policy_net.select_action(state_var[i], use_mean_action).squeeze().numpy().astype(np.float64))
                 next_states, env_rewards, terminateds, truncated, infos = self.env.step(actions)
 
                 # normalize states
                 for i, learner in self.learners.items():
                     if learner.running_state is not None:
                         next_states[i] = learner.running_state(next_states[i])
-                
+
                 # use custom or env reward
                 if self.cfg.use_exploration_curriculum:
                     assert hasattr(self, 'custom_reward')
@@ -482,7 +561,7 @@ class MultiEvoAgentRunner(BaseRunner):
                 states = next_states
             
             total_reward.append(episode_reward)
-        
+
         def average(list):
             total = sum(list)
             length = len(list)

@@ -71,8 +71,8 @@ class BaseRunner:
 
     def setup_env(self, env_name):
         if self.training:
-            # self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
-            self.env = gym.make(env_name, cfg=self.cfg)
+            self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
+            # self.env = gym.make(env_name, cfg=self.cfg)
         else:
             self.env = gym.make(env_name, cfg=self.cfg, render_mode="human")
 

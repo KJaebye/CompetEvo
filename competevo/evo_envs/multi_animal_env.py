@@ -20,13 +20,13 @@ class MultiAnimalEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
             Ant
         ),
+        'dev_ant': (
+            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base2.xml"),
+            DevAnt
+        ),
         'evo_ant': (
             os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base1.xml"),
             EvoAnt
-        ),
-        'evo_ant_fighter': (
-            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
-            EvoAntFighter
         ),
         'ant_fighter': (
             os.path.join(os.path.dirname(__file__), "assets", "ant_body.xml"),
@@ -40,9 +40,25 @@ class MultiAnimalEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
             Bug
         ),
+        'dev_bug':(
+            os.path.join(os.path.dirname(__file__), "assets", "dev_bug_body.xml"),
+            DevBug
+        ),
+        'dev_bug_fighter':(
+            os.path.join(os.path.dirname(__file__), "assets", "dev_bug_body.xml"),
+            DevBugFighter
+        ),
         'spider': (
             os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
             Spider
+        ),
+        'dev_spider':(
+            os.path.join(os.path.dirname(__file__), "assets", "dev_spider_body.xml"),
+            DevSpider
+        ),
+        'dev_spider_fighter':(
+            os.path.join(os.path.dirname(__file__), "assets", "dev_spider_body.xml"),
+            DevSpiderFighter
         ),
     }
     WORLD_XML = os.path.join(os.path.dirname(__file__), "assets", "world_body.xml")
@@ -99,7 +115,7 @@ class MultiAnimalEnv(MujocoEnv):
         for i, name in enumerate(agent_names):
             # print("Creating agent", name)
             agent_xml_path, agent_class = agent_map[name]
-            if hasattr(agent_class, 'evo_flag'):
+            if hasattr(agent_class, 'flag'):
                 self.agents[i] = agent_class(i, cfg, agent_xml_path, self.n_agents, **agent_args[i])
             else:
                 self.agents[i] = agent_class(i, agent_xml_path, self.n_agents, **agent_args[i])
@@ -285,7 +301,7 @@ class MultiAnimalEnv(MujocoEnv):
             infos = []
             cur_xml_strs = []
             for i in range(self.n_agents):
-                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == "evo":
                     skel_a = actions[i][:, -1]
                     self.agents[i].apply_skel_action(skel_a)
                     info = {'use_transform_action': True, 
@@ -323,7 +339,7 @@ class MultiAnimalEnv(MujocoEnv):
             infos = []
             cur_xml_strs = []
             for i in range(self.n_agents):
-                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == "evo":
                     design_a = actions[i][:, self.agents[i].control_action_dim:-1] 
                     if self.agents[i].abs_design:
                         design_params = design_a * self.cfg.robot_param_scale
@@ -335,6 +351,16 @@ class MultiAnimalEnv(MujocoEnv):
                             'stage': 'attribute_transform',
                             'reward_parse': 0,
                             'reward_dense': 0,
+                            }
+                elif hasattr(self.agents[i], 'flag') and self.agents[i].flag == "dev":
+                    design_params = actions[i]
+                    self.agents[i].set_design_params(design_params)
+
+                    info = {'use_transform_action': True, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            'design_params': design_params[:self.agents[i].scale_state_dim],
                             }
                 else:
                     info = {'use_transform_action': False, 
@@ -366,11 +392,14 @@ class MultiAnimalEnv(MujocoEnv):
             self.control_nsteps += 1
             flatten_actions = []
             for i in range(self.n_agents):
-                if hasattr(self.agents[i], 'evo_flag') and self.agents[i].evo_flag:
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == 'evo':
                     action = actions[i]
                     assert np.all(action[:, self.agents[i].control_action_dim:] == 0)
                     control_a = action[1:, :self.agents[i].control_action_dim] # rm the torso node
                     flatten_actions.append(control_a.flatten())
+                elif hasattr(self.agents[i], 'flag') and self.agents[i].flag == 'dev':
+                    action = actions[i][-self.agents[i].sim_action_dim:]
+                    flatten_actions.append(action.flatten())
                 else:
                     action = actions[i]
                     flatten_actions.append(action.flatten())

@@ -63,9 +63,9 @@ class BugFighter(Bug):
         
         # Observe opponents
         other_qpos = self.get_other_qpos()
-        if other_pos.shape == (0,):
-            # other_pos = np.zeros(2) # x and y
-            other_pos = np.random.uniform(-5, 5, 2)
+        if other_qpos.shape == (0,):
+            # other_qpos = np.zeros(2) # x and y
+            other_qpos = np.random.uniform(-5, 5, 2)
 
         obs.extend([
             other_qpos.flat,    # opponent torso position
