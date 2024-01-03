@@ -299,6 +299,8 @@ class DevAntFighter(RoboAntFighter):
         Return agent's observations
         '''
         # update stage tag from env
+        if stage not in ['attribute_transform', 'execution']:
+            stage = 'attribute_transform'
         self.stage = stage
 
         # Observe self
