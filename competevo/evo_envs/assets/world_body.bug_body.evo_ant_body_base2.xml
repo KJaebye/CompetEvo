@@ -7,9 +7,8 @@
     <joint armature="1" damping="1" limited="true" />
   <default class="agent0"><geom conaffinity="0" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" contype="1" />
     <motor ctrllimited="true" ctrlrange="-1. 1." />
-  </default><default class="agent1"><geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" contype="0" />
-    <motor ctrllimited="true" ctrlrange="-1. 1." />
-    <joint armature="1" damping="1" limited="true" />
+  </default><default class="agent1"><joint armature="1" damping="1" limited="true" />
+    <geom conaffinity="1" condim="3" density="5.0" friction="1 0.5 0.5" margin="0.01" rgba="0.98 0.87 0.67 1" material="geom" contype="0" />
   </default></default>
 
   <visual>
@@ -109,82 +108,55 @@
     </body>
   </body>
   <body name="agent1/0" pos="1 0 0.75" euler="0 0 180">
-      <geom pos="0 0 0" size="0.25" type="sphere" class="agent1" name="agent1/anon2628276620" />
-      <joint armature="0" damping="0" limited="false" margin="0.01" name="agent1/0_joint" pos="0 0 0" type="free" />
-      
-      <body name="agent1/1" pos="0 0 0">
-        <geom fromto="0 0 0 0.18 0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon1425423435" />
-        <body name="agent1/11" pos="0.18 0.215 0">
-          <joint axis="0 0 1" name="agent1/11_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 0.18 0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon2403671434" />
-          <body name="agent1/111" pos="0.18 0.215 0">
-            <joint axis="-1 1 0" name="agent1/111_joint" pos="0 0 0" range="30 70" type="hinge" />
-            <geom fromto="0 0 0 0.324 0.387 0" size="0.08" type="capsule" class="agent1" name="agent1/anon1766015607" />
-          </body>
+    <geom pos="0 0 0" size="0.25" type="sphere" class="agent1" name="agent1/anon4495394816" />
+    <joint armature="0" damping="0" limited="false" margin="0.01" name="agent1/0_joint" pos="0 0 0" range="-30 30" type="free" />
+    <body name="agent1/1" pos="0 0 0">
+      <geom fromto="0 0 0 0.2 0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon4684118974" />
+      <body name="agent1/11" pos="0.2 0.2 0">
+        <joint axis="0 0 1" name="agent1/11_joint" pos="0 0 0" range="-30 30" type="hinge" />
+        <geom fromto="0.0 0.0 0.0 0.2 0.2 0.0" size="0.08" type="capsule" class="agent1" name="agent1/anon1934879561" />
+        <body name="agent1/111" pos="0.2 0.2 0">
+          <geom fromto="0 0 0 0.4 0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon8646907154" />
+          <joint axis="-0.707107 0.707107 0" name="agent1/111_joint" pos="0 0 0" range="30 70" type="hinge" />
         </body>
       </body>
-      
-      <body name="agent1/2" pos="0 0 0">
-        <geom fromto="0 0 0 -0.18 0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon7437743573" />
-        <body name="agent1/12" pos="-0.18 0.215 0">
-          <joint axis="0 0 1" name="agent1/12_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 -0.18 0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon9186000737" />
-          <body name="agent1/112" pos="-0.18 0.215 0">
-            <joint axis="1 1 0" name="agent1/112_joint" pos="0 0 0" range="-70 -30" type="hinge" />
-            <geom fromto="0 0 0 -0.324 0.387 0" size="0.08" type="capsule" class="agent1" name="agent1/anon3293724717" />
-          </body>
-        </body>
-      </body>
-      
-      <body name="agent1/3" pos="0 0 0">
-        <geom fromto="0 0 0 -0.2 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon7868336133" />
-        <body name="agent1/13" pos="-0.2 0 0">
-          <joint axis="0 0 1" name="agent1/13_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 -0.275 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon2566596403" />
-          <body name="agent1/113" pos="-0.275 0 0">
-            <joint axis="0 1 0" name="agent1/113_joint" pos="0 0 0" range="-70 -30" type="hinge" />
-            <geom fromto="0 0 0 -0.55 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon3746897079" />
-          </body>
-        </body>
-      </body>
-      
-      <body name="agent1/4" pos="0 0 0">
-        <geom fromto="0 0 0 0.2 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon3761293968" />
-        <body name="agent1/14" pos="0.2 0 0">
-          <joint axis="0 0 1" name="agent1/14_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 0.275 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon5566572679" />
-          <body name="agent1/114" pos="0.275 0 0">
-            <joint axis="0 1 0" name="agent1/114_joint" pos="0 0 0" range="30 70" type="hinge" />
-            <geom fromto="0 0 0 0.55 0 0" size="0.08" type="capsule" class="agent1" name="agent1/anon9153825366" />
-          </body>
-        </body>
-      </body>
-      
-      <body name="agent1/5" pos="0 0 0">
-        <geom fromto="0 0 0 -0.18 -0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon2557393629" />
-        <body name="agent1/15" pos="-0.18 -0.215 0">
-          <joint axis="0 0 1" name="agent1/15_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 -0.18 -0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon1874124863" />
-          <body name="agent1/115" pos="-0.18 -0.215 0">
-            <joint axis="-1 1 0" name="agent1/115_joint" pos="0 0 0" range="-70 -30" type="hinge" />
-            <geom fromto="0 0 0 -0.324 -0.387 0" size="0.08" type="capsule" class="agent1" name="agent1/anon6816675408" />
-          </body>
-        </body>
-      </body>
-      
-      <body name="agent1/6" pos="0 0 0">
-        <geom fromto="0 0 0 0.18 -0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon641974505" />
-        <body name="agent1/16" pos="0.18 -0.215 0">
-          <joint axis="0 0 1" name="agent1/16_joint" pos="0 0 0" range="-30 30" type="hinge" />
-          <geom fromto="0 0 0 0.18 -0.215 0" size="0.08" type="capsule" class="agent1" name="agent1/anon9325398766" />
-          <body name="agent1/116" pos="0.18 -0.215 0">
-            <joint axis="1 1 0" name="agent1/116_joint" pos="0 0 0" range="30 70" type="hinge" />
-            <geom fromto="0 0 0 0.324 -0.387 0" size="0.08" type="capsule" class="agent1" name="agent1/anon6000775916" />
-          </body>
+    </body>
+    <body name="agent1/2" pos="0 0 0">
+      <geom fromto="0 0 0 -0.2 0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon5950318586" />
+      <body name="agent1/12" pos="-0.2 0.2 0">
+        <joint axis="0 0 1" name="agent1/12_joint" pos="0 0 0" range="-30 30" type="hinge" />
+        <geom fromto="0.0 0.0 0.0 -0.2 0.2 0.0" size="0.08" type="capsule" class="agent1" name="agent1/anon68574554" />
+        <body name="agent1/112" pos="-0.2 0.2 0">
+          <geom fromto="0 0 0 -0.4 0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon991681410" />
+          <joint axis="-0.707107 -0.707107 0" name="agent1/112_joint" pos="0 0 0" range="30 70" type="hinge" />
         </body>
       </body>
     </body>
 
+    <body name="agent1/3" pos="0 0 0">
+      <geom fromto="0 0 0 -0.2 -0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon3578544904" />
+      <body name="agent1/13" pos="-0.2 -0.2 0">
+        <joint axis="0 0 1" name="agent1/13_joint" pos="0 0 0" range="-30 30" type="hinge" />
+        <geom fromto="0 0 0 -0.2 -0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon9334530083" />
+        <body name="agent1/113" pos="-0.2 -0.2 0">
+          <geom fromto="0 0 0 -0.4 -0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon5974559825" />
+          <joint axis="0.707107 -0.707107 0" name="agent1/113_joint" pos="0 0 0" range="30 70" type="hinge" />
+        </body>
+      </body>
+    </body>
+
+    <body name="agent1/4" pos="0 0 0">
+      <geom fromto="0 0 0 0.2 -0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon6120997886" />
+      <body name="agent1/14" pos="0.2 -0.2 0">
+        <joint axis="0 0 1" name="agent1/14_joint" pos="0 0 0" range="-30 30" type="hinge" />
+        <geom fromto="0 0 0 0.2 -0.2 0" size="0.08" type="capsule" class="agent1" name="agent1/anon5188069942" />
+        <body name="agent1/114" pos="0.2 -0.2 0">
+          <geom fromto="0 0 0 0.4 -0.4 0" size="0.08" type="capsule" class="agent1" name="agent1/anon6733221636" />
+          <joint axis="0.707107 0.707107 0" name="agent1/114_joint" pos="0 0 0" range="30 70" type="hinge" />
+        </body>
+      </body>
+    </body>
+  </body>
   
 
   </worldbody>
@@ -202,16 +174,12 @@
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_6" gear="150" class="agent0" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_6" gear="150" class="agent0" />
   <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/11_joint" gear="150" name="agent1/11_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/111_joint" gear="150" name="agent1/111_joint" class="agent1" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/12_joint" gear="150" name="agent1/12_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/112_joint" gear="150" name="agent1/112_joint" class="agent1" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/13_joint" gear="150" name="agent1/13_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/113_joint" gear="150" name="agent1/113_joint" class="agent1" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/14_joint" gear="150" name="agent1/14_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/111_joint" gear="150" name="agent1/111_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/112_joint" gear="150" name="agent1/112_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/113_joint" gear="150" name="agent1/113_joint" class="agent1" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/114_joint" gear="150" name="agent1/114_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/15_joint" gear="150" name="agent1/15_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/115_joint" gear="150" name="agent1/115_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/16_joint" gear="150" name="agent1/16_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/116_joint" gear="150" name="agent1/116_joint" class="agent1" />
   </actuator>
   </mujoco>

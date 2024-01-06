@@ -38,6 +38,7 @@ class Ant(Agent):
         contact_cost = 0.5 * 1e-3 * np.sum(
             np.square(np.clip(cfrc_ext, -1, 1))
         )
+        
         qpos = self.get_qpos()
         agent_standing = qpos[2] >= 0.28
         survive = 1.0

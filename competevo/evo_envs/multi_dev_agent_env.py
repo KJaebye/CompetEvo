@@ -25,19 +25,19 @@ class MultiDevAgentEnv(MujocoEnv):
             DevAntFighter
         ),
         'dev_bug':(
-            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_bug_body.xml"),
             DevBug
         ),
         'dev_bug_fighter':(
-            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_bug_body.xml"),
             DevBugFighter
         ),
         'dev_spider':(
-            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_spider_body.xml"),
             DevSpider
         ),
         'dev_spider_fighter':(
-            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_spider_body.xml"),
             DevSpiderFighter
         ),
     }
