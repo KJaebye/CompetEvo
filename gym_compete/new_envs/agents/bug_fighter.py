@@ -48,7 +48,7 @@ class BugFighter(Bug):
 
         return control_reward, alive_reward
 
-    def _get_obs(self):
+    def _get_obs(self, stage=None):
         '''
         Return agent's observations
         '''
@@ -68,7 +68,7 @@ class BugFighter(Bug):
             other_qpos = np.random.uniform(-5, 5, 2)
 
         obs.extend([
-            other_qpos.flat,    # opponent torso position
+            other_qpos[:2].flat,    # opponent torso position
         ])
 
         torso_xmat = self.get_torso_xmat()

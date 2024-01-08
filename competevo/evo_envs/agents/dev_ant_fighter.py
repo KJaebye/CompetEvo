@@ -7,7 +7,7 @@ from lxml.etree import XMLParser, parse, ElementTree, Element, SubElement
 from lxml import etree
 from io import BytesIO
 
-SCALE_MAX = 0.5 #0.3
+SCALE_MAX = 0.5
 
 class DevAntFighter(RoboAntFighter):
     CFRC_CLIP = 100.

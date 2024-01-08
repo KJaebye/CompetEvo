@@ -68,7 +68,7 @@ class SpiderFighter(Spider):
             other_qpos = np.random.uniform(-5, 5, 2)
 
         obs.extend([
-            other_qpos.flat,    # opponent torso position
+            other_qpos[:2].flat,    # opponent torso position
         ])
 
         torso_xmat = self.get_torso_xmat()

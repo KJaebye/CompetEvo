@@ -52,9 +52,17 @@ class MultiAnimalEnv(MujocoEnv):
             os.path.join(os.path.dirname(__file__), "assets", "dev_bug_body.xml"),
             DevBugFighter
         ),
+        'bug_fighter':(
+            os.path.join(os.path.dirname(__file__), "assets", "bug_body.xml"),
+            BugFighter
+        ),
         'spider': (
             os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
             Spider
+        ),
+        'spider_fighter': (
+            os.path.join(os.path.dirname(__file__), "assets", "spider_body.xml"),
+            SpiderFighter
         ),
         'dev_spider':(
             os.path.join(os.path.dirname(__file__), "assets", "dev_spider_body.xml"),
@@ -380,7 +388,7 @@ class MultiAnimalEnv(MujocoEnv):
             try:
                 self.load_tmp_mujoco_env(self.world_xml_path, cur_xml_strs, \
                                      self.agent_scopes, self.ini_pos, self.ini_euler, self.rgb, **self.kwargs)
-                print(self._env_xml_str)
+                # print(self._env_xml_str)
             except:
                 print("Warning: Errors occur when loading xml files.")
                 terminateds = tuple([True, True])
