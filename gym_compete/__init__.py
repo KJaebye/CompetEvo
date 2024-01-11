@@ -232,6 +232,7 @@ register(
             ),
             'init_pos': [(-1, 0, 2.5), (1, 0, 2.5)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
+            'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
             'max_episode_steps': 500,
             'min_radius': 2.5,
             'max_radius': 4.5,

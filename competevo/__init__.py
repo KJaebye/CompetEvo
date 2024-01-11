@@ -54,7 +54,7 @@ register(
     id='robo-sumo-animals-v0',
     entry_point='competevo.evo_envs:RoboSumoAnimalEnv',
     disable_env_checker=True,
-    kwargs={'agent_names': ['bug_fighter', 'bug_fighter'],
+    kwargs={'agent_names': ['bug_fighter', 'spider_fighter'],
             'world_xml_path': "./competevo/evo_envs/assets/world_body_arena.xml",
             # 'world_xml_path': "../../competevo/evo_envs/assets/world_body_arena.xml",
             'init_pos': [(-1, 0, 1.5), (1, 0, 1.5)],

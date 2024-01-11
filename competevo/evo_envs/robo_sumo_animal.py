@@ -160,6 +160,123 @@ class RoboSumoAnimalEnv(MultiAnimalEnv):
             for i in range(self.n_agents):
                 self.agents[i].set_margin(margins[i])
         return self._reset()
+    
+    def step(self, actions):
+        self.cur_t += 1
+        # skeleton transform stage
+        if self.stage == 'skeleton_transform':
+            terminateds = tuple([False, False])
+            infos = []
+            cur_xml_strs = []
+            for i in range(self.n_agents):
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == "evo":
+                    skel_a = actions[i][:, -1]
+                    self.agents[i].apply_skel_action(skel_a)
+                    info = {'use_transform_action': True, 
+                            'stage': 'skeleton_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+                else:
+                    info = {'use_transform_action': True, 
+                            'stage': 'skeleton_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+                    
+                infos.append(info)
+                cur_xml_str = self.agents[i].cur_xml_str
+                cur_xml_strs.append(cur_xml_str)
+            
+            try:
+                self.load_tmp_mujoco_env(self.world_xml_path, cur_xml_strs, \
+                                     self.agent_scopes, self.ini_pos, self.ini_euler, self.rgb, **self.kwargs)
+            except:
+                print("Warning: Errors occur when loading xml files.")
+                terminateds = tuple([True, True])
+            
+            if self.cur_t == self.cfg.skel_transform_nsteps:
+                self.transit_attribute_transform()
+
+            obses = self._get_obs()
+            rews = tuple([0., 0.])
+            return obses, rews, terminateds, False, infos
+        # attribute transform stage
+        elif self.stage == 'attribute_transform':
+            terminateds = tuple([False, False])
+            infos = []
+            cur_xml_strs = []
+            for i in range(self.n_agents):
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == "evo":
+                    design_a = actions[i][:, self.agents[i].control_action_dim:-1] 
+                    if self.agents[i].abs_design:
+                        design_params = design_a * self.cfg.robot_param_scale
+                    else:
+                        design_params = self.agents[i].design_cur_params + design_a * self.cfg.robot_param_scale
+                    self.agents[i].set_design_params(design_params)
+
+                    info = {'use_transform_action': True, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+                elif hasattr(self.agents[i], 'flag') and self.agents[i].flag == "dev":
+                    design_params = actions[i]
+                    self.agents[i].set_design_params(design_params)
+
+                    info = {'use_transform_action': True, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            'design_params': design_params[:self.agents[i].scale_state_dim],
+                            }
+                else:
+                    info = {'use_transform_action': False, 
+                            'stage': 'attribute_transform',
+                            'reward_parse': 0,
+                            'reward_dense': 0,
+                            }
+
+                infos.append(info)
+                cur_xml_str = self.agents[i].cur_xml_str
+                cur_xml_strs.append(cur_xml_str)
+
+            try:
+                self.load_tmp_mujoco_env(self.world_xml_path, cur_xml_strs, \
+                                     self.agent_scopes, self.ini_pos, self.ini_euler, self.rgb, **self.kwargs)
+                # print(self._env_xml_str)
+            except:
+                print("Warning: Errors occur when loading xml files.")
+                terminateds = tuple([True, True])
+            
+            if self.cur_t == self.cfg.skel_transform_nsteps + 1:
+                self.transit_execution()
+
+            obses = self._get_obs()
+            rews = tuple([0., 0.])
+            self._reset()
+            return obses, rews, terminateds, False, infos
+        # execution
+        else:
+            self.control_nsteps += 1
+            flatten_actions = []
+            for i in range(self.n_agents):
+                if hasattr(self.agents[i], 'flag') and self.agents[i].flag == 'evo':
+                    action = actions[i]
+                    assert np.all(action[:, self.agents[i].control_action_dim:] == 0)
+                    control_a = action[1:, :self.agents[i].control_action_dim] # rm the torso node
+                    flatten_actions.append(control_a.flatten())
+                elif hasattr(self.agents[i], 'flag') and self.agents[i].flag == 'dev':
+                    action = actions[i][-self.agents[i].sim_action_dim:]
+                    flatten_actions.append(action.flatten())
+                else:
+                    action = actions[i]
+                    flatten_actions.append(action.flatten())
+            obses, rews, terminateds, truncated, infos = self._step(flatten_actions)
+        if self._past_limit():
+            return obses, rews, terminateds, True, infos
+
+        return obses, rews, terminateds, truncated, infos
 
     def _step(self, actions):
         self._elapsed_steps += 1

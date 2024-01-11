@@ -133,22 +133,22 @@
   <!-- </worldbody> -->
 
   <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="11_joint" gear="50" name="11_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="111_joint" gear="50" name="111_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="12_joint" gear="50" name="12_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="112_joint" gear="50" name="112_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="13_joint" gear="50" name="13_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="113_joint" gear="50" name="113_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="14_joint" gear="50" name="14_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="114_joint" gear="50" name="114_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="15_joint" gear="50" name="15_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="115_joint" gear="50" name="115_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="16_joint" gear="50" name="16_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="116_joint" gear="50" name="116_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="17_joint" gear="50" name="17_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="117_joint" gear="50" name="117_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="18_joint" gear="50" name="18_joint"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="118_joint" gear="50" name="118_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="11_joint" gear="150" name="11_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="111_joint" gear="150" name="111_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="12_joint" gear="150" name="12_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="112_joint" gear="150" name="112_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="13_joint" gear="150" name="13_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="113_joint" gear="150" name="113_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="14_joint" gear="150" name="14_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="114_joint" gear="150" name="114_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="15_joint" gear="150" name="15_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="115_joint" gear="150" name="115_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="16_joint" gear="150" name="16_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="116_joint" gear="150" name="116_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="17_joint" gear="150" name="17_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="117_joint" gear="150" name="117_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="18_joint" gear="150" name="18_joint"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="118_joint" gear="150" name="118_joint"/>
   </actuator>
 
 </mujoco>

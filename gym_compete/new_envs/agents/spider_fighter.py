@@ -48,7 +48,7 @@ class SpiderFighter(Spider):
 
         return control_reward, alive_reward
 
-    def _get_obs(self):
+    def _get_obs(self, stage=None):
         '''
         Return agent's observations
         '''
@@ -69,12 +69,13 @@ class SpiderFighter(Spider):
 
         obs.extend([
             other_qpos[:2].flat,    # opponent torso position
+            # other_qpos.flat,    # opponent torso position
         ])
 
-        torso_xmat = self.get_torso_xmat()
-        obs.extend([
-            torso_xmat.flat,
-        ])
+        # torso_xmat = self.get_torso_xmat()
+        # obs.extend([
+        #     torso_xmat.flat,
+        # ])
 
         obs = np.concatenate(obs)
         assert np.isfinite(obs).all(), "Spider observation is not finite!!"

@@ -322,11 +322,11 @@ class DevAntFighter(RoboAntFighter):
             other_qpos[:2].flat,    # opponent torso position
         ])
 
-        torso_xmat = self.get_torso_xmat()
-        # print(torso_xmat)
-        obs.extend([
-            torso_xmat.flat,
-        ])
+        # torso_xmat = self.get_torso_xmat()
+        # # print(torso_xmat)
+        # obs.extend([
+        #     torso_xmat.flat,
+        # ])
 
         sim_obs = np.concatenate(obs)
         assert np.isfinite(sim_obs).all(), "Ant observation is not finite!!"
