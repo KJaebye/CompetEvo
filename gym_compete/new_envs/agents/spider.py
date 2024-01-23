@@ -37,7 +37,8 @@ class Spider(Agent):
         contact_cost = 0
 
         qpos = self.get_qpos()
-        agent_standing = qpos[2] >= 0.3 and qpos[2] <= 1.2
+        agent_standing = qpos[2] >= 0.3
+        # agent_standing = qpos[2] >= 0.3 and qpos[2] <= 1.2
         survive = 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive
 
@@ -58,6 +59,8 @@ class Spider(Agent):
         Return agent's observations
         '''
         my_pos = self.get_qpos()
+
+        # other_pos = self.get_other_qpos()
         other_pos = self.get_other_qpos()[:2]
         if other_pos.shape == (0,):
             # other_pos = np.zeros(2) # x and y

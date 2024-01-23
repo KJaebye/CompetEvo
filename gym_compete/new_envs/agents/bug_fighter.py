@@ -71,10 +71,10 @@ class BugFighter(Bug):
             other_qpos[:2].flat,    # opponent torso position
         ])
 
-        # torso_xmat = self.get_torso_xmat()
-        # obs.extend([
-        #     torso_xmat.flat,
-        # ])
+        torso_xmat = self.get_torso_xmat()
+        obs.extend([
+            torso_xmat.flat,
+        ])
 
         obs = np.concatenate(obs)
         assert np.isfinite(obs).all(), "Bug observation is not finite!!"

@@ -185,6 +185,8 @@
 
   </worldbody>
 <actuator>
+    
+
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_1" gear="50" class="agent0" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_1" gear="50" class="agent0" />
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_2" gear="50" class="agent0" />

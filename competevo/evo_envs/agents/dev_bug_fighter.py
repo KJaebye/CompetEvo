@@ -7,7 +7,7 @@ from lxml.etree import XMLParser, parse, ElementTree, Element, SubElement
 from lxml import etree
 from io import BytesIO
 
-SCALE_MAX = 0.5 #0.3
+SCALE_MAX = 0.3
 
 class DevBugFighter(BugFighter):
     CFRC_CLIP = 100.
@@ -419,11 +419,11 @@ class DevBugFighter(BugFighter):
             other_qpos[:2].flat,    # opponent torso position
         ])
 
-        # torso_xmat = self.get_torso_xmat()
-        # # print(torso_xmat)
-        # obs.extend([
-        #     torso_xmat.flat,
-        # ])
+        torso_xmat = self.get_torso_xmat()
+        # print(torso_xmat)
+        obs.extend([
+            torso_xmat.flat,
+        ])
 
         sim_obs = np.concatenate(obs)
         assert np.isfinite(sim_obs).all(), "Ant observation is not finite!!"

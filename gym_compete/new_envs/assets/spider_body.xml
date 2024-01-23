@@ -120,6 +120,23 @@
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_7" gear="150"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_8" gear="150"/>
     <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_8" gear="150"/>
+
+    <!-- <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_1" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_1" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_2" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_2" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_3" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_3" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_4" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_4" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_5" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_5" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_6" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_6" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_7" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_7" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="hip_8" gear="50"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="ankle_8" gear="50"/> -->
   </actuator>
   <sensor>
     <!-- Positions -->

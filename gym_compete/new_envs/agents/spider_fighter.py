@@ -67,15 +67,23 @@ class SpiderFighter(Spider):
             # other_qpos = np.zeros(2) # x and y
             other_qpos = np.random.uniform(-5, 5, 2)
 
+
+        if other_qpos.shape[0] >= 23:
+            other_qpos = other_qpos[:23]
+        else:
+            other_qpos = np.concatenate([other_qpos, np.random.uniform(-2, 2, 23-other_qpos.shape[0])])
         obs.extend([
-            other_qpos[:2].flat,    # opponent torso position
-            # other_qpos.flat,    # opponent torso position
+            other_qpos.flat,    # opponent torso position 23
         ])
 
-        # torso_xmat = self.get_torso_xmat()
         # obs.extend([
-        #     torso_xmat.flat,
+        #     other_qpos[:2].flat,    # opponent torso position
         # ])
+
+        torso_xmat = self.get_torso_xmat()
+        obs.extend([
+            torso_xmat.flat,
+        ])
 
         obs = np.concatenate(obs)
         assert np.isfinite(obs).all(), "Spider observation is not finite!!"

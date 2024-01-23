@@ -232,37 +232,39 @@
 
   </worldbody>
 <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_1" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_1" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_2" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_2" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_3" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_3" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_4" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_4" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_5" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_5" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_6" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_6" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_7" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_7" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_8" gear="150" class="agent0" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_8" gear="150" class="agent0" />
-  <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/11_joint" gear="150" name="agent1/11_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/111_joint" gear="150" name="agent1/111_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/12_joint" gear="150" name="agent1/12_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/112_joint" gear="150" name="agent1/112_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/13_joint" gear="150" name="agent1/13_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/113_joint" gear="150" name="agent1/113_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/14_joint" gear="150" name="agent1/14_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/114_joint" gear="150" name="agent1/114_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/15_joint" gear="150" name="agent1/15_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/115_joint" gear="150" name="agent1/115_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/16_joint" gear="150" name="agent1/16_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/116_joint" gear="150" name="agent1/116_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/17_joint" gear="150" name="agent1/17_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/117_joint" gear="150" name="agent1/117_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/18_joint" gear="150" name="agent1/18_joint" class="agent1" />
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/118_joint" gear="150" name="agent1/118_joint" class="agent1" />
+    
+
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_1" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_1" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_2" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_2" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_3" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_3" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_4" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_4" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_5" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_5" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_6" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_6" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_7" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_7" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/hip_8" gear="50" class="agent0" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent0/ankle_8" gear="50" class="agent0" />
+  <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/11_joint" gear="50" name="agent1/11_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/111_joint" gear="50" name="agent1/111_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/12_joint" gear="50" name="agent1/12_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/112_joint" gear="50" name="agent1/112_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/13_joint" gear="50" name="agent1/13_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/113_joint" gear="50" name="agent1/113_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/14_joint" gear="50" name="agent1/14_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/114_joint" gear="50" name="agent1/114_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/15_joint" gear="50" name="agent1/15_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/115_joint" gear="50" name="agent1/115_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/16_joint" gear="50" name="agent1/16_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/116_joint" gear="50" name="agent1/116_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/17_joint" gear="50" name="agent1/17_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/117_joint" gear="50" name="agent1/117_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/18_joint" gear="50" name="agent1/18_joint" class="agent1" />
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" joint="agent1/118_joint" gear="50" name="agent1/118_joint" class="agent1" />
   </actuator>
   </mujoco>

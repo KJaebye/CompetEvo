@@ -54,7 +54,8 @@ register(
     id='robo-sumo-animals-v0',
     entry_point='competevo.evo_envs:RoboSumoAnimalEnv',
     disable_env_checker=True,
-    kwargs={'agent_names': ['bug_fighter', 'spider_fighter'],
+    kwargs={
+            'agent_names': ['bug_fighter', 'dev_spider_fighter'],
             'world_xml_path': "./competevo/evo_envs/assets/world_body_arena.xml",
             # 'world_xml_path': "../../competevo/evo_envs/assets/world_body_arena.xml",
             'init_pos': [(-1, 0, 1.5), (1, 0, 1.5)],
@@ -63,7 +64,7 @@ register(
             'rgb': [(0.98, 0.87, 0.67), (0.98, 0.87, 0.67)],
             'max_episode_steps': 500,
             'min_radius': 2.5,
-            'max_radius': 4.5,
+            'max_radius': 3.5,
             },
 )
 
@@ -138,7 +139,7 @@ register(
     id='run-to-goal-animals-v0',
     entry_point='competevo.evo_envs:MultiAnimalEnv',
     disable_env_checker=True,
-    kwargs={'agent_names': ['spider', 'spider'],
+    kwargs={'agent_names': ['dev_bug', 'dev_bug'],
             'init_pos': [(-1, 0, 0.75), (1, 0, 0.75)],
             'ini_euler': [(0, 0, 0), (0, 0, 180)],
             # 'rgb': [(0.98, 0.54, 0.56), (0.11, 0.56, 1)],

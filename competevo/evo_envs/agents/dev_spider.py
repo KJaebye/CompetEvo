@@ -7,7 +7,7 @@ from lxml.etree import XMLParser, parse, ElementTree, Element, SubElement
 from lxml import etree
 from io import BytesIO
 
-SCALE_MAX = 0.5
+SCALE_MAX = 1.2 #0.5
 
 class DevSpider(Agent):
 
