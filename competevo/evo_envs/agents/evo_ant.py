@@ -124,7 +124,7 @@ class EvoAnt(Ant):
         ang = np.arccos(zdir[2])
         done_condition = self.cfg.done_condition
         min_height = done_condition.get('min_height', 0.28)
-        max_height = done_condition.get('max_height', 10) #0.8
+        max_height = done_condition.get('max_height', .8) #0.8
         max_ang = done_condition.get('max_ang', 3600)
 
         # terminated = not (np.isfinite(self.get_qpos()).all() and np.isfinite(self.get_qvel()).all() and (height > min_height) and (height < max_height) and (abs(ang) < np.deg2rad(max_ang)))
