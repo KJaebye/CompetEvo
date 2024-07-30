@@ -151,7 +151,7 @@ class EvoLearner:
         if self.cfg.agent_specs.get('reinforce', False):
             advantages = returns.clone()
 
-        self.update_policy(states, actions, returns, advantages, exps)
+        return self.update_policy(states, actions, returns, advantages, exps)
 
     def get_perm_batch_design(self, states):
         inds = [[], [], []]
@@ -175,6 +175,8 @@ class EvoLearner:
                 fixed_log_probs = torch.cat(fixed_log_probs)
         num_state = len(states)
 
+        policy_losses = []
+        value_losses = []
         for _ in range(self.num_optim_epoch):
             if self.use_mini_batch:
                 perm_np = np.arange(num_state)
@@ -196,10 +198,12 @@ class EvoLearner:
                     ind = slice(i * self.mini_batch_size, min((i + 1) * self.mini_batch_size, num_state))
                     states_b, actions_b, advantages_b, returns_b, fixed_log_probs_b, exps_b = \
                         states[ind], actions[ind], advantages[ind], returns[ind], fixed_log_probs[ind], exps[ind]
-                    self.update_value(states_b, returns_b)
+                    value_loss = self.update_value(states_b, returns_b)
+                    value_losses.append(value_loss.item())
                     surr_loss = self.ppo_loss(states_b, actions_b, advantages_b, fixed_log_probs_b)
                     self.optimizer_policy.zero_grad()
                     surr_loss.backward()
+                    policy_losses.append(surr_loss.item())
                     self.clip_policy_grad()
                     self.optimizer_policy.step()
             else:
@@ -208,8 +212,10 @@ class EvoLearner:
                 surr_loss = self.ppo_loss(states, actions, advantages, fixed_log_probs)
                 self.optimizer_policy.zero_grad()
                 surr_loss.backward()
+                policy_losses.append(surr_loss.item())
                 self.clip_policy_grad()
                 self.optimizer_policy.step()
+        return np.mean(policy_losses), np.mean(value_losses)
 
     def ppo_loss(self, states, actions, advantages, fixed_log_probs):
         log_probs = self.policy_net.get_log_prob(self.trans_policy(states), actions)
@@ -226,13 +232,16 @@ class EvoLearner:
                 torch.nn.utils.clip_grad_norm_(params, max_norm)
 
     def update_value(self, states, returns):
+        value_losses = []
         """update critic"""
         for _ in range(self.value_opt_niter):
             values_pred = self.value_net(self.trans_value(states))
             value_loss = (values_pred - returns).pow(2).mean()
             self.optimizer_value.zero_grad()
             value_loss.backward()
+            value_losses.append(value_loss.item())
             self.optimizer_value.step()
+        return np.mean(value_losses)
 
     def trans_policy(self, states):
         """transform states before going into policy net"""
