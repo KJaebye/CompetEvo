@@ -22,7 +22,7 @@ RUN apt-get install git wget libgl1-mesa-glx -y
 
 # Install python3.8.
 RUN apt-get install software-properties-common -y
-RUN add-apt-repository ppa:deadsnakes/ppa -y
+# RUN add-apt-repository ppa:deadsnakes/ppa -y
 RUN apt-get install python3.8 -y
 
 # Make python3.8 the default python.

@@ -8,21 +8,43 @@ See more details on https://competevo.github.io/.
 # Build Image
 ```
 cd docker
-docker build -t 'kjaebye/competevo:1.0' . 
+docker build -t 'kjaebye/competevo:1.0' .   
 ```
 
 # Run Container
 ```
 xhost +
-docker run -it --name competevo -v ws:/root/ws --gpus=all -v /tmp/.x11-unix:/tmp/.x11-unix -e GDK_SCALE -e GDK_DPI_SCALE -p 8022:22 11aa1b03c99f /bin/bash
+docker run -it --name competevo -v ~/ws:/root/ws --gpus=all <enter the IMAGE ID> /bin/bash
 ```
+
+# To test the environment is working
+We give a pretrained model in task robo-sumo-devants-v0.
+```
+python display.py --cfg config/robo-sumo-devants-v0.yaml --ckpt_dir runs/robo-sumo-devants-v0/models
+```
+You can see a pair of developed ants fighting on an arena.
 
 # Training
 ```
 python train.py --cfg config/run-to-goal-ants-v0.yaml
 ```
+cfg files that can be selected to train: 
+
+- config/run-to-goal-ants-v0.yaml
+- config/run-to-goal-bugs-v0.yaml
+- config/run-to-goal-spiders-v0.yaml
+- config/run-to-goal-devants-v0.yaml
+- config/run-to-goal-devbugs-v0.yaml
+- config/run-to-goal-devspiders-v0.yaml
+- config/robo-sumo-ants-v0.yaml
+- config/robo-sumo-bugs-v0.yaml
+- config/robo-sumo-spiders-v0.yaml
+- config/robo-sumo-devants-v0.yaml
+- config/robo-sumo-devbugs-v0.yaml
+- config/robo-sumo-devspiders-v0.yaml
+
 
 # Dispaly
 ```
-python display.py --cfg ...
+python display.py --cfg <path-to-models-directory>
 ```

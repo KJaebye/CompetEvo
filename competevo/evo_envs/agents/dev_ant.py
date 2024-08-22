@@ -53,7 +53,7 @@ class DevAnt(Agent):
     def set_design_params(self, action):
         scale_state = action[:self.scale_state_dim]
         self.scale_vector = scale_state
-        # print(scale_state)
+        # print(action)
 
         design_params = self.scale_vector * SCALE_MAX
         a = design_params + 1.

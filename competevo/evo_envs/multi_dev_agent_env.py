@@ -16,12 +16,11 @@ class MultiDevAgentEnv(MujocoEnv):
     '''
     AGENT_MAP = {
         'dev_ant': (
-            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base2.xml"),
-            # os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_ant_body.xml"),
             DevAnt
         ),
         'dev_ant_fighter': (
-            os.path.join(os.path.dirname(__file__), "assets", "evo_ant_body_base2.xml"),
+            os.path.join(os.path.dirname(__file__), "assets", "dev_ant_body.xml"),
             DevAntFighter
         ),
         'dev_bug':(
@@ -214,6 +213,7 @@ class MultiDevAgentEnv(MujocoEnv):
     #     self.action_space = spaces.Tuple(
     #         [self.agents[i].action_space for i in range(self.n_agents)]
     #     )
+    #     print(self.action_space)
 
     def goal_rewards(self, infos=None, agent_dones=None):
         touchdowns = [self.agents[i].reached_goal()
