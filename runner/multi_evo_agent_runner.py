@@ -87,14 +87,9 @@ class MultiEvoAgentRunner(BaseRunner):
             self.cfg.min_batch_size, self.num_threads, t1-t0)
         )
         
-        
         """updating policy"""
-        policy_losses = {}
-        value_losses = {}
         for i, learner in self.learners.items():
-            policy_loss, value_loss = learner.update_params(batches[i])
-            policy_losses[i] = policy_loss
-            value_losses[i] = value_loss
+            learner.update_params(batches[i])
         t2 = time.time()
         self.logger.info("Policy update, spending: {:.2f} s.".format(t2-t1))
 
@@ -105,8 +100,7 @@ class MultiEvoAgentRunner(BaseRunner):
 
         info = {
             'logs': logs, 'log_evals': log_evals, 
-            'win_rate': win_rate,
-            'policy_losses': policy_losses, 'value_losses': value_losses
+            'win_rate': win_rate
         }
         self.logger.info('Total time: {:10.2f} min'.format((t3 - self.t_start)/60))
         return info
@@ -114,17 +108,13 @@ class MultiEvoAgentRunner(BaseRunner):
     def log_optimize_policy(self, info):
         epoch = self.epoch
         cfg = self.cfg
-        logs, log_evals, win_rate, policy_losses, value_losses= info['logs'], info['log_evals'], info['win_rate'], info['policy_losses'], info['value_losses']
+        logs, log_evals, win_rate = info['logs'], info['log_evals'], info['win_rate']
         logger, writer = self.logger, self.writer
-
-        # print("0:", logs[0].total_reward, logs[0].num_episodes, logs[0].avg_episode_reward)
-        # print("1:", logs[1].total_reward, logs[1].num_episodes, logs[1].avg_episode_reward)
             
         for i, learner in self.learners.items():
             logger.info("Agent_{} gets eval reward: {:.2f}.".format(i, log_evals[i].avg_episode_reward))
             logger.info("Agent_{} gets win rate: {:.2f}.".format(i, win_rate[i]))
-            logger.info("Agent_{} gets policy loss: {:.2f}.".format(i, policy_losses[i]))
-            logger.info("Agent_{} gets value loss: {:.2f}.".format(i, value_losses[i]))
+
             if log_evals[i].avg_episode_reward > learner.best_reward or win_rate[i] > learner.best_win_rate:
                 learner.best_reward = log_evals[i].avg_episode_reward
                 learner.best_win_rate = win_rate[i]
@@ -140,10 +130,7 @@ class MultiEvoAgentRunner(BaseRunner):
             writer.add_scalar("eval_win_rate_{}".format(i), win_rate[i], epoch)
             # eps len
             writer.add_scalar("episode_length", log_evals[i].avg_episode_len, epoch)
-            # policy loss
-            writer.add_scalar("policy_loss_{}".format(i), policy_losses[i], epoch)
-            # value loss
-            writer.add_scalar("value_loss_{}".format(i), value_losses[i], epoch)
+
     
     def optimize(self, epoch):
         self.epoch = epoch
@@ -199,32 +186,31 @@ class MultiEvoAgentRunner(BaseRunner):
                     samplers[i] = DevSampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
                 else:
                     samplers[i] = Sampler(self.cfg, self.dtype, 'cpu', self.env.agents[i])
-                samplers[i].policy_net.load_state_dict(self.learners[i].policy_net.state_dict())
 
             # sample random opponent old policies before every rollout
             if not self.cfg.use_opponent_sample or mean_action or self.epoch == 0:
                 ckpt = self.epoch
-                # try:
-                #     # get opp/ego ckpt modeal
-                #     opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
-                #     with open(opp_cp_path, "rb") as f:
-                #         opp_model_cp = pickle.load(f)
-                #         samplers[0].load_ckpt(opp_model_cp)
+                try:
+                    # get opp/ego ckpt modeal
+                    opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(0), ckpt)
+                    with open(opp_cp_path, "rb") as f:
+                        opp_model_cp = pickle.load(f)
+                        samplers[0].load_ckpt(opp_model_cp)
 
-                #     # get ego ckpt modeal
-                #     ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
-                #     with open(ego_cp_path, "rb") as f:
-                #         ego_model_cp = pickle.load(f)
-                #         samplers[1].load_ckpt(ego_model_cp)
-                # except:
-                #     pass
+                    # get ego ckpt modeal
+                    ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1), ckpt)
+                    with open(ego_cp_path, "rb") as f:
+                        ego_model_cp = pickle.load(f)
+                        samplers[1].load_ckpt(ego_model_cp)
+                except:
+                    pass
             else:
                 assert idx is not None
                 """set sampling policy for opponent"""
                 start = math.floor(self.epoch * self.cfg.delta)
                 start = start if start > 1 else 1
                 end = self.epoch
-                ckpt = randomstate.randint(start, end+1) if start!=end else end
+                ckpt = randomstate.randint(start, end) if start!=end else end
 
                 # get opp ckpt modeal
                 opp_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(1-idx), ckpt)
@@ -232,11 +218,11 @@ class MultiEvoAgentRunner(BaseRunner):
                     opp_model_cp = pickle.load(f)
                     samplers[1-idx].load_ckpt(opp_model_cp)
 
-                # # get ego ckpt modeal
-                # ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
-                # with open(ego_cp_path, "rb") as f:
-                #     ego_model_cp = pickle.load(f)
-                #     samplers[idx].load_ckpt(ego_model_cp)
+                # get ego ckpt modeal
+                ego_cp_path = '%s/%s/epoch_%04d.p' % (self.model_dir, "agent_"+str(idx), self.epoch)
+                with open(ego_cp_path, "rb") as f:
+                    ego_model_cp = pickle.load(f)
+                    samplers[idx].load_ckpt(ego_model_cp)
 
             states, info = self.env.reset()
             # normalize states

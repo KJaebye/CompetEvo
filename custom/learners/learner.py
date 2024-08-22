@@ -79,7 +79,7 @@ class Learner:
         if self.cfg.agent_specs.get('reinforce', False):
             advantages = returns.clone()
 
-        return self.__update_policy(states, actions, returns, advantages, exps)
+        self.__update_policy(states, actions, returns, advantages, exps)
     
     def save_ckpt(self, epoch):
         with to_cpu(self.policy_net, self.value_net):
@@ -198,8 +198,8 @@ class Learner:
                 fixed_log_probs = torch.cat(fixed_log_probs)
         num_state = len(states)
 
-        policy_losses = []
-        value_losses = []
+        # policy_losses = []
+        # value_losses = []
         for _ in range(self.num_optim_epoch):
             if self.use_mini_batch:
                 perm_np = np.arange(num_state)
@@ -215,25 +215,25 @@ class Learner:
                     ind = slice(i * self.mini_batch_size, min((i + 1) * self.mini_batch_size, num_state))
                     states_b, actions_b, advantages_b, returns_b, fixed_log_probs_b, exps_b = \
                         states[ind], actions[ind], advantages[ind], returns[ind], fixed_log_probs[ind], exps[ind]
-                    value_loss = self.__update_value(torch.vstack(states_b), returns_b)
-                    value_losses.append(value_loss.item())
+                    # value_loss = self.__update_value(torch.vstack(states_b), returns_b)
+                    # value_losses.append(value_loss.item())
                     surr_loss = self.__ppo_loss(torch.vstack(states_b), torch.vstack(actions_b), advantages_b, fixed_log_probs_b)
                     self.optimizer_policy.zero_grad()
                     surr_loss.backward()
-                    policy_losses.append(surr_loss.item())
+                    # policy_losses.append(surr_loss.item())
                     self.__clip_policy_grad()
                     self.optimizer_policy.step()
             else:
                 ind = exps.nonzero(as_tuple=False).squeeze(1)
-                value_loss = self.__update_value(torch.vstack(states), returns)
-                value_losses.append(value_loss.item())
+                # value_loss = self.__update_value(torch.vstack(states), returns)
+                # value_losses.append(value_loss.item())
                 surr_loss = self.__ppo_loss(torch.vstack(states), torch.vstack(actions), advantages, fixed_log_probs)
                 self.optimizer_policy.zero_grad()
                 surr_loss.backward()
-                policy_losses.append(surr_loss.item())
+                # policy_losses.append(surr_loss.item())
                 self.__clip_policy_grad()
                 self.optimizer_policy.step()
-        return np.mean(policy_losses), np.mean(value_losses)
+        # return np.mean(policy_losses), np.mean(value_losses)
 
     def __ppo_loss(self, states, actions, advantages, fixed_log_probs):
         log_probs = self.policy_net.get_log_prob(self.__trans_policy(states), actions)
@@ -250,16 +250,16 @@ class Learner:
                 torch.nn.utils.clip_grad_norm_(params, max_norm)
 
     def __update_value(self, states, returns):
-        value_losses = []
+        # value_losses = []
         """update critic"""
         for _ in range(self.value_opt_niter):
             values_pred = self.value_net(self.__trans_value(states))
             value_loss = (values_pred - returns).pow(2).mean()
             self.optimizer_value.zero_grad()
             value_loss.backward()
-            value_losses.append(value_loss.item())
+            # value_losses.append(value_loss.item())
             self.optimizer_value.step()
-        return np.mean(value_losses)
+        # return np.mean(value_losses)
 
     def __trans_policy(self, states):
         """transform states before going into policy net"""

@@ -296,7 +296,7 @@ class MultiDevAgentEnv(MujocoEnv):
             try:
                 self.load_tmp_mujoco_env(self.world_xml_path, cur_xml_strs, \
                                      self.agent_scopes, self.ini_pos, self.ini_euler, self.rgb, **self.kwargs)
-                print(self._env_xml_str)
+                # print(self._env_xml_str)
             except:
                 print("Warning: Errors occur when loading xml files.")
                 terminateds = tuple([True, True])
