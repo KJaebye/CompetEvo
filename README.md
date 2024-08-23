@@ -16,6 +16,11 @@ docker build -t 'kjaebye/competevo:1.0' .
 xhost +
 docker run -it --name competevo -v ~/ws:/root/ws --gpus=all <enter the IMAGE ID> /bin/bash
 ```
+Download this repo into ~/ws on the host, and the docker volume could map the `~/ws` to `/root/ws` in containner:
+```
+cd ~/ws
+git clone git@github.com:KJaebye/CompetEvo.git
+```
 
 # To test the environment is working
 We give a pretrained model in task robo-sumo-devants-v0.
@@ -46,5 +51,5 @@ cfg files that can be selected to train:
 
 # Dispaly
 ```
-python display.py --cfg <path-to-models-directory>
+python display.py --cfg <path-to-config-file> --ckpt_dir <path-to-models-directory>
 ```
